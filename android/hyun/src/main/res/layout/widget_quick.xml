@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 짭비서 홈 위젯 — 이름(앱 열기) · 🎤 말하기 · ⌨ 입력. 누르면 지금 화면 위에 빠른 대화 창(QuickActivity) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="horizontal" android:gravity="center_vertical"
+    android:background="@drawable/widget_bg" android:padding="8dp">
+    <TextView android:id="@+id/w_name" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+        android:gravity="center_vertical" android:paddingStart="10dp" android:text="● 짭비서"
+        android:textColor="#4FD1C5" android:textSize="16sp" android:textStyle="bold" />
+    <TextView android:id="@+id/w_voice" android:layout_width="52dp" android:layout_height="52dp" android:layout_marginEnd="6dp"
+        android:background="@drawable/widget_btn" android:gravity="center" android:text="🎤" android:textSize="22sp" />
+    <TextView android:id="@+id/w_text" android:layout_width="52dp" android:layout_height="52dp"
+        android:background="@drawable/widget_btn" android:gravity="center" android:text="⌨" android:textColor="#0B0F14" android:textSize="22sp" />
+</LinearLayout>

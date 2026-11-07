@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 빠른 대화 창 — 지금 보던 앱 위에 반투명으로 뜬다 -->
+    <style name="Quick" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.InputMethod</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+    </style>
+</resources>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 주행 맥락: 속도 · 기어 · 배터리 -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+    <uses-permission android:name="android.car.permission.CAR_INFO" />
+    <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="pleos.car.permission.CAR_INFO" />
+    <!-- 목적지 설정(requestRoute) · 경로·위치 조회 -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+    <!-- 음성 -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+    <uses-permission android:name="pleos.car.permission.STT_SERVICE" />
+    <!-- 현비서 서버(PC) · 날씨(Open-Meteo) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 폰(샤오미 등)에서 돌릴 때 — 안드로이드 음성 인식 마이크 · GPS 속도(주행 여부)·위치(날씨·주소) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 폰 모드(짭비서): 오늘 일정 브리핑·회의 10분 전 알림 · 리마인더 진동 -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 상주 알림(알림창에서 글로 묻기·말하기) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 차: 내비·음악 화면에서도 상시 귀가 듣게 — 마이크 포그라운드 서비스(EarService) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+    <!-- Android 11+ 패키지 가시성 — 이게 없으면 폰에서 음성 인식·TTS 엔진을 "없음"으로 본다 -->
+    <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+    </queries>
+
+    <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
+
+    <application
+        android:label="현비서"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
+        <uses-library android:name="android.car" android:required="false" />
+
+        <!-- H1·에이전트와 같은 이유로 singleTask + configChanges(Pleos 홈의 MAIN 재실행) · DO 선언(주행 중 음성 대화 유지)
+             방향 고정 없음 — 차 화면은 가로, 폰은 세로·가로 모두(HyunView가 배치를 바꾼다) -->
+        <activity
+            android:name=".HyunActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboardHidden|navigation">
+            <meta-data android:name="distractionOptimized" android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Gleo Interface(assets/schema.json) — 액션 이름 = intent action. 글레오가 부르면 onNewIntent로 온다 -->
+            <intent-filter>
+                <action android:name="ASK_HYUN" />
+                <action android:name="HYUN_STATUS" />
+                <action android:name="HYUN_QUIET" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- 마이크 포그라운드 서비스 — 앱이 뒤로 가도 상시 귀가 듣는다(차) -->
+        <service
+            android:name=".EarService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!-- 빠른 대화 창(폰) — 홈 위젯·상주 알림에서 열려 다른 앱 위에 뜬다. 최근 앱 목록엔 안 남는다 -->
+        <activity
+            android:name=".QuickActivity"
+            android:exported="false"
+            android:theme="@style/Quick"
+            android:launchMode="singleTask"
+            android:taskAffinity="io.github.somanghao.makecar.hyun.quick"
+            android:excludeFromRecents="true"
+            android:windowSoftInputMode="adjustResize" />
+
+        <receiver android:name=".QuickWidget" android:exported="false" android:label="짭비서">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
+        </receiver>
+    </application>
+</manifest>

@@ -1,0 +1,64 @@
+{
+  "packageName": "io.github.somanghao.makecar.hyun",
+  "appDescription": "Hyun is a passenger-seat conversation assistant that knows the driver's tastes, the current trip and the traffic on the route.",
+  "invokeWord": "현비서",
+  "version": "0.2",
+  "actionCalls": [
+    {
+      "type": "function",
+      "function": {
+        "name": "ASK_HYUN",
+        "description": "Pass the driver's question or request to the Hyun assistant, which answers in its own voice.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "description": "The driver's question or request, in the driver's own words."
+            }
+          },
+          "required": ["question"]
+        },
+        "component": "activity"
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "HYUN_STATUS",
+        "description": "Report the current trip status from the Hyun assistant, such as destination, remaining time and traffic on the route.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "item": {
+              "type": "string",
+              "enum": ["all", "trip", "traffic"],
+              "description": "Which part of the trip status to report."
+            }
+          },
+          "required": ["item"]
+        },
+        "component": "activity"
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "HYUN_QUIET",
+        "description": "Turn the Hyun assistant's quiet mode on or off. Quiet mode keeps only safety alerts and answers.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["quiet", "talk"],
+              "description": "quiet to stop small talk and suggestions, talk to allow them again."
+            }
+          },
+          "required": ["mode"]
+        },
+        "component": "activity"
+      }
+    }
+  ]
+}

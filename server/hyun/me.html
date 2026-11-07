@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>현비서가 아는 나</title>
+<style>
+:root { --bg: #f4f6f9; --surface: #fff; --surface-2: #eef2f7; --line: #dde3ea; --text: #132033; --muted: #5d6b7c;
+  --like: #2563eb; --dislike: #c2410c; --ok: #14804a; --accent: #6d4bd6; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f141b; --surface: #18202a; --surface-2: #1f2935; --line: #2c3746; --text: #e6edf5; --muted: #93a1b2;
+    --like: #6b9bff; --dislike: #f08a5d; --ok: #4cc98a; --accent: #a68bff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; word-break: keep-all;
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 28px 16px 48px; }
+.eyebrow { font-size: 13px; color: var(--muted); }
+h1 { margin: 4px 0 12px; font-size: clamp(24px, 4vw, 34px); letter-spacing: -.02em; }
+.meter { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
+.meter .bar { flex: 1; max-width: 320px; height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.meter .bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.meter b { color: var(--text); }
+h2 { font-size: 18px; margin: 28px 0 10px; }
+h2 small { font-size: 12.5px; color: var(--muted); font-weight: 500; margin-left: 6px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+.slot h3 { margin: 0 0 8px; font-size: 15px; display: flex; justify-content: space-between; }
+.slot h3 span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 700; padding: 4px 6px 4px 11px; border-radius: 99px;
+  color: var(--like); background: color-mix(in srgb, var(--like) 12%, transparent); }
+.chip.no { color: var(--dislike); background: color-mix(in srgb, var(--dislike) 12%, transparent); }
+.chip.no::before { content: "✕"; font-size: 11px; }
+.chip .n { font-size: 11.5px; font-weight: 900; padding: 0 6px; border-radius: 99px; background: color-mix(in srgb, currentColor 18%, transparent); }
+.chip button { border: 0; background: none; color: inherit; opacity: .45; cursor: pointer; font-size: 14px; padding: 0 4px; }
+.chip button:hover { opacity: 1; }
+.slot.empty { background: transparent; border-style: dashed; }
+.slot.empty p { margin: 0; font-size: 13px; color: var(--muted); }
+.slot.empty p b { color: var(--text); font-weight: 600; }
+.asks { display: grid; gap: 8px; }
+.ask { display: grid; grid-template-columns: 110px 1fr 90px; align-items: center; gap: 10px; font-size: 14px; }
+.ask .t { height: 14px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.ask .t i { display: block; height: 100%; background: var(--ok); border-radius: 99px; }
+.ask .h { font-size: 12.5px; color: var(--muted); text-align: right; }
+.facts { margin: 0; padding-left: 18px; font-size: 14px; }
+.note { font-size: 12.5px; color: var(--muted); margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">현비서 · 취향 기록 (대화할 때마다 쌓여요 · 5초마다 새로고침)</div>
+  <h1 id="title">현비서가 아는 나</h1>
+  <div class="meter"><div class="bar"><i id="meter" style="width:0"></i></div><span id="meterT"></span></div>
+
+  <h2>취향 <small>숫자 = 말한 횟수 · ✕ 누르면 잊어요</small></h2>
+  <div class="grid" id="slots"></div>
+
+  <h2>자주 묻는 것 <small>나중에 그 시간에 먼저 알려 주는 재료</small></h2>
+  <div class="card asks" id="asks"></div>
+
+  <h2>기억 <small>일화·약속</small></h2>
+  <div class="card"><ul class="facts" id="facts"></ul></div>
+
+  <p class="note">말로도 지울 수 있어요: "현비서야, 오이 싫어하는 거 잊어 줘" · 민감 정보는 기록하지 않아요</p>
+</div>
+<script>
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+async function forget(slot, value) {
+  await fetch("/hyun/taste/forget", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot, value }) });
+  load();
+}
+function chip(slot, x, no) {
+  return `<span class="chip${no ? " no" : ""}">${esc(x.v)}${x.n > 1 ? `<span class="n">×${x.n}</span>` : ""}` +
+    `<button title="잊기" data-s="${esc(slot)}" data-v="${esc(x.v)}">×</button></span>`;
+}
+async function load() {
+  try {
+    const [t, m] = await Promise.all([fetch("/hyun/taste").then((r) => r.json()), fetch("/hyun/memory").then((r) => r.json())]);
+    document.getElementById("title").textContent = `현비서가 아는 ${m.name || "나"}`;
+    document.getElementById("meter").style.width = `${(t.known / t.total) * 100}%`;
+    document.getElementById("meterT").innerHTML = `<b>${t.total}칸 중 ${t.known}칸</b> 알아요`;
+    const known = t.slots.filter((s) => s.like.length || s.dislike.length);
+    const unknown = t.slots.filter((s) => !(s.like.length || s.dislike.length));
+    document.getElementById("slots").innerHTML =
+      known.map((s) => `<div class="card slot"><h3>${esc(s.name)}<span>${s.like.length + s.dislike.length}</span></h3><div class="chips">` +
+        s.like.map((x) => chip(s.slot, x, false)).join("") + s.dislike.map((x) => chip(s.slot, x, true)).join("") + `</div></div>`).join("") +
+      unknown.map((s) => `<div class="card slot empty"><h3>${esc(s.name)}<span>아직 모름</span></h3><p>현비서가 물어볼 말 <b>"${esc(s.ask)}"</b></p></div>`).join("");
+    const max = Math.max(1, ...t.asks.map((a) => a.n));
+    document.getElementById("asks").innerHTML = t.asks.length
+      ? t.asks.map((a) => `<div class="ask"><span>${esc(a.name)}</span><span class="t"><i style="width:${(a.n / max) * 100}%"></i></span><span class="h">${a.n}번${a.top ? ` · 주로 ${a.top}시` : ""}</span></div>`).join("")
+      : `<span style="color:var(--muted);font-size:14px">아직 없음</span>`;
+    document.getElementById("facts").innerHTML = (m.facts || []).map((f) => `<li>${esc(f)}</li>`).join("") || "<li>아직 없음</li>";
+  } catch (e) {
+    document.getElementById("meterT").textContent = "서버에 연결할 수 없어요";
+  }
+}
+document.getElementById("slots").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-s]");
+  if (b) forget(b.dataset.s, b.dataset.v);
+});
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
