@@ -4,7 +4,7 @@
 
 ## 차 vs 폰 — 무엇이 갈리나
 
-`isCar = packageManager.hasSystemFeature(FEATURE_AUTOMOTIVE)` 하나로 갈린다(`HyunActivity.onCreate`).
+`isCar = packageManager.hasSystemFeature(FEATURE_AUTOMOTIVE)` 하나로 갈린다(`core/Hyun.kt` — 기능마다 `enabled(car)`로 차/폰에서 켤지 정함 → [[hyun-architecture]]).
 
 | | 차 = 현비서 | 폰 = 짭비서 |
 |---|---|---|
@@ -15,7 +15,7 @@
 | 화면 | 어두운 가로(야간 눈부심) | **흰 세로** — 상태바·내비바 아이콘 어둡게(`lightBars`) |
 | 이름 | 현비서 | 짭비서(`botName`, 작업 목록 이름도). 런처 라벨은 아직 "현비서" |
 
-## 폰 모드 3개 (`Speaker.kt` `PhoneMode` → 모드별 `Policy`)
+## 폰 모드 3개 (`phone/PhoneMode.kt` → `voice/Speaker.kt` 모드별 `Policy` · 처리 `feature/PhoneFeature.kt`)
 
 | 모드 | P2 쿨다운 | 수명 P0·P1·P2 | 특이 |
 |---|---|---|---|

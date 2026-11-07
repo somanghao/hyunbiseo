@@ -29,6 +29,7 @@ python -I -X utf8 tools/hyun_e2e/run.py --report records/hyun-e2e/<폴더>   # �
 - `transcript.json`(전체 기록 — 케이스·대화 시각·판정·서버 답 원문) · `logcat.txt` · `server-log.jsonl` · `server.out` · `shots/*.jpg`
 - `video.mp4`(7분 · 3.5MB — git에 함께) · `raw/`(케이스별 원본 영상 136MB·자막 srt·원본 PNG — **git 제외**). 영상 = `adb screenrecord` 1280x720(케이스마다 ≤180초) → ffmpeg 이어 붙이기 + 자막 굽기(맑은 고딕). **소리 없음**(화면 녹화) — 자막이 말 대신
 - 기록 목록·판정 → 아래 §기록
+- GitHub 사본: https://github.com/somanghao/hyunbiseo (private) — 앱·서버·시험·이 기록(영상 포함)·현비서 문서. 갱신 = `tools/export_hyunbiseo.py <hyunbiseo 클론>`(git 추적 파일만 · 비밀 문자열 모양이 있으면 멈춤 · settings는 :hyun만) → 커밋·푸시. README 원본 `tools/hyun_export_README.md`
 - 보기: `python -I dashboard/serve.py` → http://localhost:8765/records/hyun-e2e/<폴더>/report.html (no-store 서버 — 영상·사진 상대 경로)
 
 ## 기록
@@ -38,3 +39,5 @@ python -I -X utf8 tools/hyun_e2e/run.py --report records/hyun-e2e/<폴더>   # �
 | (지움) 0904 · 0906 · 0909 · 0912 · 0916 | 개발 중 부분 실행 | 반반 배치·교통 표·휴게소(다음 휴게소 '확인 못 함' → 경로 도로 맥락 추가로 '아마 기흥휴게소(추정)')·인물 사진 검색어 줄이기·주행 중 휴게소 답이 늦게 옴 → 케이스 고침 |
 | (지움) 0919 · 0929 · 0939 | 11/11 · 9/11 · 11/11 | 0919: 끼어든 정찰 답을 질문 답으로 착각(→ `ask|id` 짝짓기) · 0929: **에뮬 워치독 재시작**(GNSS HAL 72초) → 앱·내비 경로 소실로 e05·e10 실패(→ 러너가 워치독을 '환경'으로 표시, e09가 목적지를 스스로 설정) · 0939: 새 긴 경로 정체를 줄줄이 알림(→ 정찰 90초 조용한 시작) |
 | **`records/hyun-e2e/20261107-0949/`** | **11/11 통과 · 영상 7분 2초** | 최종 — 응답(말 → 답) 5.1~5.8초, 검색 모드 13초 · 휴게소 카드 "기흥휴게소 부산방향(추정)" 대표 메뉴 향천우동·라면·호두과자 · 300m 사고 = 갈림길 없음 "돌아갈 길은 없어요" · 워치독 없음 |
+| `records/hyun-e2e/20261107-1112/` | 11/11 (영상 없음) | 확장 구조 리팩터 — 앱만 바꾼 상태 → [[hyun-architecture]] |
+| **`records/hyun-e2e/20261107-1125/`** | **11/11 통과 · 영상 6분 58초** | 확장 구조 리팩터 최종(앱 + 서버) — 서버 오류 0 · 응답 시간 리팩터 전과 같은 범위 |

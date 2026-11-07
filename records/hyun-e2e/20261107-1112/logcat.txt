@@ -1,0 +1,291 @@
+--------- beginning of main
+         1794017560.800 17527 17527 I HYUN    : nav|cancel|demo|null
+         1794017560.813 17527 17527 I HYUN    : start|car|42dot Connect on x86_64 emulator API 34|server=http://10.0.2.2:8790|기능 quiet,listen-mode,character,gleo,route,scout,weather,car-battery,drive-care
+         1794017561.053 17527 17527 I HYUN    : voice|tts|ready
+         1794017561.064 17527 17527 I HYUN    : voice|stt|init|OK
+         1794017561.079 17527 17527 I HYUN    : navi|connected
+         1794017561.345 17527 17527 I HYUN    : brain|true
+         1794017561.353 17527 17527 I HYUN    : ear|server|true|http://10.0.2.2:8791
+         1794017561.385 17527 17527 I HYUN    : earService|start|ok
+         1794017561.464 17527 17766 I HYUN    : ear|start|16000Hz|buf=12800
+         1794017561.573 17527 17766 I HYUN    : ear|floor|12|gate=45
+         1794017562.420 17527 17554 I HYUN    : navi|location|37.4127212,127.094681|수정구 시흥동
+         1794017562.984 17527 17554 I HYUN    : navi|waypoints|
+         1794017563.033 17527 17554 I HYUN    : navi|destination|DestinationInfo(latitude=36.33219909667969, longitude=127.4343032836914, displayLatitude=null, displayLongitude=null, name=대전역, address=동구 정동, remainDistance=143000, remainTime=16020, tollFare=0, poiId=, poiSubId=null, poiProvider=)
+         1794017563.059 17527 17527 I HYUN    : loc|37.4127212,127.094681|수정구 시흥동
+         1794017563.953 17527 17527 I HYUN    : event|hello
+         1794017564.006 17527 17527 I HYUN    : ask|1|event|hello
+         1794017564.147 17527 17986 I HYUN    : weather|37.4127212,127.094681|3.7C|rain6h=0%
+         1794017565.476 17527 17527 I HYUN    : scout|every|120s|정차
+         1794017565.533 17527 17554 I HYUN    : navi|tbt|23|TURN_LEFT@80;TURN_RIGHT@380;TURN_AVOID_UNDER_R@730;TURN_ENTER_IC_R@1700
+         1794017565.599 17527 17554 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=90000.0, totalCongestionTime=8820, totalCongestionAvrSpeed=27.01147054892175)|jams=44|events=0|[]
+         1794017569.491 17527 17527 I HYUN    : reply|1|{"id":1,"say":"안녕하세요, 대전역까지 가는 길 도와드릴게요. 오늘 브리핑은 뭐부터 들을까요? 날씨, 뉴스, 주식, 교통 중에 순서대로 말해 주세요.","listen":true,"mood":"happy","nav":null,"via":null,"route":null,"prio":2,"mode":null,"card":null,"ts":"11:12:49","by":"claude","tasks":false}
+         1794017569.496 17527 17527 I HYUN    : prio|in|P2|hello|안녕하세요, 대전역까지 가는 길 도와드릴게요. 오늘 브리핑은 뭐부터 들을까요? 날씨, 뉴스, 주식, 교통 중에 순서대로 말해 주세요.
+         1794017569.498 17527 17527 I HYUN    : prio|say|P2|정차|hello
+         1794017569.500 17527 17527 I HYUN    : say|P2|안녕하세요, 대전역까지 가는 길 도와드릴게요. 오늘 브리핑은 뭐부터 들을까요? 날씨, 뉴스, 주식, 교통 중에 순서대로 말해 주세요.
+         1794017579.298 17527 17527 I HYUN    : tts|done
+         1794017579.838 17527 17527 I HYUN    : stt|level|heard|max=0.04
+         1794017579.839 17527 17527 I HYUN    : heard|날씨 먼저 듣고 그다음 뉴스
+         1794017579.891 17527 17527 I HYUN    : ask|2|talk|날씨 먼저 듣고 그다음 뉴스
+         1794017583.396 17527 17527 I HYUN    : prio|in|P1·답|맞장구|어디 보자.
+         1794017583.396 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017583.396 17527 17527 I HYUN    : say|P1|어디 보자.
+         1794017585.429 17527 17527 I HYUN    : tts|done
+         1794017590.914 17527 17527 I HYUN    : reply|2|{"id":2,"say":"다음부터 이 순서로 할게요. 지금 4도에 맑고, 12시간 동안 비 소식 없어요. 뉴스는 T1이 월드 챔피언십 4강에 올랐고, 삼표 정도원 회장은 다음 달 항소심이에요.","listen":false,"mood":"calm","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":{"kind":"","title":"뉴스 헤드라인","source":"연합뉴스 · 11-07 11:12","items":["'중처법 1호' 무죄 삼표 정도원 회장, 내달 항소심","T1, 카르민코프에 3-1 승…월드 챔피언십 4강","[게임위드인] 젤다의 전설: 시간의 오카리나","파면된 파라과이 대통령…남미 우파 정치인의 몰락","트럼프와 밀착했던 빅테크…공화당도 거리두자","中유니트리로봇, 유전·정유공장으로 합작","[부고] 송하칠(전 매일경제 국장)씨 모친상","노동장관 \"안전보다 비용 우선 사업주 무거운 책임\"","\"中, 日에 '아베 유화 기조' 따르라 요청\"","도루묵 등 동해안 특산어종 어획 급증"],"image_query":""},"ts":"11:13:11","by":"claude","tasks":false}
+         1794017590.918 17527 17527 I HYUN    : card|뉴스 헤드라인|10|kind=list|img=0|'중처법 1호' 무죄 삼표 정도원 회장, 내달 항소심 / T1, 카르민코프에 3-1 승…월드 챔피언십 4강 / [게임위드인] 젤다의 전설: 시간의 오카리나
+         1794017590.918 17527 17527 I HYUN    : prio|in|P1·답|답|다음부터 이 순서로 할게요. 지금 4도에 맑고, 12시간 동안 비 소식 없어요. 뉴스는 T1이 월드 챔피언십 4강에 올랐고, 삼표 정도원 회장은 다음 달 항소심이에요.
+         1794017590.919 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017590.919 17527 17527 I HYUN    : say|P1|다음부터 이 순서로 할게요. 지금 4도에 맑고, 12시간 동안 비 소식 없어요. 뉴스는 T1이 월드 챔피언십 4강에 올랐고, 삼표 정도원 회장은 다음 달 항소심이에요.
+         1794017602.268 17527 17527 I HYUN    : tts|done
+         1794017602.583 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017606.398 17527 23792 I HYUN    : ear|feed|e01_0|98560B|3.1s
+         1794017606.465 17527 23792 I HYUN    : ear|send|3.1s|peak=20714|gain=1.3
+         1794017607.002 17527 17527 I HYUN    : ear|wake+text|3.1s|529ms|현비서야 강남역 가자
+         1794017607.002 17527 17527 I HYUN    : heard|강남역 가자
+         1794017607.024 17527 17527 I HYUN    : ask|3|talk|강남역 가자
+         1794017610.531 17527 17527 I HYUN    : prio|in|P1·답|맞장구|음, 잠깐만요.
+         1794017610.531 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017610.531 17527 17527 I HYUN    : say|P1|음, 잠깐만요.
+         1794017611.937 17527 17527 I HYUN    : reply|3|{"id":3,"say":"강남역으로 안내 시작할게요. 대전역 안내는 바꿔서 갈게요.","listen":false,"mood":"calm","nav":{"name":"강남역","lat":37.4979,"lng":127.0276},"via":null,"route":null,"prio":1,"mode":null,"card":null,"ts":"11:13:32","by":"claude","tasks":false}
+         1794017611.937 17527 17527 I HYUN    : nav|강남역|37.4979,127.0276|est=14521m
+         1794017611.978 17527 17527 I HYUN    : prio|in|P1·답|답|강남역으로 안내 시작할게요. 대전역 안내는 바꿔서 갈게요.
+         1794017612.328 17527 17554 I HYUN    : navi|cancelled
+         1794017612.397 17527 17527 I HYUN    : tts|done
+         1794017612.399 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017612.399 17527 17527 I HYUN    : say|P1|강남역으로 안내 시작할게요. 대전역 안내는 바꿔서 갈게요.
+         1794017612.439 17527 17750 I HYUN    : navi|driving|DrivingInfo(destination=DrivingState(name=대전역, duration=0, distance=0, remainDestinationChargingValue=0, isChargingStation=false, isRecommendedChargingStation=false, maxChargingPower=0, targetSoc=0, chargerCount=0, chargingPlan=null), waypoints=[])
+         1794017612.480 17527 17770 I HYUN    : navi|waypoints|
+         1794017612.483 17527 17554 I HYUN    : navi|destination|DestinationInfo(latitude=0.0, longitude=0.0, displayLatitude=null, displayLongitude=null, name=, address=, remainDistance=0, remainTime=0, tollFare=0, poiId=, poiSubId=null, poiProvider=)
+         1794017612.508 17527 17770 I HYUN    : navi|tbt|0|
+         1794017612.657 17527 17770 I HYUN    : navi|routeState|SAFE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=90000.0, totalCongestionTime=8820, totalCongestionAvrSpeed=27.01147054892175)|jams=44|events=0|[]
+         1794017616.940 17527 17527 I HYUN    : tts|done
+         1794017619.116 17527 17750 I HYUN    : navi|routeStarted|RouteStartInfo(duration=2820, distance=13000, tollFare=700, name=강남역, remainDestinationChargingValue=75718)
+         1794017619.217 17527 17750 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=90000.0, totalCongestionTime=8820, totalCongestionAvrSpeed=27.01147054892175)|jams=44|events=0|[]
+         1794017622.174 17527 17770 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=7400.0, totalCongestionTime=1440, totalCongestionAvrSpeed=14.674841120523373)|jams=18|events=0|[]
+         1794017629.977 17527 26641 I HYUN    : ear|feed|e02_0|92640B|2.9s
+         1794017630.025 17527 26641 I HYUN    : ear|send|2.9s|peak=20714|gain=1.3
+         1794017630.626 17527 17527 I HYUN    : ear|wake+text|2.9s|582ms|현비서야 앞길 어때?
+         1794017630.627 17527 17527 I HYUN    : heard|앞길 어때?
+         1794017630.715 17527 17527 I HYUN    : ask|4|talk|앞길 어때?
+         1794017632.585 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017634.220 17527 17527 I HYUN    : prio|in|P1·답|맞장구|생각해 볼게요.
+         1794017634.221 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017634.221 17527 17527 I HYUN    : say|P1|생각해 볼게요.
+         1794017635.740 17527 17527 I HYUN    : tts|done
+         1794017635.882 17527 17527 I HYUN    : reply|4|{"id":4,"say":"내비 교통정보 기준, 7.3km 앞 양재IC 쪽이 정체예요. 약 19분 걸려서 도착은 12시쯤이에요. 빠른 길로 다시 볼까요?","listen":true,"mood":"calm","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":{"kind":"","title":"앞길 교통 · 강남역까지 47분(도착 12:00)","source":"내비 교통정보 · 11:13 · 정체 7.4km(약 24분, 평균 15km\/h)","items":["약 700m 앞 서행 — 달래내로 50m · 평균 14km\/h · 약 1분","약 700m 앞 정체 — 경부고속도로 40m · 평균 16km\/h · 약 1분","약 700m 앞 서행 — 경부고속도로 대왕판교IC 100m · 평균 40km\/h · 약 1분","약 2.5km 앞 서행 — 경부고속도로 금토JC 1.6km · 평균 69km\/h · 약 1분","약 7.3km 앞 정체 — 경부고속도로 양재IC 4.1km · 평균 12km\/h · 약 19분","약 11.0km 앞 서행 — 서운로 50m · 평균 27km\/h · 약 1분"]},"ts":"11:13:56","by":"claude","tasks":false}
+         1794017635.897 17527 17527 I HYUN    : card|앞길 교통 · 강남역까지 47분(도착 12:00)|6|kind=list|img=0|약 700m 앞 서행 — 달래내로 50m · 평균 14km/h · 약 1분 / 약 700m 앞 정체 — 경부고속도로 40m · 평균 16km/h · 약 1분 / 약 700m 앞 서행 — 경부고속도로 대왕판교IC 100m · 평균 40km/h · 약 1분
+         1794017635.898 17527 17527 I HYUN    : prio|in|P1·답|답|내비 교통정보 기준, 7.3km 앞 양재IC 쪽이 정체예요. 약 19분 걸려서 도착은 12시쯤이에요. 빠른 길로 다시 볼까요?
+         1794017635.902 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017635.902 17527 17527 I HYUN    : say|P1|내비 교통정보 기준, 7.3km 앞 양재IC 쪽이 정체예요. 약 19분 걸려서 도착은 12시쯤이에요. 빠른 길로 다시 볼까요?
+         1794017645.825 17527 17527 I HYUN    : tts|done
+         1794017654.643 17527 29507 I HYUN    : ear|feed|e03_1|97280B|3.0s
+         1794017654.655 17527 29507 I HYUN    : ear|send|3.0s|peak=20714|gain=1.3
+         1794017655.215 17527 17527 I HYUN    : ear|text|3.0s|558ms|현비서야 대전역 가자.
+         1794017655.216 17527 17527 I HYUN    : stt|level|heard|max=0.04
+         1794017655.216 17527 17527 I HYUN    : heard|대전역 가자.
+         1794017655.256 17527 17527 I HYUN    : ask|5|talk|대전역 가자.
+         1794017658.766 17527 17527 I HYUN    : prio|in|P1·답|맞장구|어디 보자.
+         1794017658.766 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017658.766 17527 17527 I HYUN    : say|P1|어디 보자.
+         1794017660.692 17527 17527 I HYUN    : reply|5|{"id":5,"say":"대전역으로 목적지를 바꿔서 안내 시작할게요. 강남역은 접을게요.","listen":false,"mood":"calm","nav":{"name":"대전역","lat":36.3326,"lng":127.4344},"via":null,"route":null,"prio":1,"mode":null,"card":null,"ts":"11:14:21","by":"claude","tasks":false}
+         1794017660.693 17527 17527 I HYUN    : nav|대전역|36.3326,127.4344|est=161001m
+         1794017660.701 17527 17527 I HYUN    : prio|in|P1·답|답|대전역으로 목적지를 바꿔서 안내 시작할게요. 강남역은 접을게요.
+         1794017661.017 17527 17527 I HYUN    : tts|done
+         1794017661.017 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017661.017 17527 17527 I HYUN    : say|P1|대전역으로 목적지를 바꿔서 안내 시작할게요. 강남역은 접을게요.
+         1794017661.051 17527 17770 I HYUN    : navi|cancelled
+         1794017661.086 17527 17770 I HYUN    : navi|driving|DrivingInfo(destination=DrivingState(name=강남역, duration=0, distance=0, remainDestinationChargingValue=0, isChargingStation=false, isRecommendedChargingStation=false, maxChargingPower=0, targetSoc=0, chargerCount=0, chargingPlan=null), waypoints=[])
+         1794017661.183 17527 17770 I HYUN    : navi|destination|DestinationInfo(latitude=0.0, longitude=0.0, displayLatitude=null, displayLongitude=null, name=, address=, remainDistance=0, remainTime=0, tollFare=0, poiId=, poiSubId=null, poiProvider=)
+         1794017661.183 17527 17770 I HYUN    : navi|waypoints|
+         1794017661.442 17527 17770 I HYUN    : navi|routeState|SAFE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=7400.0, totalCongestionTime=1440, totalCongestionAvrSpeed=14.674841120523373)|jams=18|events=0|[]
+         1794017661.629 17527 17548 I HYUN    : navi|tbt|0|
+         1794017666.479 17527 17527 I HYUN    : tts|done
+         1794017666.783 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017668.785 17527 17548 I HYUN    : navi|routeStarted|RouteStartInfo(duration=15540, distance=142000, tollFare=5740, name=대전역, remainDestinationChargingValue=59053)
+         1794017668.845 17527 17750 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=7400.0, totalCongestionTime=1440, totalCongestionAvrSpeed=14.674841120523373)|jams=18|events=0|[]
+         1794017671.909 17527 17750 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=94000.0, totalCongestionTime=9360, totalCongestionAvrSpeed=26.73243065272941)|jams=47|events=0|[]
+         1794017675.040 17527 31953 I HYUN    : ear|feed|e03_5|116960B|3.7s
+         1794017675.050 17527 31953 I HYUN    : ear|send|3.7s|peak=20714|gain=1.3
+         1794017675.674 17527 17527 I HYUN    : ear|wake+text|3.7s|624ms|현비서야 다음 휴게소 소개해줘.
+         1794017675.675 17527 17527 I HYUN    : heard|다음 휴게소 소개해줘.
+         1794017675.701 17527 17527 I HYUN    : ask|6|talk|다음 휴게소 소개해줘.
+         1794017679.204 17527 17527 I HYUN    : prio|in|P1·답|맞장구|음, 잠깐만요.
+         1794017679.204 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017679.204 17527 17527 I HYUN    : say|P1|음, 잠깐만요.
+         1794017680.862 17527 17527 I HYUN    : tts|done
+         1794017685.561 17527 17554 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=94000.0, totalCongestionTime=9360, totalCongestionAvrSpeed=26.73243065272941)|jams=47|events=0|[]
+         1794017685.569 17527 17554 I HYUN    : navi|tbt|23|TURN_LEFT@100;TURN_RIGHT@390;TURN_AVOID_UNDER_R@710;TURN_ENTER_IC_R@1700
+         1794017688.713 17527 17527 I HYUN    : prio|in|P1·답|맞장구2|조금만 더 찾아볼게요.
+         1794017688.713 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구2
+         1794017688.713 17527 17527 I HYUN    : say|P1|조금만 더 찾아볼게요.
+         1794017690.731 17527 17527 I HYUN    : tts|done
+         1794017696.786 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017697.148 17527 17527 I HYUN    : reply|6|{"id":6,"say":"아마 기흥휴게소가 부산방향 첫 휴게소예요. 다만 메뉴나 편의시설은 아직 확인 못 했어요.","listen":false,"mood":"calm","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":{"kind":"info","title":"기흥휴게소 부산방향 (추정)","source":"경부고속도로 경로 기준 추정 · 검색으로 미확인 · 참고 사진(다른 휴게소) 위키미디어 공용 CC0","items":["위치 — 경부고속도로 부산방향 · 판교 이후 첫 휴게소로 추정","대표 메뉴 — 확인 못 함","편의 — 확인 못 함","취향 추천 — 아직 취향 기록이 없어요"],"image_query":"Giheung rest area Korea","images":["\/hyun\/img?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F2%2F21%2FPyeongtaek_rest_area_in_South_Korea_expressway_highway.jpg%2F960px-Pyeongtaek_rest_area_in_South_Korea_expressway_highway.jpg%3Futm_source%3Dcommons.wikimedia.org%26utm_campaign%3Dimageinfo%26utm_content%3Dthumbnail"]},"ts":"11:14:57","by":"claude+search","tasks":false}
+         1794017697.149 17527 17527 I HYUN    : card|기흥휴게소 부산방향 (추정)|4|kind=info|img=1|위치 — 경부고속도로 부산방향 · 판교 이후 첫 휴게소로 추정 / 대표 메뉴 — 확인 못 함 / 편의 — 확인 못 함
+         1794017697.149 17527 17527 I HYUN    : prio|in|P1·답|답|아마 기흥휴게소가 부산방향 첫 휴게소예요. 다만 메뉴나 편의시설은 아직 확인 못 했어요.
+         1794017697.149 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017697.149 17527 17527 I HYUN    : say|P1|아마 기흥휴게소가 부산방향 첫 휴게소예요. 다만 메뉴나 편의시설은 아직 확인 못 했어요.
+         1794017703.812 17527 17527 I HYUN    : tts|done
+         1794017719.412 17527  6001 I HYUN    : ear|feed|e04_0|157120B|4.9s
+         1794017719.417 17527  6001 I HYUN    : ear|send|4.9s|peak=20686|gain=1.3
+         1794017720.150 17527 17527 I HYUN    : ear|wake+text|4.9s|731ms|현비서야 심심한데 나에 대해 하나만 물어봐줘.
+         1794017720.150 17527 17527 I HYUN    : heard|심심한데 나에 대해 하나만 물어봐줘.
+         1794017720.171 17527 17527 I HYUN    : ask|7|talk|심심한데 나에 대해 하나만 물어봐줘.
+         1794017723.682 17527 17527 I HYUN    : prio|in|P1·답|맞장구|생각해 볼게요.
+         1794017723.682 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017723.682 17527 17527 I HYUN    : say|P1|생각해 볼게요.
+         1794017724.801 17527 17527 I HYUN    : reply|7|{"id":7,"say":"좋아요, 하나 물어볼게요. 평소에 제일 좋아하는 음식이 뭐예요?","listen":true,"mood":"fun","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":null,"ts":"11:15:25","by":"claude","tasks":false}
+         1794017724.802 17527 17527 I HYUN    : prio|in|P1·답|답|좋아요, 하나 물어볼게요. 평소에 제일 좋아하는 음식이 뭐예요?
+         1794017725.330 17527 17527 I HYUN    : tts|done
+         1794017725.331 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017725.331 17527 17527 I HYUN    : say|P1|좋아요, 하나 물어볼게요. 평소에 제일 좋아하는 음식이 뭐예요?
+         1794017729.831 17527 17527 I HYUN    : tts|done
+         1794017730.143 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017730.239 17527 17527 I HYUN    : stt|level|heard|max=0.04
+         1794017730.239 17527 17527 I HYUN    : heard|운전할 땐 아이유 노래 자주 들어
+         1794017730.279 17527 17527 I HYUN    : ask|8|talk|운전할 땐 아이유 노래 자주 들어
+         1794017733.780 17527 17527 I HYUN    : prio|in|P1·답|맞장구|어디 보자.
+         1794017733.780 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017733.780 17527 17527 I HYUN    : say|P1|어디 보자.
+         1794017735.064 17527 17527 I HYUN    : tts|done
+         1794017735.179 17527 17527 I HYUN    : reply|8|{"id":8,"say":"아이유 노래 좋아하시는군요, 기억해 둘게요. 긴 운전엔 딱이에요.","listen":false,"mood":"happy","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":null,"ts":"11:15:35","by":"claude","tasks":false}
+         1794017735.179 17527 17527 I HYUN    : prio|in|P1·답|답|아이유 노래 좋아하시는군요, 기억해 둘게요. 긴 운전엔 딱이에요.
+         1794017735.180 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017735.180 17527 17527 I HYUN    : say|P1|아이유 노래 좋아하시는군요, 기억해 둘게요. 긴 운전엔 딱이에요.
+         1794017739.897 17527 17527 I HYUN    : tts|done
+         1794017744.435 17527  8485 I HYUN    : ear|feed|e05_0|111200B|3.5s
+         1794017744.440 17527  8485 I HYUN    : ear|send|3.5s|peak=20714|gain=1.3
+         1794017745.133 17527 17527 I HYUN    : ear|wake+text|3.5s|692ms|현비서야 웹툰 순위 알려줘.
+         1794017745.134 17527 17527 I HYUN    : heard|웹툰 순위 알려줘.
+         1794017745.184 17527 17527 I HYUN    : ask|9|talk|웹툰 순위 알려줘.
+         1794017748.685 17527 17527 I HYUN    : prio|in|P1·답|맞장구|음, 잠깐만요.
+         1794017748.690 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017748.690 17527 17527 I HYUN    : say|P1|음, 잠깐만요.
+         1794017750.562 17527 17527 I HYUN    : tts|done
+         1794017751.100 17527 17527 I HYUN    : reply|9|{"id":9,"say":"네이버 웹툰 토요 인기순이에요. 1위 절대군림, 2위 호랑이형님, 3위 마도전생기예요. 정차하면 화면에서 보세요.","listen":false,"mood":"calm","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":{"kind":"image_list","title":"토요 웹툰 인기 TOP 10","source":"네이버 웹툰 · 11-07 토요 인기순","items":["절대군림 — 박시대 \/ 장영훈","호랑이형님 — 이상규","마도전생기 — 포스스튜디오 \/ codezero","킬러 배드로 — 김정현 \/ 임리나","초인의 시대 — 섭이","나태 공자, 노력 천재 되다 — doip \/ 도도문 \/ 이등별","대기업 탈출일지 — 요다","세레나 — 정이나","99강화나무몽둥이 — 홍실 \/ 지페리","멸망한 가문의 회귀자 — 양평 \/ 성구 \/ Painkiller"],"image_query":"","images":["https:\/\/image-comic.pstatic.net\/webtoon\/832677\/thumbnail\/thumbnail_IMAG21_d0231efc-35be-4cdf-8b4d-e9379c86b61f.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/650305\/thumbnail\/thumbnail_IMAG21_9e070729-5990-4653-90dd-1158847c1c68.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/807777\/thumbnail\/thumbnail_IMAG21_e47489ea-bf97-4726-a8e7-6403092a303a.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/816798\/thumbnail\/thumbnail_IMAG21_bf6e3706-5518-445f-b516-b94257cfad4f.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/730694\/thumbnail\/thumbnail_IMAG21_29c75eb5-39f4-4608-8c79-737bc8330bb0.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/772853\/thumbnail\/thumbnail_IMAG21_9b5f2843-89e5-458e-a5fe-d8883c72907b.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/855719\/thumbnail\/thumbnail_IMAG21_46bb8133-9c1f-4c81-bd14-e3d9fb843dc9.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/801475\/thumbnail\/thumbnail_IMAG21_2904fd1a-6480-4428-8b15-76887830326a.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/792651\/thumbnail\/thumbnail_IMAG21_218f18ef-7f68-4d6a-972c-686a3e9f6138.jpg","https:\/\/image-comic.pstatic.net\/webtoon\/819946\/thumbnail\/thumbnail_IMAG21_7089c4dd-3948-4352-a55d-0fc91376f4d0.jpg"]},"ts":"11:15:51","by":"claude","tasks":false}
+         1794017751.101 17527 17527 I HYUN    : card|토요 웹툰 인기 TOP 10|10|kind=image_list|img=10|절대군림 — 박시대 / 장영훈 / 호랑이형님 — 이상규 / 마도전생기 — 포스스튜디오 / codezero
+         1794017751.101 17527 17527 I HYUN    : prio|in|P1·답|답|네이버 웹툰 토요 인기순이에요. 1위 절대군림, 2위 호랑이형님, 3위 마도전생기예요. 정차하면 화면에서 보세요.
+         1794017751.102 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017751.102 17527 17527 I HYUN    : say|P1|네이버 웹툰 토요 인기순이에요. 1위 절대군림, 2위 호랑이형님, 3위 마도전생기예요. 정차하면 화면에서 보세요.
+         1794017759.568 17527 17527 I HYUN    : tts|done
+         1794017760.146 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017776.874 17527 12163 I HYUN    : ear|feed|e06_0|120480B|3.8s
+         1794017776.876 17527 12163 I HYUN    : ear|send|3.8s|peak=20714|gain=1.3
+         1794017777.517 17527 17527 I HYUN    : ear|wake+text|3.8s|631ms|현비서야 요즘 영화 순위 알려줘.
+         1794017777.517 17527 17527 I HYUN    : heard|요즘 영화 순위 알려줘.
+         1794017777.548 17527 17527 I HYUN    : ask|10|talk|요즘 영화 순위 알려줘.
+         1794017781.053 17527 17527 I HYUN    : prio|in|P1·답|맞장구|생각해 볼게요.
+         1794017781.054 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017781.054 17527 17527 I HYUN    : say|P1|생각해 볼게요.
+         1794017782.579 17527 17527 I HYUN    : tts|done
+         1794017787.172 17527 17527 I HYUN    : reply|10|{"id":10,"say":"영화진흥위원회 어제 기준이에요. 1위 최종면접, 2위 하트 오브 비스트, 3위 극장판 치이카와예요. 정차하면 화면에서 보세요.","listen":false,"mood":"calm","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":{"kind":"","title":"영화 박스오피스 TOP 10","source":"영화진흥위원회(KOBIS) · 11-06 하루 기준","items":["최종면접 — 22,751명","하트 오브 비스트 — 20,172명","극장판 치이카와: 인어 섬의 비밀 — 18,453명","명탐정 코난: 30호 살인 사건 — 18,203명","마도카☆마기카 발푸르기스의 회천 — 5,924명","수능, 출제의 비밀 — 3,637명","와일드 호스 나인 — 3,210명","암살자(들) — 3,087명","모자 쓴 고양이 — 2,176명","욕쟁이 할머니 — 2,109명"],"image_query":""},"ts":"11:16:27","by":"claude","tasks":false}
+         1794017787.172 17527 17527 I HYUN    : card|영화 박스오피스 TOP 10|10|kind=list|img=0|최종면접 — 22,751명 / 하트 오브 비스트 — 20,172명 / 극장판 치이카와: 인어 섬의 비밀 — 18,453명
+         1794017787.172 17527 17527 I HYUN    : prio|in|P1·답|답|영화진흥위원회 어제 기준이에요. 1위 최종면접, 2위 하트 오브 비스트, 3위 극장판 치이카와예요. 정차하면 화면에서 보세요.
+         1794017787.175 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017787.175 17527 17527 I HYUN    : say|P1|영화진흥위원회 어제 기준이에요. 1위 최종면접, 2위 하트 오브 비스트, 3위 극장판 치이카와예요. 정차하면 화면에서 보세요.
+         1794017796.113 17527 17527 I HYUN    : tts|done
+         1794017796.416 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017803.060 17527 17896 I HYUN    : ear|feed|e07_0|122400B|3.8s
+         1794017803.062 17527 17896 I HYUN    : ear|send|3.8s|peak=20714|gain=1.3
+         1794017803.743 17527 17527 I HYUN    : ear|wake+text|3.8s|668ms|현비서야 요즘 야구 소식 알려줘.
+         1794017803.743 17527 17527 I HYUN    : heard|요즘 야구 소식 알려줘.
+         1794017803.767 17527 17527 I HYUN    : ask|11|talk|요즘 야구 소식 알려줘.
+         1794017805.507 17527 17548 I HYUN    : navi|tbt|23|TURN_LEFT@100;TURN_RIGHT@390;TURN_AVOID_UNDER_R@710;TURN_ENTER_IC_R@1700
+         1794017805.568 17527 17554 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=94000.0, totalCongestionTime=9360, totalCongestionAvrSpeed=26.73243065272941)|jams=47|events=0|[]
+         1794017807.277 17527 17527 I HYUN    : prio|in|P1·답|맞장구|어디 보자.
+         1794017807.277 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017807.277 17527 17527 I HYUN    : say|P1|어디 보자.
+         1794017808.596 17527 17527 I HYUN    : tts|done
+         1794017816.771 17527 17527 I HYUN    : prio|in|P1·답|맞장구2|조금만 더 찾아볼게요.
+         1794017816.771 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구2
+         1794017816.771 17527 17527 I HYUN    : say|P1|조금만 더 찾아볼게요.
+         1794017818.738 17527 17527 I HYUN    : tts|done
+         1794017826.027 17527 17527 I HYUN    : reply|11|{"id":11,"say":"지금 한국시리즈가 한창이에요. kt와 삼성이 붙고 있는데, 3차전까지 삼성이 2승 1패로 앞서 있어요. 1차전은 kt가 8대7, 3차전은 삼성이 5대1로 이겼어요. 오늘 대구에서 4차전이 열려요. 결과는 아직 확인 못 했어요.","listen":false,"mood":"fun","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":{"kind":"","title":"2026 한국시리즈 kt vs 삼성","source":"국제뉴스·재경일보·위키백과 · 11-07 기준","items":["1차전 · kt 8:7 삼성","3차전 · 삼성 5:1 kt","현재 · 삼성 2승 1패 우세","4차전 · 11-07 대구구장"],"image_query":""},"ts":"11:17:06","by":"claude+search","tasks":false}
+         1794017826.028 17527 17527 I HYUN    : card|2026 한국시리즈 kt vs 삼성|4|kind=list|img=0|1차전 · kt 8:7 삼성 / 3차전 · 삼성 5:1 kt / 현재 · 삼성 2승 1패 우세
+         1794017826.028 17527 17527 I HYUN    : prio|in|P1·답|답|지금 한국시리즈가 한창이에요. kt와 삼성이 붙고 있는데, 3차전까지 삼성이 2승 1패로 앞서 있어요. 1차전은 kt가 8대7, 3차전은 삼성이 5대1로 이겼어요. 오늘 대구에서 4차전이 열려요. 결과는 아직 확인 못 했어요.
+         1794017826.029 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017826.029 17527 17527 I HYUN    : say|P1|지금 한국시리즈가 한창이에요. kt와 삼성이 붙고 있는데, 3차전까지 삼성이 2승 1패로 앞서 있어요. 1차전은 kt가 8대7, 3차전은 삼성이 5대1로 이겼어요. 오늘 대구에서 4차전이 열려요. 결과는 아직 확인 못 했어요.
+         1794017842.255 17527 17527 I HYUN    : tts|done
+         1794017842.571 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017848.409 17527 24382 I HYUN    : ear|feed|e08_0|128320B|4.0s
+         1794017848.410 17527 24382 I HYUN    : ear|send|4.0s|peak=20714|gain=1.3
+         1794017849.054 17527 17527 I HYUN    : ear|wake+text|4.0s|634ms|현비서야 손흥민 최근 기사 알려줘.
+         1794017849.054 17527 17527 I HYUN    : heard|손흥민 최근 기사 알려줘.
+         1794017849.081 17527 17527 I HYUN    : ask|12|talk|손흥민 최근 기사 알려줘.
+         1794017852.599 17527 17527 I HYUN    : prio|in|P1·답|맞장구|음, 잠깐만요.
+         1794017852.599 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794017852.599 17527 17527 I HYUN    : say|P1|음, 잠깐만요.
+         1794017854.279 17527 17527 I HYUN    : tts|done
+         1794017862.095 17527 17527 I HYUN    : prio|in|P1·답|맞장구2|조금만 더 찾아볼게요.
+         1794017862.095 17527 17527 I HYUN    : prio|say|P1·답|정차|맞장구2
+         1794017862.095 17527 17527 I HYUN    : say|P1|조금만 더 찾아볼게요.
+         1794017864.017 17527 17527 I HYUN    : tts|done
+         1794017870.782 17527 17527 I HYUN    : reply|12|{"id":12,"say":"가장 최근 확인된 건 10월 11일 기사예요. 손흥민 선수가 A매치 한국 남자 최다 골 기록을 세우고 LAFC로 돌아왔는데, 밴쿠버와 1대1로 비겼어요. LAFC는 최근 4경기 2무 2패로 서부 6위예요. 11월 소식은 아직 확인 못 했어요.","listen":false,"mood":"calm","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":{"kind":"info","title":"손흥민 최근 소식","source":"일간스포츠 등 · 10월 중순 기사 기준 · 사진 위키미디어 공용 CC BY-SA 4.0","items":["10-11 · 일간스포츠 — A매치 한국 남자 최다 골 기록 후 LAFC 복귀","10-11 · 일간스포츠 — 밴쿠버전 1-1 무승부","최근 리그 4경기 — 2무 2패, 승점 42 · 서부 6위","11월 소식 — 아직 확인 못 함"],"image_query":"Son Heung-min","images":["\/hyun\/img?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fb%2Fb0%2FBFA_2023_-2_Heung-Min_Son_%2528cropped%2529.jpg%2F960px-BFA_2023_-2_Heung-Min_Son_%2528cropped%2529.jpg%3Futm_source%3Dcommons.wikimedia.org%26utm_campaign%3Dimageinfo%26utm_content%3Dthumbnail"]},"ts":"11:17:51","by":"claude+search","tasks":false}
+         1794017870.782 17527 17527 I HYUN    : card|손흥민 최근 소식|4|kind=info|img=1|10-11 · 일간스포츠 — A매치 한국 남자 최다 골 기록 후 LAFC 복귀 / 10-11 · 일간스포츠 — 밴쿠버전 1-1 무승부 / 최근 리그 4경기 — 2무 2패, 승점 42 · 서부 6위
+         1794017870.782 17527 17527 I HYUN    : prio|in|P1·답|답|가장 최근 확인된 건 10월 11일 기사예요. 손흥민 선수가 A매치 한국 남자 최다 골 기록을 세우고 LAFC로 돌아왔는데, 밴쿠버와 1대1로 비겼어요. LAFC는 최근 4경기 2무 2패로 서부 6위예요. 11월 소식은 아직 확인 못 했어요.
+         1794017870.782 17527 17527 I HYUN    : prio|say|P1·답|정차|답
+         1794017870.782 17527 17527 I HYUN    : say|P1|가장 최근 확인된 건 10월 11일 기사예요. 손흥민 선수가 A매치 한국 남자 최다 골 기록을 세우고 LAFC로 돌아왔는데, 밴쿠버와 1대1로 비겼어요. LAFC는 최근 4경기 2무 2패로 서부 6위예요. 11월 소식은 아직 확인 못 했어요.
+         1794017887.874 17527 17527 I HYUN    : tts|done
+         1794017888.188 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017903.541 17527 17527 I HYUN    : nav|대전역|36.33219909667969,127.4343032836914|est=161054m
+         1794017903.682 17527 17770 I HYUN    : navi|cancelled
+         1794017903.743 17527 17769 I HYUN    : navi|driving|DrivingInfo(destination=DrivingState(name=대전역, duration=0, distance=0, remainDestinationChargingValue=0, isChargingStation=false, isRecommendedChargingStation=false, maxChargingPower=0, targetSoc=0, chargerCount=0, chargingPlan=null), waypoints=[])
+         1794017903.744 17527 17769 I HYUN    : navi|destination|DestinationInfo(latitude=0.0, longitude=0.0, displayLatitude=null, displayLongitude=null, name=, address=, remainDistance=0, remainTime=0, tollFare=0, poiId=, poiSubId=null, poiProvider=)
+         1794017903.744 17527 17769 I HYUN    : navi|waypoints|
+         1794017903.805 17527 17770 I HYUN    : navi|routeState|SAFE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=94000.0, totalCongestionTime=9360, totalCongestionAvrSpeed=26.73243065272941)|jams=47|events=0|[]
+         1794017904.332 17527 17770 I HYUN    : navi|tbt|0|
+         1794017912.473 17527 17767 I HYUN    : navi|routeStarted|RouteStartInfo(duration=16020, distance=143000, tollFare=5740, name=대전역, remainDestinationChargingValue=58939)
+         1794017912.637 17527 17769 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=94000.0, totalCongestionTime=9360, totalCongestionAvrSpeed=26.73243065272941)|jams=47|events=0|[]
+         1794017913.580 17527 17527 I HYUN    : gear|D
+         1794017913.610 17527 17527 I HYUN    : ux|DO=true
+         1794017915.325 17527 17769 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=96000.0, totalCongestionTime=8880, totalCongestionAvrSpeed=28.16385345888078)|jams=42|events=0|[]
+         1794017915.615 17527 17769 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=96000.0, totalCongestionTime=8880, totalCongestionAvrSpeed=28.16385345888078)|jams=42|events=0|[]
+         1794017917.667 17527 17527 I HYUN    : event|depart
+         1794017917.686 17527 17527 I HYUN    : ask|13|event|depart
+         1794017918.218 17527 17766 I HYUN    : ear|floor|3|gate=45
+         1794017919.442 17527 17527 I HYUN    : scout|demo|사고|sev=3|ahead=300|detour=none@395|사고 · 약 300m · 경부고속도로 1차로 추돌 사고
+         1794017919.442 17527 17527 I HYUN    : prio|in|P0|scout|300미터 앞 사고 정보예요. 돌아갈 길은 없어요. 차로 지키고 천천히 가요.
+         1794017919.446 17527 17527 I HYUN    : turn|gate|on|TURN_LEFT|80m|대기 1
+         1794017919.446 17527 17527 I HYUN    : prio|say|P0|즉시|scout
+         1794017919.446 17527 17527 I HYUN    : say|P0|300미터 앞 사고 정보예요. 돌아갈 길은 없어요. 차로 지키고 천천히 가요.
+         1794017919.470 17527 17527 I HYUN    : ask|14|event|traffic
+         1794017922.439 17527 17527 I HYUN    : reply|13|{"id":13,"say":"대전역까지 4시간 27분, 3시 45분 도착 예정이에요. 내비 기준 경로 대부분이 정체라 천천히 가요.","listen":false,"mood":"calm","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":null,"ts":"11:18:42","by":"claude","tasks":false}
+         1794017922.440 17527 17527 I HYUN    : prio|in|P1|depart|대전역까지 4시간 27분, 3시 45분 도착 예정이에요. 내비 기준 경로 대부분이 정체라 천천히 가요.
+         1794017924.930 17527 17527 I HYUN    : tts|done
+         1794017925.489 17527 17527 I HYUN    : scout|every|25s|분기 295m 앞
+         1794017925.532 17527 17548 I HYUN    : navi|tbt|23|TURN_LEFT@80;TURN_RIGHT@380;TURN_AVOID_UNDER_R@730;TURN_ENTER_IC_R@1700
+         1794017925.540 17527 17548 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=96000.0, totalCongestionTime=8880, totalCongestionAvrSpeed=28.16385345888078)|jams=42|events=0|[]
+         1794017928.072 17527 17527 I HYUN    : reply|14|{"id":14,"say":"300m 앞 1차로에 추돌 사고가 있어요. 돌아갈 길은 없으니 차로 지키고 천천히 가요.","listen":false,"mood":"care","nav":null,"via":null,"route":null,"prio":1,"mode":null,"card":null,"ts":"11:18:48","by":"claude","tasks":false}
+         1794017928.072 17527 17527 I HYUN    : prio|in|P1|traffic|300m 앞 1차로에 추돌 사고가 있어요. 돌아갈 길은 없으니 차로 지키고 천천히 가요.
+         1794017930.799 17527 17527 I HYUN    : rest|기흥휴게소|2800m
+         1794017930.799 17527 17527 I HYUN    : event|restarea|{"restName":"기흥휴게소","aheadM":2800}
+         1794017930.822 17527 17527 I HYUN    : ask|15|event|restarea
+         1794017935.675 17527 17527 I HYUN    : reply|15|{"id":15,"say":"곧 기흥휴게소예요. 길이 많이 막히니 잠깐 쉬어 갈 수도 있어요. 들를까요?","listen":true,"mood":"care","nav":null,"via":null,"route":null,"prio":2,"mode":null,"card":null,"ts":"11:18:56","by":"claude+search","tasks":false}
+         1794017935.675 17527 17527 I HYUN    : prio|in|P2|restarea|곧 기흥휴게소예요. 길이 많이 막히니 잠깐 쉬어 갈 수도 있어요. 들를까요?
+         1794017941.263 17527 17527 I HYUN    : turn|gate|off|TURN_LEFT|80m|대기 3
+         1794017941.263 17527 17527 I HYUN    : prio|say|P1|주행|depart
+         1794017941.263 17527 17527 I HYUN    : say|P1|대전역까지 4시간 27분, 3시 45분 도착 예정이에요. 내비 기준 경로 대부분이 정체라 천천히 가요.
+         1794017949.512 17527 17527 I HYUN    : tts|done
+         1794017949.834 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017950.535 17527 17767 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=96000.0, totalCongestionTime=8880, totalCongestionAvrSpeed=28.16385345888078)|jams=42|events=0|[]
+         1794017950.541 17527 17770 I HYUN    : navi|tbt|23|TURN_LEFT@80;TURN_RIGHT@380;TURN_AVOID_UNDER_R@730;TURN_ENTER_IC_R@1700
+         1794017951.336 17527 17527 I HYUN    : turn|gate|on|TURN_LEFT|80m|대기 2
+         1794017966.378 17527 17527 I HYUN    : turn|gate|off|TURN_LEFT|80m|대기 2
+         1794017971.391 17527 17527 I HYUN    : prio|say|P1|주행|traffic
+         1794017971.392 17527 17527 I HYUN    : say|P1|300m 앞 1차로에 추돌 사고가 있어요. 돌아갈 길은 없으니 차로 지키고 천천히 가요.
+         1794017975.563 17527 17767 I HYUN    : navi|tbt|23|TURN_LEFT@80;TURN_RIGHT@380;TURN_AVOID_UNDER_R@730;TURN_ENTER_IC_R@1700
+         1794017975.583 17527 17767 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=96000.0, totalCongestionTime=8880, totalCongestionAvrSpeed=28.16385345888078)|jams=42|events=0|[]
+         1794017976.417 17527 17527 I HYUN    : turn|gate|on|TURN_LEFT|80m|대기 1
+         1794017977.474 17527 17527 I HYUN    : tts|done
+         1794017979.849 17527 17766 I HYUN    : ear|floor|4|gate=45
+         1794017991.476 17527 17527 I HYUN    : turn|gate|off|TURN_LEFT|80m|대기 1
+         1794017991.476 17527 17527 I HYUN    : prio|say|P2|주행|restarea
+         1794017991.476 17527 17527 I HYUN    : say|P2|곧 기흥휴게소예요. 길이 많이 막히니 잠깐 쉬어 갈 수도 있어요. 들를까요?
+         1794017995.413 17527 17527 I HYUN    : gear|P
+         1794017995.417 17527 17527 I HYUN    : ux|DO=false
+         1794017996.870 17527 17527 I HYUN    : tts|done
+         1794017997.749 17527 17527 I HYUN    : gleo|action|HYUN_STATUS|{"item":"all"}
+         1794017997.759 17527 17527 I HYUN    : gleo|response|{"functionName":"HYUN_STATUS","status":"success","message":"Heading to 대전역: 141.7 km and about 265 minutes left, arriving at 15:44. The navigation reports 96.0km of congestion, about 148 minutes of delay on the route. The nearest is heavy congestion in 8.7km.","mode":"voice"}
+         1794018000.531 17527 17527 I HYUN    : scout|every|120s|정차
+         1794018000.568 17527 17770 I HYUN    : navi|tbt|23|TURN_LEFT@80;TURN_RIGHT@380;TURN_AVOID_UNDER_R@730;TURN_ENTER_IC_R@1700
+         1794018000.645 17527 17770 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=96000.0, totalCongestionTime=8880, totalCongestionAvrSpeed=28.16385345888078)|jams=42|events=0|[]
