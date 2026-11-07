@@ -1,0 +1,13 @@
+# 빌드
+android/.gradle/
+android/build/
+android/*/build/
+android/local.properties
+*.apk
+# 현비서 서버 기록(대화·취향·키) — 저장소에 올리지 않는다
+server/hyun/data/
+server/hyun/data-e2e/
+__pycache__/
+# 시험 원본(케이스별 영상·PNG — 크다). 이어 붙인 video.mp4·보고서·스크린샷은 올린다
+records/**/raw/
+tools/hyun_harness/runs/

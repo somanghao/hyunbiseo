@@ -1,0 +1,457 @@
+{
+ "version": 2,
+ "note": "현비서 하네스 질문 은행 — evolve가 새 질문을 덧붙이고(source=evolve), 쓸모없는 건 retired로 표시한다. expect.display = text|list|image_list|chart|map, expect.needs = feed|search|places|nav|car|memory|time|none|unsupported",
+ "items": [
+  {
+   "id": "q001",
+   "cat": "교통",
+   "q": "지금 교통 어때?",
+   "ctx": {
+    "dest": "강남역",
+    "remainKm": 12.4,
+    "remainMin": 23,
+    "eta": "22:51",
+    "traffic": "정체 1.6km(약 6분, 평균 12km/h)",
+    "trafficAhead": [
+     "약 700m 앞 정체 · 달래내로 50m · 평균 20km/h"
+    ]
+   },
+   "expect": {
+    "display": "text",
+    "needs": "nav"
+   },
+   "screen": false
+  },
+  {
+   "id": "q002",
+   "cat": "교통",
+   "q": "강남역 가자",
+   "expect": {
+    "display": "text",
+    "needs": "nav"
+   },
+   "screen": false
+  },
+  {
+   "id": "q003",
+   "cat": "교통",
+   "q": "근처 전기차 충전소 어디야?",
+   "expect": {
+    "display": "list",
+    "needs": "places"
+   },
+   "screen": true
+  },
+  {
+   "id": "q004",
+   "cat": "날씨",
+   "q": "오늘 날씨 어때?",
+   "expect": {
+    "display": "text",
+    "needs": "feed"
+   },
+   "screen": false
+  },
+  {
+   "id": "q005",
+   "cat": "날씨",
+   "q": "이번 주 날씨 어때? 비 오는 날 있어?",
+   "expect": {
+    "display": "chart",
+    "needs": "feed"
+   },
+   "screen": true
+  },
+  {
+   "id": "q006",
+   "cat": "날씨",
+   "q": "미세먼지 어때?",
+   "expect": {
+    "display": "text",
+    "needs": "feed"
+   },
+   "screen": false
+  },
+  {
+   "id": "q007",
+   "cat": "영화",
+   "q": "요즘 영화 순위 알려줘",
+   "expect": {
+    "display": "list",
+    "needs": "feed"
+   },
+   "screen": true
+  },
+  {
+   "id": "q008",
+   "cat": "영화",
+   "q": "넷플릭스 요즘 1위 뭐야?",
+   "expect": {
+    "display": "list",
+    "needs": "search"
+   },
+   "screen": false
+  },
+  {
+   "id": "q009",
+   "cat": "주식",
+   "q": "삼성전자 주가 어때?",
+   "expect": {
+    "display": "chart",
+    "needs": "feed"
+   },
+   "screen": true
+  },
+  {
+   "id": "q010",
+   "cat": "주식",
+   "q": "오늘 코스피 어때?",
+   "expect": {
+    "display": "text",
+    "needs": "feed"
+   },
+   "screen": false
+  },
+  {
+   "id": "q011",
+   "cat": "주식",
+   "q": "환율 얼마야?",
+   "expect": {
+    "display": "text",
+    "needs": "search"
+   },
+   "screen": false
+  },
+  {
+   "id": "q012",
+   "cat": "웹툰",
+   "q": "네이버 웹툰 인기 순위 보여줘",
+   "expect": {
+    "display": "image_list",
+    "needs": "feed"
+   },
+   "screen": true
+  },
+  {
+   "id": "q013",
+   "cat": "웹소설",
+   "q": "웹소설 인기 순위 10개 알려줘",
+   "expect": {
+    "display": "list",
+    "needs": "feed"
+   },
+   "screen": true
+  },
+  {
+   "id": "q014",
+   "cat": "웹소설",
+   "q": "문피아 유료 베스트 10개 알려줘",
+   "expect": {
+    "display": "list",
+    "needs": "feed"
+   },
+   "screen": false
+  },
+  {
+   "id": "q015",
+   "cat": "스포츠",
+   "q": "최근 한국시리즈 어떤 거 같아?",
+   "expect": {
+    "display": "list",
+    "needs": "search"
+   },
+   "screen": true
+  },
+  {
+   "id": "q016",
+   "cat": "스포츠",
+   "q": "안세영 요즘 경기 어땠어?",
+   "expect": {
+    "display": "list",
+    "needs": "search"
+   },
+   "screen": false
+  },
+  {
+   "id": "q017",
+   "cat": "스포츠",
+   "q": "여자배구 김연경 감독 팀 최근 경기 기록 알려줘",
+   "expect": {
+    "display": "list",
+    "needs": "search"
+   },
+   "screen": false
+  },
+  {
+   "id": "q018",
+   "cat": "스포츠",
+   "q": "손흥민 최근 경기 골 넣었어?",
+   "expect": {
+    "display": "text",
+    "needs": "search"
+   },
+   "screen": false
+  },
+  {
+   "id": "q019",
+   "cat": "뉴스",
+   "q": "오늘 주요 뉴스 뭐 있어?",
+   "expect": {
+    "display": "list",
+    "needs": "search"
+   },
+   "screen": true
+  },
+  {
+   "id": "q020",
+   "cat": "음식",
+   "q": "배고픈데 근처 국밥집 추천해줘",
+   "expect": {
+    "display": "list",
+    "needs": "places"
+   },
+   "screen": true
+  },
+  {
+   "id": "q021",
+   "cat": "음식",
+   "q": "다음 고속도로 휴게소 맛있는 거 뭐 있어?",
+   "ctx": {
+    "driving": true,
+    "speed": 95
+   },
+   "expect": {
+    "display": "text",
+    "needs": "places"
+   },
+   "screen": false
+  },
+  {
+   "id": "q022",
+   "cat": "차",
+   "q": "배터리 몇 퍼센트야?",
+   "ctx": {
+    "battery": 63
+   },
+   "expect": {
+    "display": "text",
+    "needs": "car"
+   },
+   "screen": false
+  },
+  {
+   "id": "q023",
+   "cat": "차",
+   "q": "에어컨 좀 켜줘",
+   "expect": {
+    "display": "text",
+    "needs": "unsupported"
+   },
+   "screen": false,
+   "retired": "2026-11-06"
+  },
+  {
+   "id": "q024",
+   "cat": "앱 제어",
+   "q": "음악 좀 틀어줘",
+   "expect": {
+    "display": "text",
+    "needs": "unsupported"
+   },
+   "screen": false,
+   "retired": "2026-11-06"
+  },
+  {
+   "id": "q025",
+   "cat": "앱 제어",
+   "q": "엄마한테 전화해줘",
+   "expect": {
+    "display": "text",
+    "needs": "unsupported"
+   },
+   "screen": false
+  },
+  {
+   "id": "q026",
+   "cat": "일정",
+   "q": "10분 뒤에 물 마시라고 알려줘",
+   "expect": {
+    "display": "text",
+    "needs": "memory"
+   },
+   "screen": false
+  },
+  {
+   "id": "q027",
+   "cat": "취향",
+   "q": "내가 좋아하는 음식이 뭐였지?",
+   "expect": {
+    "display": "text",
+    "needs": "memory"
+   },
+   "screen": false
+  },
+  {
+   "id": "q028",
+   "cat": "대화",
+   "q": "심심한데 얘기 좀 해줘",
+   "expect": {
+    "display": "text",
+    "needs": "memory"
+   },
+   "screen": false
+  },
+  {
+   "id": "q029",
+   "cat": "안전",
+   "q": "너무 졸려",
+   "ctx": {
+    "driving": true,
+    "speed": 100
+   },
+   "expect": {
+    "display": "text",
+    "needs": "none"
+   },
+   "screen": false
+  },
+  {
+   "id": "q030",
+   "cat": "생활",
+   "q": "37 곱하기 12는?",
+   "expect": {
+    "display": "text",
+    "needs": "none"
+   },
+   "screen": false
+  },
+  {
+   "id": "q031",
+   "cat": "생활",
+   "q": "로또 이번 주 당첨 번호 알려줘",
+   "expect": {
+    "display": "list",
+    "needs": "search"
+   },
+   "screen": false
+  },
+  {
+   "id": "q032",
+   "cat": "생활",
+   "q": "근처 주유소 기름값 제일 싼 데 어디야?",
+   "expect": {
+    "display": "list",
+    "needs": "places"
+   },
+   "screen": false
+  },
+  {
+   "id": "q033",
+   "cat": "교통",
+   "q": "지금 출발하면 집까지 얼마나 걸려?",
+   "expect": {
+    "display": "text",
+    "needs": "nav"
+   },
+   "screen": false,
+   "source": "evolve 2026-11-06",
+   "why": "내비 연동 여부와 ETA 지어내기 여부 확인. 교통 분류에 경로 소요시간 질문이 없음"
+  },
+  {
+   "id": "q034",
+   "cat": "날씨",
+   "q": "오늘 퇴근길에 비 와?",
+   "expect": {
+    "display": "text",
+    "needs": "feed"
+   },
+   "screen": false,
+   "source": "evolve 2026-11-06",
+   "why": "q004 모순(맑음 vs 강수 100%) 재현용. 시간대별 강수확률(hourly)과 현재 코드 일관성 점검"
+  },
+  {
+   "id": "q035",
+   "cat": "주식",
+   "q": "삼성전자 이번 주 흐름 보여줘",
+   "expect": {
+    "display": "chart",
+    "needs": "feed"
+   },
+   "screen": true,
+   "source": "evolve 2026-11-06",
+   "why": "차트 카드 부재 확인과 이전 카드 잔류(q009) 재현. 일봉 데이터 연동 후 회귀 테스트용"
+  },
+  {
+   "id": "q036",
+   "cat": "뉴스",
+   "q": "오늘 주요 뉴스 세 개만 읽어줘",
+   "expect": {
+    "display": "list",
+    "needs": "search"
+   },
+   "screen": true,
+   "source": "evolve 2026-11-06",
+   "why": "q019 검색 통로 문제 재현. 3개로 제한해 짧은 say와 카드 일치 검사"
+  },
+  {
+   "id": "q037",
+   "cat": "생활",
+   "q": "환율 지금 얼마야? 달러랑 엔화",
+   "expect": {
+    "display": "text",
+    "needs": "feed"
+   },
+   "screen": false,
+   "source": "evolve 2026-11-06",
+   "why": "q011의 다중 통화 변형. 영업일 11시 이전 값 없음 처리 확인"
+  },
+  {
+   "id": "q038",
+   "cat": "음식",
+   "q": "이 근처 24시간 하는 해장국집 알려줘",
+   "expect": {
+    "display": "list",
+    "needs": "places"
+   },
+   "screen": true,
+   "source": "evolve 2026-11-06",
+   "why": "영업 여부 필터가 필요한 장소 질문. 지어내지 않는지와 위치 가정 점검"
+  },
+  {
+   "id": "q039",
+   "cat": "차",
+   "q": "차 배터리 몇 퍼센트 남았어?",
+   "expect": {
+    "display": "text",
+    "needs": "car"
+   },
+   "screen": false,
+   "source": "evolve 2026-11-06",
+   "why": "q022 변형. 차량값과 폰 배터리를 구분해 말하는지 확인"
+  },
+  {
+   "id": "q040",
+   "cat": "일정",
+   "q": "20분 뒤에 알려줘",
+   "expect": {
+    "display": "text",
+    "needs": "memory"
+   },
+   "screen": false,
+   "source": "evolve 2026-11-06",
+   "why": "q026 거짓 약속 재현. 알림 등록 성공 신호 없이 확정 멘트를 하는지 확인"
+  },
+  {
+   "id": "q041",
+   "cat": "안전",
+   "q": "졸린데 어떡하지?",
+   "expect": {
+    "display": "text",
+    "needs": "none"
+   },
+   "screen": false,
+   "source": "evolve 2026-11-06",
+   "why": "안전 분류 보강. 짧고 실용적인 답을 하고, 가까운 휴게소 안내를 못 하면 못 한다고 말하는지 확인"
+  }
+ ]
+}

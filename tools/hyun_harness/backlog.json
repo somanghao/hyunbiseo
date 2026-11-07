@@ -1,0 +1,175 @@
+{
+ "api": [
+  {
+   "need": "미세먼지(q006)",
+   "name": "한국환경공단 에어코리아 대기오염정보 조회 서비스",
+   "url": "https://www.data.go.kr/data/15073861/openapi.do",
+   "key": "필요(공공데이터포털 serviceKey)",
+   "commercial": "미확인. 무료이며 개발계정은 간단 승인, 운영계정은 심의승인으로 표시됨",
+   "notes": "엔드포인트 apis.data.go.kr/B552584/ArpltnInforInqireSvc 는 제3자 블로그 기준이라 공식 문서로 재확인 필요. 위 URL은 활용 페이지 번호를 추정한 것이므로 data.go.kr에서 검색해 확인할 것. 측정소 정보 API(15073877)는 검색 결과에서 확인함.",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "주유소 최저가(q032)",
+   "name": "한국석유공사 오피넷 무료 API",
+   "url": "https://www.opinet.co.kr/user/custapi/openApiInfo.do",
+   "key": "필요(오피넷 가입 후 신청)",
+   "commercial": "미확인. 보도상 중소기업·소상공인에 무료 제공",
+   "notes": "내주변 주유소, 지역별 최저가 등 제공. 서드파티 문서의 일 1,500건 제한은 공식 미확인. 좌표계가 KATEC이라 GPS(WGS84) 변환이 필요할 수 있음(미확인). URL 경로는 추정.",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "환율(q011)",
+   "name": "한국수출입은행 현재환율 API",
+   "url": "https://www.data.go.kr/data/3068846/openapi.do",
+   "key": "필요(수출입은행 authkey)",
+   "commercial": "포털 표기상 이용허락범위 제한 없음",
+   "notes": "요청 도메인이 oapi.koreaexim.go.kr로 변경됨(포털 기준). 영업일 11시경 갱신, 비영업일·11시 전은 빈 값이므로 마지막 영업일 값 캐시 필요. 일 환율이며 실시간 아님.",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "뉴스 헤드라인(q019)",
+   "name": "언론사 RSS(연합뉴스TV 등)",
+   "url": "https://www.yonhapnewstv.co.kr/add/rss",
+   "key": "없음",
+   "commercial": "미확인. 약관 확인 못 함",
+   "notes": "위키독스 튜토리얼에서 소개된 주소이며 현재 유효성·공식 여부 미확인. 제목·링크만 쓰고 본문은 쓰지 말 것. 상업 이용 전 언론사 확인 필요.",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "근처 장소·충전소(q003, q020)",
+   "name": "카카오 로컬 API(키 대기 중)",
+   "url": "https://developers.kakao.com/docs/latest/ko/local/dev-guide",
+   "key": "필요",
+   "commercial": "미확인(이번 검색에서 확인 안 함)",
+   "notes": "음식점·충전소 키워드 반경 검색 가능. 영업 여부는 제공하지 않을 가능성이 있어 미확인. 키가 오면 q003, q020, 새 질문 해장국집으로 시험.",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "전기차 충전소(q003)",
+   "name": "한국환경공단 전기자동차 충전소 정보 API",
+   "url": "https://www.data.go.kr/data/15076352/openapi.do",
+   "key": "필요(serviceKey)",
+   "commercial": "미확인",
+   "notes": "충전기 상태 포함 여부와 URL의 데이터 번호는 확인 못 함. 이름 기준으로 포털에서 검색해 확인할 것.",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "경기 결과(q015, q018)",
+   "name": "KBO 공식 일정·결과 페이지 / MLS 공식 페이지",
+   "url": "https://www.koreabaseball.com/Schedule/ScoreBoard.aspx",
+   "key": "공식 API 없음(미확인)",
+   "commercial": "미확인, 스크래핑 약관 확인 필요",
+   "notes": "네이버 스포츠 페이지 구조를 쓰는 편이 이미 쓰는 네이버 통로와 일관됨(미확인). 검색 모드는 신선도가 낮아 별도 feed 필요.",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "로또(q031)",
+   "name": "동행복권 당첨번호 조회",
+   "url": "https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=1",
+   "key": "비공식 JSON 엔드포인트, 키 없음",
+   "commercial": "미확인",
+   "notes": "공식 API는 아님. 차단·형식 변경 가능성이 있고 현재 동작 여부는 확인 못 함. 최신 회차는 날짜로 계산(첫 회 2002-12-07 기준, 주 1회).",
+   "at": "2026-11-06"
+  },
+  {
+   "need": "주간 예보(q005)",
+   "name": "Open-Meteo daily(이미 사용 중)",
+   "url": "https://open-meteo.com/en/docs",
+   "key": "없음",
+   "commercial": "무료 API는 비상업용 조건이 있는 것으로 알고 있음(재확인 필요)",
+   "notes": "daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=7 로 추가 가능. 상업 배포 시 유료 플랜 검토.",
+   "at": "2026-11-06"
+  }
+ ],
+ "app": [
+  {
+   "title": "화면 카드 초기화(이전 카드 잔류 제거)",
+   "why": "q009, q015, q019, q020에서 이전 질문의 표가 남아 오해를 만듦. 가장 큰 화면 결함",
+   "where": "앱 카드 렌더러 상태 관리(새 질문 시작 또는 응답에 card가 없으면 clear), 서버 응답 스키마에 card:null 명시",
+   "effort": "S",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "실행 결과 확인 후 확정 멘트(내비·알림)",
+   "why": "q002, q026 거짓 약속 위험",
+   "where": "서버 도구 호출 래퍼와 프롬프트. 결과 ok/fail을 두뇌에 되돌려주고 실패 시 '못 했어요'로 응답",
+   "effort": "M",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "목록 카드 썸네일(image_list)",
+   "why": "q012 웹툰 표지 필요",
+   "where": "앱 목록 카드 컴포넌트에 imageUrl 필드, 웹툰 feed 어댑터에 썸네일 URL 추가",
+   "effort": "M",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "주가 일봉 차트 카드",
+   "why": "q009 차트 이상, 현재 글자만",
+   "where": "앱 chart 컴포넌트(캔버스 선그래프)와 네이버 주식 어댑터에 일봉 시계열",
+   "effort": "M",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "주간 날씨 카드와 날씨 모순 검사",
+   "why": "q004, q005, q006",
+   "where": "Open-Meteo 어댑터에 daily 7일과 hourly 강수, 코드와 확률 불일치 시 확인된 값만 반환",
+   "effort": "M",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "환율·유가·로또 단순 조회 feed 3종",
+   "why": "키가 간단해 빠르게 cannot를 줄임",
+   "where": "서버 feeds/ 디렉터리에 어댑터 3개 추가(경로 미확인)",
+   "effort": "M",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "뉴스 RSS feed와 헤드라인 카드",
+   "why": "q019 통로 실패",
+   "where": "서버 feed 어댑터, 3~5개 헤드라인과 발행 시각 반환",
+   "effort": "S",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "위치 소스 명시(GPS)와 위치 미확인 처리",
+   "why": "q004, q020의 시흥동 가정",
+   "where": "앱에서 위치를 요청에 포함, 서버 프롬프트에 '위치 불명이면 묻기'",
+   "effort": "S",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "큰 글씨 폴백 카드와 10행 목록 상위 5행 강조",
+   "why": "화면 판정에서 빈 공간·가독성 문제",
+   "where": "앱 카드 스타일(대비 상향, 5행 기본 표시)",
+   "effort": "S",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "차량 배터리와 폰 배터리 구분 답",
+   "why": "q022",
+   "where": "서버 프롬프트와 폰 배터리 feed 이름을 phone_battery로 명시",
+   "effort": "S",
+   "at": "2026-11-06",
+   "status": "todo"
+  },
+  {
+   "title": "장소 API 연동(카카오 로컬 + 충전소 + 오피넷)",
+   "why": "places 3건(q003, q020, q032)이 같은 원인",
+   "where": "서버 places 어댑터, 키 도착 후",
+   "effort": "L",
+   "at": "2026-11-06",
+   "status": "todo"
+  }
+ ]
+}
