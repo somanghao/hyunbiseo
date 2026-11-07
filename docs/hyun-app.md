@@ -99,9 +99,9 @@ python -I server/hyun/say.py <id> "답" [--listen] [--mood calm|happy|fun|care|a
 ## 경로 정찰 — 최우선 기능 (사용자 결정 2026-10-30)
 
 - **정보원 1순위 = 내비 `NaviHelper.getRouteStateInfo()` → `trafficStatus`** — 내 경로 위 이벤트(사고·재난·도로 파손·공사·행사, 좌표·설명·시작/해제 시각) + 정체 구간(도로명·시작/끝 교차로·거리·평균 속도·지연, `offset` = 경로 시작 기준 m) + 요약(총 정체 m·초·평균 속도). 주의 구간 `onCautionPointInfo`(역주행·미끄러움·도로 파손·사고 잦은 곳 등, 남은 m). 도착 지연 = 내비 남은 시간이 **바뀔 때만** 비교(+5분)
-- 주기(**적응형**, 11-07 `nextScanSec`): 정차 120초 · 고속 70km/h+ / 다음 분기 2km 안 / 위험(위험도 2+) 3km 안 25초 · 시내 저속(40 미만) 90초 · 그 밖 60초 + 새 경로·경유지 변경 3초 뒤 + 안내 중 앱 켜면 1.2초 뒤(시동 브리핑 '교통'보다 먼저). `--ei scoutsec N` 고정(0 = 적응). 정찰마다 `getTBTInfo`도. 판정 `Scout.kt`, 처리 `HyunActivity.report`→`reportNow`
+- 주기(**적응형**, 11-07 `nextScanSec`): 정차 120초 · 고속 70km/h+ / 다음 분기 2km 안 / 위험(위험도 2+) 3km 안 25초 · 시내 저속(40 미만) 90초 · 그 밖 60초 + 새 경로·경유지 변경 3초 뒤 + 안내 중 앱 켜면 1.2초 뒤(시동 브리핑 '교통'보다 먼저). `--ei scoutsec N` 고정(0 = 적응). 정찰마다 `getTBTInfo`도. 판정 `Scout.kt`, 처리 `ScoutFeature.report`→`reportNow`
 - 처리: **사고·재난·역주행 1.5km 이내 → 앱이 즉시 경고(P0, 두뇌 X)** → 그 뒤 두뇌에 `traffic` 이벤트(`findings`·`appWarned`). 위험도 2(공사·파손·심한 정체 500m/3분 이상·도착 +5분) → 두뇌가 알리고 우회 제안. 위험도 1(짧은 정체·서행) → 맥락 `traffic` 요약에만. **새 경로가 선 뒤 90초(`Scout.CALM_MS`)는 사고·재난만 바로**, 나머지는 '본 것'으로 적고 요약으로 출발 한마디에 — 경로가 설 때(`onRouteStarted`·`onWaypointChanged`)와 목적지를 정할 때 `Scout.reset()`. ('첫 정찰 한 번'으로 셌더니 옛 경로의 늦은 정찰 답이 그 한 번을 써 버려 새 긴 경로의 정체를 줄줄이 알렸다 — 11-07 대전역 3번 실측) · 안내 중(`ROUTE_GUIDING`) 상태만 정찰
-- **두뇌 맥락 `[길·교통]` 블록**(`brain_common.road_block`): 목적지·남은 km·분·도착 예정·현재 위치(주소)·주행/정차·속도 + 경로 교통 요약(`Scout.summary`) + 앞쪽 정체·사고 가까운 순 3개(`Scout.ahead` → ctx `trafficAhead`, 도로명·거리·평균 속도) — "교통 어때?"에 도로명까지 답한다. 목적지가 없으면 "어디로 가세요?"
+- **두뇌 맥락 `[길·교통]` 블록**(`features/route.block`): 목적지·남은 km·분·도착 예정·현재 위치(주소)·주행/정차·속도 + 경로 교통 요약(`Scout.summary`) + 앞쪽 정체·사고 가까운 순 3개(`Scout.ahead` → ctx `trafficAhead`, 도로명·거리·평균 속도) — "교통 어때?"에 도로명까지 답한다. 목적지가 없으면 "어디로 가세요?"
 - 우회: 두뇌가 `say.py --route fast|reroute|highway|free|comfort`(자동 두뇌는 답 JSON의 `route` · 목적지는 `nav_name`·`nav_lat`·`nav_lng` → 서버가 `nav{}`로 바꿔 같은 길로) → 앱이 `changeRouteOption`/`requestReRoute` → 6초 뒤 `rerouted` 이벤트(`beforeMin`·`afterMin`)로 결과 보고
 - 두뇌 말하기: 무엇이·어디(몇 km 앞, 도로명)·얼마나(분)를 한 문장 → 우회는 질문으로(`--listen`), "응"이면 `--route`. 앱이 이미 경고했으면(`appWarned`) 경고를 되풀이하지 말고 우회·속도만. 출처는 "내비 교통정보 기준" — 맥락에 없는 사고·우회로를 지어내지 않는다
 - 시연 주입(에뮬 내비엔 정체는 오지만 사고 이벤트는 없었다): `--es traffic "accident|1200|강남대로 신논현역 부근 2차로 사고"` · `--ei etaup 8` · `--ez scan true`(즉시 정찰) — 로그·두뇌 출력에 `[시연 주입]` 표시
@@ -126,24 +126,32 @@ python -I server/hyun/say.py <id> "답" [--listen] [--mood calm|happy|fun|care|a
 
 ## 앱 (`android/hyun/`, 패키지 `io.github.somanghao.makecar.hyun`, 라벨 "현비서")
 
+**구조 = 코어 + 기능 플러그인**(11-07) — 기능 하나 = `feature/` 파일 하나 + `Registry` 한 줄, 서버 짝 `server/hyun/features/`. 훅·붙이는 법 → [[hyun-architecture]]
+
 | 파일 | 역할 |
 |---|---|
-| `HyunActivity.kt` | 흐름 전부 — `isCar`로 차/폰 갈림 · NaviHelper(목적지 설정 `requestRoute`·`onRouteStarted`·`onDrivingInfo`·`onDestinationArrived`·현재 위치 주소) · Vehicle 배터리 · Open-Meteo · 이벤트 판정(1초) · 말하기 `say`→`Speaker.offer`→`pump`→`speakNow` · 경로 정찰 주기(`scan`·`nextScanSec`)·`report`/`reportNow`·`detour`·`reroute`·`afterReroute`(되돌리기) · 경유지 `addVia`·`goTo(via)`·`cancelTrip` · 글레오 `onGleo` · 다시 묻기 `reask` · 귀 시험 `feedEar` · 폰 모드·리마인더(`setMode`·`deskTick`·`refreshTasks`·`ring`) · 폴백 · 시연 인텐트 |
-| `Speaker.kt` | 말하기 스케줄러 — `offer`/`next(Now)`, 정책 `Policy`(PARKED·DRIVE·TRANSIT·WALK·WORK = 단계별 쿨다운·수명·P3 허용) · `PhoneMode` · 이벤트 단계 `eventPrio` |
-| `Voice.kt` · `Sense.kt` | 귀·입 / 눈 인터페이스 — 차 `PleosVoice`·`CarSense`(AAOS 속도·기어·DO), 폰 `PhoneVoice`·`PhoneSense` → [[hyun-phone]] |
-| `Ear.kt` | 상시 귀(차) — 마이크 직접·VAD·정규화·받아 적기 서버 POST · `ping` · 시험 주입 `feed` · 듣기 모드는 `HyunActivity.ensureEar` → §귀 |
-| `EarService.kt` | 마이크 포그라운드 서비스(차) — 뒤로 가도 귀가 듣게, `start`(앱이 앞일 때만)·`stop` · 알림만 맡고 귀는 Activity가 든다 |
-| `assets/schema.json` | Gleo Interface 3액션(ASK_HYUN·HYUN_STATUS·HYUN_QUIET) — 처리 `HyunActivity.onGleo` |
-| `Desk.kt` · `QuickActivity.kt` | 폰 전용 — 캘린더·배터리·이어폰·진동 / 빠른 대화 창·홈 위젯 `QuickWidget`·상주 알림 → [[hyun-phone]] |
-| `Scout.kt` | 경로 정찰 판정 — `trafficStatus` 이벤트·정체 → 위험도 1~3 `Finding`(이미 말한 키 제외, 첫 정찰은 3만) · 요약 문장 · 가장 가까운 위험 `nearestM` · 글레오용 `english()` · 주의 구간 1.5km · 도착 +5분(`resetEta`) · 시연 주입(`demo`·`demoEta`) |
-| `Link.kt` | 서버 HTTP(보내기·답 long-poll·health·memory·할 일 `tasks`/`fired`) |
-| `Trip.kt` | 남은 거리 = 내비 값 기준 + 속도 적분(에뮬은 GPS가 안 움직여 내비 값이 고정) · 연속 주행 시간 |
-| `HyunView.kt` | 차(가로·어두움): 목적지 띠·자막·정차 시 기억 칩·큰 마이크 / 폰(세로·흰색): `drawPhone` 3단 + `목록` 덮개 · 공용 캐릭터 `character()` — 유리 구슬·기분 색 오로라(`palette()`)·초승달 하이라이트·회전 테두리 빛(말할 땐 우선순위 색)·듣기 링(목소리 크기)·생각 혜성·`eyes()` 기분별 눈+말할 때 파형 입 |
+| `HyunActivity.kt` | 껍데기 — 화면·인셋·폰 글자 입력·생명주기를 `core/Hyun`에 넘김 |
+| `core/Hyun.kt` | 대화 엔진 — `isCar`로 차/폰 갈림 · 듣기(귀 `ensureEar`·`setListenMode`·다시 묻기 `reask`·귀 시험 `feedEar`) · 말하기 `say`→`Speaker.offer`→`pump`→`speakNow`(회전 앞 침묵 `turnBusy`) · 두뇌 묻기 `ask`·답 나누기 `onReply` · 1초 `tick` · 맥락 `ctx()` · 폴백(기능 먼저, 코어는 hello) · 코어 시연 인텐트 |
+| `core/Feature.kt` · `core/Fmt.kt` | 기능 훅 인터페이스 · 시간·거리 글자(`dur` "3시간 52분") |
+| `feature/RouteFeature.kt` | 목적지 설정 `goTo`(`requestRoute`)·경유지 `addVia`·`cancelTrip` · 이벤트 depart·halfway·near·arrived·no_dest·waypoint |
+| `feature/ScoutFeature.kt` | 경로 정찰 주기 `nextScanSec`·`report`/`reportNow`·`detour`·`reroute`·`afterReroute`(되돌리기) · 휴게소 알림 `restArea` |
+| `feature/GleoFeature.kt` · `assets/schema.json` | Gleo Interface 3액션(ASK_HYUN·HYUN_STATUS·HYUN_QUIET) — 처리 `onGleo` |
+| `feature/CarFeatures.kt` · `CommandFeatures.kt` · `PhoneFeature.kt` | 날씨(Open-Meteo)·차 배터리(Vehicle)·장시간/조용함 · 조용히·듣기 모드·캐릭터 말 명령 · 폰 모드·리마인더(`setMode`·`refreshTasks`·`ring`) |
+| `drive/Navi.kt` | NaviHelper 하나 — 콜백을 전부 로그 `navi|…`로 남기고 기능들에 나눔(`listen`) · `onRouteStarted`·`onDrivingInfo`·`onDestinationArrived`·현재 위치 주소 |
+| `voice/Speaker.kt` | 말하기 스케줄러 — `offer`/`next(Now)`, 정책 `Policy`(PARKED·DRIVE·TRANSIT·WALK·WORK = 단계별 쿨다운·수명·P3 허용) · 이벤트 단계 `eventPrio` (`PhoneMode`는 `phone/PhoneMode.kt`) |
+| `voice/Voice.kt` · `drive/Sense.kt` | 귀·입 / 눈 인터페이스 — 차 `PleosVoice`·`CarSense`(AAOS 속도·기어·DO), 폰 `PhoneVoice`·`PhoneSense` → [[hyun-phone]] |
+| `voice/Ear.kt` | 상시 귀(차) — 마이크 직접·VAD·정규화·받아 적기 서버 POST · `ping` · 시험 주입 `feed` · 듣기 모드는 `Hyun.ensureEar` → §귀 |
+| `voice/EarService.kt` | 마이크 포그라운드 서비스(차) — 뒤로 가도 귀가 듣게, `start`(앱이 앞일 때만)·`stop` · 알림만 맡고 귀는 코어가 든다 |
+| `phone/Desk.kt` · `phone/QuickActivity.kt` | 폰 전용 — 캘린더·배터리·이어폰·진동 / 빠른 대화 창·홈 위젯 `QuickWidget`·상주 알림 → [[hyun-phone]] |
+| `drive/Scout.kt` | 경로 정찰 판정 — `trafficStatus` 이벤트·정체 → 위험도 1~3 `Finding`(이미 말한 키 제외, 시작·새 경로 뒤 90초는 3만 `calmUntil`) · 요약 문장 · 가장 가까운 위험 `nearestM` · 글레오용 `english()` · 주의 구간 1.5km · 도착 +5분(`resetEta`) · 시연 주입(`demo`·`demoEta`) |
+| `brain/Link.kt` | 서버 HTTP(보내기·답 long-poll·health·memory·할 일 `tasks`/`fired`) |
+| `drive/Trip.kt` | 남은 거리 = 내비 값 기준 + 속도 적분(에뮬은 GPS가 안 움직여 내비 값이 고정) · 연속 주행 시간 |
+| `ui/HyunView.kt` | 차(가로·어두움): 목적지 띠·자막·정차 시 기억 칩·큰 마이크 / 폰(세로·흰색): `drawPhone` 3단 + `목록` 덮개 · 공용 캐릭터 `character()` — 유리 구슬·기분 색 오로라(`palette()`)·초승달 하이라이트·회전 테두리 빛(말할 땐 우선순위 색)·듣기 링(목소리 크기)·생각 혜성·`eyes()` 기분별 눈+말할 때 파형 입 |
 
 ### 말하기 스케줄러 (`Speaker.kt`)
 
 - 줄(`Line`)마다 단계 `prio`, 대답은 `rank = min(prio, 1)`로 P1 자리. 대기열에서 (rank, 들어온 순)이 가장 앞선 것부터
-- 대답은 쿨다운을 쓰지 않고, 같은 자리(rank)에선 대답이 먼저(2026-11-06 수정 — 쿨다운 걸린 안내가 운전자 대답을 막던 결함) · 회전 300m 앞 침묵 = `HyunActivity.turnBusy()`(직진·도착 제외, 같은 안내 45초 넘으면 풂)
+- 대답은 쿨다운을 쓰지 않고, 같은 자리(rank)에선 대답이 먼저(2026-11-06 수정 — 쿨다운 걸린 안내가 운전자 대답을 막던 결함) · 회전 300m 앞 침묵 = `Hyun.turnBusy()`(직진·도착 제외, 같은 안내 45초 넘으면 풂)
 - 끊기: 말하는 중엔 더 높은 단계가 끊되 P0이거나 지금 말이 P2 이하일 때만 · 듣는 중엔 P0만 · 생각 중엔 P2·P3 대기 · 수명 지난 줄은 버림 · 대답 아닌 말은 단계별 쿨다운
 - 정책: 차는 정차 `PARKED`(쿨다운 없음) / 주행 `DRIVE`(P1 30초·P2 3분·P3 10분), 폰은 모드별(→ [[hyun-phone]]). P3 불허 정책이면 대답 아닌 P3는 들어오자마자 버림 · 같은 P0 문장 중복 제거
 

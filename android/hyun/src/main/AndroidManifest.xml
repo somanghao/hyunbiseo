@@ -66,13 +66,13 @@
 
         <!-- 마이크 포그라운드 서비스 — 앱이 뒤로 가도 상시 귀가 듣는다(차) -->
         <service
-            android:name=".EarService"
+            android:name=".voice.EarService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
         <!-- 빠른 대화 창(폰) — 홈 위젯·상주 알림에서 열려 다른 앱 위에 뜬다. 최근 앱 목록엔 안 남는다 -->
         <activity
-            android:name=".QuickActivity"
+            android:name=".phone.QuickActivity"
             android:exported="false"
             android:theme="@style/Quick"
             android:launchMode="singleTask"
@@ -80,7 +80,7 @@
             android:excludeFromRecents="true"
             android:windowSoftInputMode="adjustResize" />
 
-        <receiver android:name=".QuickWidget" android:exported="false" android:label="짭비서">
+        <receiver android:name=".phone.QuickWidget" android:exported="false" android:label="짭비서">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
         </receiver>

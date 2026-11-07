@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRACKED_DIRS = ["android/hyun", "android/gradle", "server/hyun", "tools/hyun_e2e", "tools/hyun_harness", "records/hyun-e2e"]
 FILES = ["android/build.gradle.kts", "android/gradle.properties", "android/gradlew", "android/gradlew.bat",
          "tools/hyun_testaudio.py", "tools/vconsole.py", "tools/export_hyunbiseo.py"]
-DOCS = ["hyun-app.md", "hyun-brain.md", "hyun-e2e.md", "hyun-harness.md", "hyun-modules.md", "hyun-phone.md",
+DOCS = ["hyun-architecture.md", "hyun-app.md", "hyun-brain.md", "hyun-e2e.md", "hyun-harness.md", "hyun-modules.md", "hyun-phone.md",
         "hyun-pleos-capabilities.md", "pleos-sdk-navihelper.md", "pleos-emulator.md", "pleos-gleo.md"]
 SECRET = re.compile(r"sk-ant-[A-Za-z0-9_-]{10,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abp]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}"
                     r"|[MN][A-Za-z\d]{23}\.[\w-]{6}\.[\w-]{27}")   # 앞 = Anthropic·GitHub·Slack·AWS, 끝 = Discord 봇 토큰 모양

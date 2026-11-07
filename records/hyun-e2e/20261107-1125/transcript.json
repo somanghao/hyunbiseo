@@ -1,0 +1,2653 @@
+{
+ "stamp": "20261107-1125",
+ "cases": [
+  {
+   "id": "e00",
+   "title": "시동 — 인사 · 브리핑 순서",
+   "why": "새 데이터로 앱을 켜면 순서를 몰라 '뭐부터 들을까요?'를 묻고, 대답한 순서를 저장해 바로 그 순서로 브리핑한다",
+   "steps": [
+    {
+     "step": {
+      "do": "split",
+      "on": false
+     },
+     "note": "1칸",
+     "t": 2.8
+    },
+    {
+     "step": {
+      "do": "restart"
+     },
+     "note": "",
+     "t": 6.4
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 45
+     },
+     "note": "답 도착",
+     "t": 25.7
+    },
+    {
+     "step": {
+      "do": "say",
+      "text": "날씨 먼저 듣고 그다음 뉴스",
+      "voice": false
+     },
+     "note": "글(마이크 없이) 「날씨 먼저 듣고 그다음 뉴스」",
+     "t": 25.8
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 60
+     },
+     "note": "답 도착",
+     "t": 42.3
+    },
+    {
+     "step": {
+      "shot": "시동 브리핑"
+     },
+     "note": "시동 브리핑",
+     "t": 44.1
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018324.68,
+     "who": "길",
+     "text": "nav cancel|demo|null"
+    },
+    {
+     "t": 1794018330.07,
+     "who": "이벤트",
+     "text": "hello"
+    },
+    {
+     "t": 1794018334.91,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018334.92,
+     "who": "현비서",
+     "text": "안녕하세요, 현비서예요. 오늘 브리핑은 뭐부터 들을까요? 날씨, 뉴스, 주식, 교통 같은 것 중에 순서대로 말해 주세요.",
+     "prio": 2
+    },
+    {
+     "t": 1794018344.62,
+     "who": "운전자",
+     "text": "날씨 먼저 듣고 그다음 뉴스"
+    },
+    {
+     "t": 1794018348.19,
+     "who": "현비서",
+     "text": "어디 보자.",
+     "prio": 1
+    },
+    {
+     "t": 1794018349.91,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018349.91,
+     "who": "현비서",
+     "text": "다음부터 이 순서로 할게요. 날씨는 지금 4도에 맑고 비 소식 없어요. 뉴스는 T1이 월드 챔피언십 4강에 올랐고, 삼표 정도원 회장은 내달 항소심이래요.",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "시동 인사 이벤트",
+     "rule": "event\\|hello",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "브리핑 순서를 묻는다",
+     "rule": "say\\|P\\d\\|.*(뭐부터|순서)",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "대답한 순서(날씨 먼저) 저장",
+     "rule": "\"brief_order\": \\[\"weather\"",
+     "src": "server",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e00_1.jpg",
+     "caption": "시동 브리핑",
+     "t": 1794018363.022448
+    }
+   ],
+   "video": {
+    "file": "raw/e00.mp4",
+    "dur": 45.741367,
+    "t0": 1794018318.782049,
+    "offset": 0.0
+   },
+   "t_start": 1794018318.9628458,
+   "t_end": 1794018364.523416,
+   "secs": 45.6,
+   "latency": [
+    5.3
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 1,
+     "ts": "11:25:30",
+     "kind": "event",
+     "text": "hello",
+     "ctx": {
+      "t": "11:25",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 265,
+      "eta": "15:50",
+      "totalKm": 143,
+      "soc": 100
+     },
+     "brief": "ask"
+    },
+    {
+     "dir": "out",
+     "id": 1,
+     "say": "안녕하세요, 현비서예요. 오늘 브리핑은 뭐부터 들을까요? 날씨, 뉴스, 주식, 교통 같은 것 중에 순서대로 말해 주세요.",
+     "listen": true,
+     "mood": "happy",
+     "prio": 2,
+     "ts": "11:25:35",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 2,
+     "ts": "11:25:45",
+     "kind": "talk",
+     "text": "날씨 먼저 듣고 그다음 뉴스",
+     "ctx": {
+      "t": "11:25",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 265,
+      "eta": "15:50",
+      "totalKm": 143,
+      "traffic": "정체 96.0km(약 147분, 평균 28km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리 100m · 평균 53km/h · 약 1분",
+       "약 1.5km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 100m · 평균 27km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분",
+       "약 2.0km 앞 정체 · 대왕판교로 판교테크노2사거리→판교테크노2사거리 40m · 평균 39km/h · 약 1분",
+       "약 2.0km 앞 서행 · 대왕판교로 판교테크노2사거리 100m · 평균 54km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     },
+     "brief": "answer"
+    },
+    {
+     "dir": "out",
+     "id": 2,
+     "say": "다음부터 이 순서로 할게요. 날씨는 지금 4도에 맑고 비 소식 없어요. 뉴스는 T1이 월드 챔피언십 4강에 올랐고, 삼표 정도원 회장은 내달 항소심이래요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:25:50",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": "",
+     "brief_order": [
+      "weather",
+      "news"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "e01",
+   "title": "네비 모드 — 말로 목적지 · 반반 화면",
+   "why": "'현비서야 강남역 가자'(실제 음성 → 받아 적기 → 호출어 → 두뇌)로 내비 경로를 잡고, 앱 영역 2칸으로 왼쪽 현비서 · 오른쪽 내비를 나란히 띄운다",
+   "steps": [
+    {
+     "step": {
+      "do": "say",
+      "text": "강남역 가자",
+      "voice": true
+     },
+     "note": "음성 2.5초 「현비서야 강남역 가자」",
+     "t": 0.6
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "navi\\|routeStarted",
+      "timeout": 50
+     },
+     "note": "확인",
+     "t": 13.5
+    },
+    {
+     "step": {
+      "wait": "tts"
+     },
+     "note": "",
+     "t": 13.5
+    },
+    {
+     "step": {
+      "do": "split",
+      "on": true
+     },
+     "note": "2칸(내비와 나란히)",
+     "t": 16.3
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 4
+     },
+     "note": "",
+     "t": 20.3
+    },
+    {
+     "step": {
+      "shot": "반반 — 왼쪽 현비서 · 오른쪽 내비"
+     },
+     "note": "반반 — 왼쪽 현비서 · 오른쪽 내비",
+     "t": 22.2
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018368.95,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 강남역 가자」 · 522ms"
+    },
+    {
+     "t": 1794018368.96,
+     "who": "운전자",
+     "text": "강남역 가자"
+    },
+    {
+     "t": 1794018372.55,
+     "who": "현비서",
+     "text": "음, 잠깐만요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018373.83,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018373.83,
+     "who": "길",
+     "text": "nav 강남역|37.4979,127.0276|est=14521m"
+    },
+    {
+     "t": 1794018374.34,
+     "who": "내비",
+     "text": "cancelled "
+    },
+    {
+     "t": 1794018374.5,
+     "who": "현비서",
+     "text": "강남역으로 안내 시작할게요. 앞쪽 판교 쪽이 조금 막혀요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018381.11,
+     "who": "내비",
+     "text": "routeStarted RouteStartInfo(duration=2760, distance=13000, tollFare=700, name=강남역, remainDestinationChargingValue=75717)"
+    }
+   ],
+   "checks": [
+    {
+     "what": "귀가 호출어와 목적지를 받아 적음",
+     "rule": "ear\\|wake\\+text\\|.*강남",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "두뇌가 목적지를 정함",
+     "rule": "nav\\|강남역",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "내비 경로 시작",
+     "rule": "navi\\|routeStarted",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e01_1.jpg",
+     "caption": "반반 — 왼쪽 현비서 · 오른쪽 내비",
+     "t": 1794018390.2236295
+    }
+   ],
+   "video": {
+    "file": "raw/e01.mp4",
+    "dur": 23.664844,
+    "t0": 1794018368.06673,
+    "offset": 45.74
+   },
+   "t_start": 1794018368.0446339,
+   "t_end": 1794018391.731574,
+   "secs": 23.7,
+   "latency": [
+    5.5
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 3,
+     "ts": "11:26:09",
+     "kind": "talk",
+     "text": "강남역 가자",
+     "ctx": {
+      "t": "11:26",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 265,
+      "eta": "15:51",
+      "totalKm": 143,
+      "traffic": "정체 96.0km(약 147분, 평균 28km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리 100m · 평균 53km/h · 약 1분",
+       "약 1.5km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 100m · 평균 27km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분",
+       "약 2.0km 앞 정체 · 대왕판교로 판교테크노2사거리→판교테크노2사거리 40m · 평균 39km/h · 약 1분",
+       "약 2.0km 앞 서행 · 대왕판교로 판교테크노2사거리 100m · 평균 54km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 3,
+     "say": "강남역으로 안내 시작할게요. 앞쪽 판교 쪽이 조금 막혀요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:26:14",
+     "by": "claude",
+     "nav": {
+      "name": "강남역",
+      "lat": 37.4979,
+      "lng": 127.0276
+     },
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e02",
+   "title": "교통상황 — '앞길 어때?' · 내비 기준 교통 표",
+   "why": "내비가 준 내 경로 교통(정체 구간·도로명·속도)을 말로 답하고, 정차 화면에 서버가 내비 값으로 만든 표를 띄운다(반반 화면 그대로)",
+   "steps": [
+    {
+     "step": {
+      "do": "say",
+      "text": "앞길 어때?",
+      "voice": true
+     },
+     "note": "음성 2.3초 「현비서야 앞길 어때?」",
+     "t": 0.6
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 50
+     },
+     "note": "답 도착",
+     "t": 15.9
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 2
+     },
+     "note": "",
+     "t": 17.9
+    },
+    {
+     "step": {
+      "shot": "교통 표(반반)"
+     },
+     "note": "교통 표(반반)",
+     "t": 19.7
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018396.29,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 앞길 어때?」 · 516ms"
+    },
+    {
+     "t": 1794018396.29,
+     "who": "운전자",
+     "text": "앞길 어때?"
+    },
+    {
+     "t": 1794018399.88,
+     "who": "현비서",
+     "text": "생각해 볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018401.04,
+     "who": "두뇌",
+     "text": "답 도착 · claude · 카드 「앞길 교통 · 강남역까지 46분(도착 12:12)」"
+    },
+    {
+     "t": 1794018401.06,
+     "who": "카드",
+     "text": "앞길 교통 · 강남역까지 46분(도착 12:12)|6|kind=list|img=0|약 700m 앞 서행 — 달래내로 50m · 평균 16km/h · 약 1분 / 약 700m 앞 정체 — 경부고속도로 40m · 평균 21km/h · 약 1분 / 약 700m 앞 서행 — 경부고속도로 대왕판교IC 100m · 평균 40km/h · 약 1분"
+    },
+    {
+     "t": 1794018401.55,
+     "who": "현비서",
+     "text": "내비 교통정보 기준, 7.3km 앞 양재IC 쪽이 4.1km 정체예요, 약 18분 걸려요. 우회할까요?",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "내비 기준으로 교통을 말함",
+     "rule": "say\\|P1\\|.*(내비|정체|막히|교통)",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "교통 표 카드",
+     "rule": "card\\|앞길 교통",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e02_1.jpg",
+     "caption": "교통 표(반반)",
+     "t": 1794018415.1708338
+    }
+   ],
+   "video": {
+    "file": "raw/e02.mp4",
+    "dur": 21.325356,
+    "t0": 1794018395.3461447,
+    "offset": 69.41
+   },
+   "t_start": 1794018395.4379847,
+   "t_end": 1794018416.6715007,
+   "secs": 21.2,
+   "latency": [
+    5.3
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 4,
+     "ts": "11:26:36",
+     "kind": "talk",
+     "text": "앞길 어때?",
+     "ctx": {
+      "t": "11:26",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "강남역",
+      "remainKm": 13,
+      "remainMin": 46,
+      "eta": "12:12",
+      "totalKm": 13,
+      "traffic": "정체 7.4km(약 24분, 평균 15km/h)",
+      "trafficAhead": [
+       "약 700m 앞 서행 · 달래내로 50m · 평균 16km/h · 약 1분",
+       "약 700m 앞 정체 · 경부고속도로 40m · 평균 21km/h · 약 1분",
+       "약 700m 앞 서행 · 경부고속도로 대왕판교IC 100m · 평균 40km/h · 약 1분",
+       "약 2.5km 앞 서행 · 경부고속도로 금토JC 1.6km · 평균 76km/h · 약 1분",
+       "약 7.3km 앞 정체 · 경부고속도로 양재IC 4.1km · 평균 12km/h · 약 18분",
+       "약 11.0km 앞 서행 · 서운로 50m · 평균 27km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "달래내로",
+       "경부고속도로",
+       "서운로",
+       "서초대로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 4,
+     "say": "내비 교통정보 기준, 7.3km 앞 양재IC 쪽이 4.1km 정체예요, 약 18분 걸려요. 우회할까요?",
+     "listen": true,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:26:41",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "kind": "",
+      "title": "앞길 교통 · 강남역까지 46분(도착 12:12)",
+      "source": "내비 교통정보 · 11:26 · 정체 7.4km(약 24분, 평균 15km/h)",
+      "items": [
+       "약 700m 앞 서행 — 달래내로 50m · 평균 16km/h · 약 1분",
+       "약 700m 앞 정체 — 경부고속도로 40m · 평균 21km/h · 약 1분",
+       "약 700m 앞 서행 — 경부고속도로 대왕판교IC 100m · 평균 40km/h · 약 1분",
+       "약 2.5km 앞 서행 — 경부고속도로 금토JC 1.6km · 평균 76km/h · 약 1분",
+       "약 7.3km 앞 정체 — 경부고속도로 양재IC 4.1km · 평균 12km/h · 약 18분",
+       "약 11.0km 앞 서행 — 서운로 50m · 평균 27km/h · 약 1분"
+      ]
+     },
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e03",
+   "title": "휴게소 소개 — 왼쪽 사진 · 오른쪽 표",
+   "why": "고속도로 길(대전역)을 잡고 '다음 휴게소 소개해 줘' → 검색으로 확인한 휴게소 정보 + 취향 맞춤 추천을 소개 카드(사진 · 표)로",
+   "steps": [
+    {
+     "step": {
+      "do": "split",
+      "on": false
+     },
+     "note": "1칸",
+     "t": 2.8
+    },
+    {
+     "step": {
+      "do": "say",
+      "text": "대전역 가자",
+      "voice": true
+     },
+     "note": "음성 2.4초 「현비서야 대전역 가자」",
+     "t": 3.4
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "navi\\|routeStarted",
+      "timeout": 50
+     },
+     "note": "확인",
+     "t": 17.9
+    },
+    {
+     "step": {
+      "wait": "tts"
+     },
+     "note": "",
+     "t": 17.9
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 5
+     },
+     "note": "",
+     "t": 22.9
+    },
+    {
+     "step": {
+      "do": "say",
+      "text": "다음 휴게소 소개해 줘",
+      "voice": true
+     },
+     "note": "음성 3.1초 「현비서야 다음 휴게소 소개해 줘」",
+     "t": 23.6
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 75
+     },
+     "note": "답 도착",
+     "t": 54.5
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 4
+     },
+     "note": "",
+     "t": 58.5
+    },
+    {
+     "step": {
+      "shot": "휴게소 소개 카드(전체 화면)"
+     },
+     "note": "휴게소 소개 카드(전체 화면)",
+     "t": 60.6
+    },
+    {
+     "step": {
+      "do": "split",
+      "on": true
+     },
+     "note": "2칸(내비와 나란히)",
+     "t": 63.4
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 3
+     },
+     "note": "",
+     "t": 66.4
+    },
+    {
+     "step": {
+      "shot": "휴게소 소개 카드(반반)"
+     },
+     "note": "휴게소 소개 카드(반반)",
+     "t": 68.1
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018423.87,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 대전역 가자.」 · 540ms"
+    },
+    {
+     "t": 1794018423.87,
+     "who": "운전자",
+     "text": "대전역 가자."
+    },
+    {
+     "t": 1794018427.4,
+     "who": "현비서",
+     "text": "어디 보자.",
+     "prio": 1
+    },
+    {
+     "t": 1794018428.53,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018428.53,
+     "who": "길",
+     "text": "nav 대전역|36.3322,127.4342|est=161051m"
+    },
+    {
+     "t": 1794018428.91,
+     "who": "내비",
+     "text": "cancelled "
+    },
+    {
+     "t": 1794018429.76,
+     "who": "현비서",
+     "text": "대전역으로 목적지 바꿔서 안내 시작할게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018437.61,
+     "who": "내비",
+     "text": "routeStarted RouteStartInfo(duration=15840, distance=143000, tollFare=5740, name=대전역, remainDestinationChargingValue=58982)"
+    },
+    {
+     "t": 1794018444.37,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 다음 휴게소 소개해줘.」 · 632ms"
+    },
+    {
+     "t": 1794018444.37,
+     "who": "운전자",
+     "text": "다음 휴게소 소개해줘."
+    },
+    {
+     "t": 1794018447.93,
+     "who": "현비서",
+     "text": "음, 잠깐만요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018457.41,
+     "who": "현비서",
+     "text": "조금만 더 찾아볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018461.09,
+     "who": "두뇌",
+     "text": "답 도착 · claude+search · 카드 「기흥휴게소 부산방향 (추정)」"
+    },
+    {
+     "t": 1794018461.09,
+     "who": "카드",
+     "text": "기흥휴게소 부산방향 (추정)|4|kind=info|img=1|위치 — 경부고속도로 부산방향 · 판교 지나 첫 휴게소(추정) / 대표 메뉴 — 향천우동(2014년 기사 기준) / 취향 추천 — 좋아하는 음식을 아직 몰라요"
+    },
+    {
+     "t": 1794018461.09,
+     "who": "현비서",
+     "text": "경부고속도로 부산방향으로 가면 아마 기흥휴게소가 첫 휴게소예요. 예전 기사에선 향천우동이 대표 메뉴였는데, 지금도 있는지는 확인 못 했어요. 휴게소에서 드시고 싶은 메뉴 있어요?",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "고속도로 목적지 설정",
+     "rule": "nav\\|대전",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "휴게소 소개 카드(info)",
+     "rule": "card\\|.*휴게소.*kind=info",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "카드에 사진",
+     "rule": "card\\|.*kind=info\\|img=1",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "검색 모드로 확인",
+     "rule": "claude\\+search",
+     "src": "server",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e03_1.jpg",
+     "caption": "휴게소 소개 카드(전체 화면)",
+     "t": 1794018480.7403407
+    },
+    {
+     "file": "shots/e03_2.jpg",
+     "caption": "휴게소 소개 카드(반반)",
+     "t": 1794018488.2315779
+    }
+   ],
+   "video": {
+    "file": "raw/e03.mp4",
+    "dur": 69.8575,
+    "t0": 1794018419.875063,
+    "offset": 90.73
+   },
+   "t_start": 1794018420.152205,
+   "t_end": 1794018489.732563,
+   "secs": 69.6,
+   "latency": [
+    5.9,
+    13.0
+   ],
+   "engines": [
+    "claude",
+    "claude+search"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 5,
+     "ts": "11:27:04",
+     "kind": "talk",
+     "text": "대전역 가자.",
+     "ctx": {
+      "t": "11:27",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "강남역",
+      "remainKm": 13,
+      "remainMin": 46,
+      "eta": "12:13",
+      "totalKm": 13,
+      "traffic": "정체 7.4km(약 24분, 평균 15km/h)",
+      "trafficAhead": [
+       "약 700m 앞 서행 · 달래내로 50m · 평균 16km/h · 약 1분",
+       "약 700m 앞 정체 · 경부고속도로 40m · 평균 21km/h · 약 1분",
+       "약 700m 앞 서행 · 경부고속도로 대왕판교IC 100m · 평균 40km/h · 약 1분",
+       "약 2.5km 앞 서행 · 경부고속도로 금토JC 1.6km · 평균 76km/h · 약 1분",
+       "약 7.3km 앞 정체 · 경부고속도로 양재IC 4.1km · 평균 12km/h · 약 18분",
+       "약 11.0km 앞 서행 · 서운로 50m · 평균 27km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "달래내로",
+       "경부고속도로",
+       "서운로",
+       "서초대로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 5,
+     "say": "대전역으로 목적지 바꿔서 안내 시작할게요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:27:08",
+     "by": "claude",
+     "nav": {
+      "name": "대전역",
+      "lat": 36.3322,
+      "lng": 127.4342
+     },
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 6,
+     "ts": "11:27:24",
+     "kind": "talk",
+     "text": "다음 휴게소 소개해줘.",
+     "ctx": {
+      "t": "11:27",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 264,
+      "eta": "15:51",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 145분, 평균 29km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 600m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 6,
+     "say": "경부고속도로 부산방향으로 가면 아마 기흥휴게소가 첫 휴게소예요. 예전 기사에선 향천우동이 대표 메뉴였는데, 지금도 있는지는 확인 못 했어요. 휴게소에서 드시고 싶은 메뉴 있어요?",
+     "listen": true,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:27:40",
+     "by": "claude+search",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "kind": "info",
+      "title": "기흥휴게소 부산방향 (추정)",
+      "source": "서울신문·시대신문 기사(옛 자료) · 참고 사진(다른 휴게소) 위키미디어 공용 CC0",
+      "items": [
+       "위치 — 경부고속도로 부산방향 · 판교 지나 첫 휴게소(추정)",
+       "대표 메뉴 — 향천우동(2014년 기사 기준)",
+       "취향 추천 — 좋아하는 음식을 아직 몰라요",
+       "편의 — 확인 못 함"
+      ],
+      "image_query": "Giheung rest area Korea",
+      "images": [
+       "/hyun/img?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F2%2F21%2FPyeongtaek_rest_area_in_South_Korea_expressway_highway.jpg%2F960px-Pyeongtaek_rest_area_in_South_Korea_expressway_highway.jpg%3Futm_source%3Dcommons.wikimedia.org%26utm_campaign%3Dimageinfo%26utm_content%3Dthumbnail"
+      ]
+     },
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": "food"
+    }
+   ]
+  },
+  {
+   "id": "e04",
+   "title": "취향 질문 — 묻고 · 대답을 취향으로 기록",
+   "why": "아직 모르는 취향 칸을 한 번 묻고(asked_slot), 운전자 대답을 그 칸에 누적한다",
+   "steps": [
+    {
+     "step": {
+      "do": "say",
+      "text": "심심한데 나에 대해 하나만 물어봐 줘",
+      "voice": true
+     },
+     "note": "음성 4.3초 「현비서야 심심한데 나에 대해 하나만 물어봐 줘」",
+     "t": 0.7
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 50
+     },
+     "note": "답 도착",
+     "t": 12.0
+    },
+    {
+     "step": {
+      "do": "say",
+      "text": "운전할 땐 아이유 노래 자주 들어",
+      "voice": false
+     },
+     "note": "글(마이크 없이) 「운전할 땐 아이유 노래 자주 들어」",
+     "t": 12.1
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 50
+     },
+     "note": "답 도착",
+     "t": 23.8
+    },
+    {
+     "step": {
+      "shot": "취향 기록 뒤"
+     },
+     "note": "취향 기록 뒤",
+     "t": 25.5
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018494.46,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 심심한데 나에 대해 하나만 물어봐줘.」 · 643ms"
+    },
+    {
+     "t": 1794018494.46,
+     "who": "운전자",
+     "text": "심심한데 나에 대해 하나만 물어봐줘."
+    },
+    {
+     "t": 1794018498.03,
+     "who": "현비서",
+     "text": "생각해 볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018499.59,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018499.59,
+     "who": "현비서",
+     "text": "좋아요, 하나만 물을게요. 평소에 어떤 음악 들으면 기분이 좋아져요?",
+     "prio": 1
+    },
+    {
+     "t": 1794018505.02,
+     "who": "운전자",
+     "text": "운전할 땐 아이유 노래 자주 들어"
+    },
+    {
+     "t": 1794018510.73,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018515.07,
+     "who": "현비서",
+     "text": "어디 보자.",
+     "prio": 1
+    },
+    {
+     "t": 1794018516.31,
+     "who": "현비서",
+     "text": "아이유 좋아하시는군요, 기억해 둘게요. 정체 구간 지나면 아이유 노래 틀어 드릴까요?",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "취향 질문을 했다(칸 기록)",
+     "rule": "\"asked_slot\": \"[a-z]+\"",
+     "src": "server",
+     "ok": true
+    },
+    {
+     "what": "대답을 취향으로 기록(아이유)",
+     "rule": "\"taste\": \\[[^\\]]*아이유",
+     "src": "server",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e04_1.jpg",
+     "caption": "취향 기록 뒤",
+     "t": 1794018518.8519964
+    }
+   ],
+   "video": {
+    "file": "raw/e04.mp4",
+    "dur": 27.332144,
+    "t0": 1794018493.0208633,
+    "offset": 160.59
+   },
+   "t_start": 1794018493.3097727,
+   "t_end": 1794018520.3530073,
+   "secs": 27.0,
+   "latency": [
+    5.1,
+    11.3
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 7,
+     "ts": "11:28:14",
+     "kind": "talk",
+     "text": "심심한데 나에 대해 하나만 물어봐줘.",
+     "ctx": {
+      "t": "11:28",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 264,
+      "eta": "15:52",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 145분, 평균 29km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 600m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 7,
+     "say": "좋아요, 하나만 물을게요. 평소에 어떤 음악 들으면 기분이 좋아져요?",
+     "listen": true,
+     "mood": "fun",
+     "prio": 1,
+     "ts": "11:28:19",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": "music"
+    },
+    {
+     "dir": "in",
+     "id": 8,
+     "ts": "11:28:25",
+     "kind": "talk",
+     "text": "운전할 땐 아이유 노래 자주 들어",
+     "ctx": {
+      "t": "11:28",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 264,
+      "eta": "15:52",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 145분, 평균 29km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 600m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 8,
+     "say": "아이유 좋아하시는군요, 기억해 둘게요. 정체 구간 지나면 아이유 노래 틀어 드릴까요?",
+     "listen": true,
+     "mood": "happy",
+     "prio": 1,
+     "ts": "11:28:31",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [
+      "음악 좋아함: 아이유"
+     ],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e05",
+   "title": "웹툰 순위 — 표지 격자",
+   "why": "정보 통로(네이버 웹툰)의 순위를 앞 3개만 말하고, 10개를 표지 그림 격자로",
+   "steps": [
+    {
+     "step": {
+      "do": "say",
+      "text": "웹툰 순위 알려줘",
+      "voice": true
+     },
+     "note": "음성 2.9초 「현비서야 웹툰 순위 알려줘」",
+     "t": 0.6
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 50
+     },
+     "note": "답 도착",
+     "t": 16.6
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 5
+     },
+     "note": "",
+     "t": 21.6
+    },
+    {
+     "step": {
+      "shot": "웹툰 표지 격자(반반)"
+     },
+     "note": "웹툰 표지 격자(반반)",
+     "t": 23.4
+    },
+    {
+     "step": {
+      "do": "split",
+      "on": false
+     },
+     "note": "1칸",
+     "t": 26.2
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 3
+     },
+     "note": "",
+     "t": 29.2
+    },
+    {
+     "step": {
+      "shot": "웹툰 표지 격자(전체)"
+     },
+     "note": "웹툰 표지 격자(전체)",
+     "t": 31.8
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018525.5,
+     "who": "운전자",
+     "text": "웹툰 순위 알려줘."
+    },
+    {
+     "t": 1794018529.05,
+     "who": "현비서",
+     "text": "음, 잠깐만요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018531.23,
+     "who": "두뇌",
+     "text": "답 도착 · claude · 카드 「토요 웹툰 인기 TOP 10」"
+    },
+    {
+     "t": 1794018531.23,
+     "who": "카드",
+     "text": "토요 웹툰 인기 TOP 10|10|kind=image_list|img=10|절대군림 — 박시대 / 장영훈 / 호랑이형님 — 이상규 / 마도전생기 — 포스스튜디오 / codezero"
+    },
+    {
+     "t": 1794018531.23,
+     "who": "현비서",
+     "text": "네이버 웹툰 토요 인기순이에요. 1위 절대군림, 2위 호랑이형님, 3위 마도전생기예요. 나머지는 정차하면 화면에서 보세요.",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "웹툰 카드에 표지 그림",
+     "rule": "card\\|.*웹툰.*img=([1-9]|10)",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "순위를 말함",
+     "rule": "say\\|P1\\|.*",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e05_1.jpg",
+     "caption": "웹툰 표지 격자(반반)",
+     "t": 1794018547.7123826
+    },
+    {
+     "file": "shots/e05_2.jpg",
+     "caption": "웹툰 표지 격자(전체)",
+     "t": 1794018556.1012788
+    }
+   ],
+   "video": {
+    "file": "raw/e05.mp4",
+    "dur": 33.511522,
+    "t0": 1794018524.0909936,
+    "offset": 187.92
+   },
+   "t_start": 1794018524.3027103,
+   "t_end": 1794018557.6025157,
+   "secs": 33.3,
+   "latency": [
+    5.7
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 9,
+     "ts": "11:28:45",
+     "kind": "talk",
+     "text": "웹툰 순위 알려줘.",
+     "ctx": {
+      "t": "11:28",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 264,
+      "eta": "15:52",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 145분, 평균 29km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 600m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 9,
+     "say": "네이버 웹툰 토요 인기순이에요. 1위 절대군림, 2위 호랑이형님, 3위 마도전생기예요. 나머지는 정차하면 화면에서 보세요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:28:51",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "kind": "image_list",
+      "title": "토요 웹툰 인기 TOP 10",
+      "source": "네이버 웹툰 · 11-07 토요 인기순",
+      "items": [
+       "절대군림 — 박시대 / 장영훈",
+       "호랑이형님 — 이상규",
+       "마도전생기 — 포스스튜디오 / codezero",
+       "킬러 배드로 — 김정현 / 임리나",
+       "초인의 시대 — 섭이",
+       "나태 공자, 노력 천재 되다 — doip / 도도문 / 이등별",
+       "대기업 탈출일지 — 요다",
+       "세레나 — 정이나",
+       "99강화나무몽둥이 — 홍실 / 지페리",
+       "멸망한 가문의 회귀자 — 양평 / 성구 / Painkiller"
+      ],
+      "image_query": "",
+      "images": [
+       "https://image-comic.pstatic.net/webtoon/832677/thumbnail/thumbnail_IMAG21_d0231efc-35be-4cdf-8b4d-e9379c86b61f.jpg",
+       "https://image-comic.pstatic.net/webtoon/650305/thumbnail/thumbnail_IMAG21_9e070729-5990-4653-90dd-1158847c1c68.jpg",
+       "https://image-comic.pstatic.net/webtoon/807777/thumbnail/thumbnail_IMAG21_e47489ea-bf97-4726-a8e7-6403092a303a.jpg",
+       "https://image-comic.pstatic.net/webtoon/816798/thumbnail/thumbnail_IMAG21_bf6e3706-5518-445f-b516-b94257cfad4f.jpg",
+       "https://image-comic.pstatic.net/webtoon/730694/thumbnail/thumbnail_IMAG21_29c75eb5-39f4-4608-8c79-737bc8330bb0.jpg",
+       "https://image-comic.pstatic.net/webtoon/772853/thumbnail/thumbnail_IMAG21_9b5f2843-89e5-458e-a5fe-d8883c72907b.jpg",
+       "https://image-comic.pstatic.net/webtoon/855719/thumbnail/thumbnail_IMAG21_46bb8133-9c1f-4c81-bd14-e3d9fb843dc9.jpg",
+       "https://image-comic.pstatic.net/webtoon/801475/thumbnail/thumbnail_IMAG21_2904fd1a-6480-4428-8b15-76887830326a.jpg",
+       "https://image-comic.pstatic.net/webtoon/792651/thumbnail/thumbnail_IMAG21_218f18ef-7f68-4d6a-972c-686a3e9f6138.jpg",
+       "https://image-comic.pstatic.net/webtoon/819946/thumbnail/thumbnail_IMAG21_7089c4dd-3948-4352-a55d-0fc91376f4d0.jpg"
+      ]
+     },
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e06",
+   "title": "영화 순위 — 목록 표",
+   "why": "영화진흥위원회 박스오피스(어제 기준)를 앞 3개 말하고 10개 목록 표",
+   "steps": [
+    {
+     "step": {
+      "do": "say",
+      "text": "요즘 영화 순위 알려줘",
+      "voice": true
+     },
+     "note": "음성 3.2초 「현비서야 요즘 영화 순위 알려줘」",
+     "t": 0.6
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 50
+     },
+     "note": "답 도착",
+     "t": 17.1
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 2
+     },
+     "note": "",
+     "t": 19.1
+    },
+    {
+     "step": {
+      "shot": "영화 순위 표"
+     },
+     "note": "영화 순위 표",
+     "t": 20.8
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018562.1,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 요즘 영화 순위 알려줘.」 · 616ms"
+    },
+    {
+     "t": 1794018562.1,
+     "who": "운전자",
+     "text": "요즘 영화 순위 알려줘."
+    },
+    {
+     "t": 1794018565.65,
+     "who": "현비서",
+     "text": "생각해 볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018567.77,
+     "who": "두뇌",
+     "text": "답 도착 · claude · 카드 「영화 박스오피스 TOP 10」"
+    },
+    {
+     "t": 1794018567.77,
+     "who": "카드",
+     "text": "영화 박스오피스 TOP 10|10|kind=list|img=0|최종면접 — 22,751명 / 하트 오브 비스트 — 20,172명 / 극장판 치이카와: 인어 섬의 비밀 — 18,453명"
+    },
+    {
+     "t": 1794018567.77,
+     "who": "현비서",
+     "text": "영화진흥위원회 어제 기준이에요. 1위 최종면접, 2위 하트 오브 비스트, 3위 극장판 치이카와예요. 나머지는 정차하면 화면에서 보세요.",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "영화 순위 목록 카드",
+     "rule": "card\\|.*(영화|박스).*kind=list",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "출처·기준을 붙여 말함",
+     "rule": "say\\|P1\\|.*(영화진흥|기준|1위)",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e06_1.jpg",
+     "caption": "영화 순위 표",
+     "t": 1794018582.003947
+    }
+   ],
+   "video": {
+    "file": "raw/e06.mp4",
+    "dur": 22.928711,
+    "t0": 1794018560.5767322,
+    "offset": 221.43
+   },
+   "t_start": 1794018561.227611,
+   "t_end": 1794018583.505443,
+   "secs": 22.3,
+   "latency": [
+    5.7
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 10,
+     "ts": "11:29:22",
+     "kind": "talk",
+     "text": "요즘 영화 순위 알려줘.",
+     "ctx": {
+      "t": "11:29",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 264,
+      "eta": "15:53",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 145분, 평균 29km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 600m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 10,
+     "say": "영화진흥위원회 어제 기준이에요. 1위 최종면접, 2위 하트 오브 비스트, 3위 극장판 치이카와예요. 나머지는 정차하면 화면에서 보세요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:29:28",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "kind": "",
+      "title": "영화 박스오피스 TOP 10",
+      "source": "영화진흥위원회 KOBIS · 11-06 하루 기준",
+      "items": [
+       "최종면접 — 22,751명",
+       "하트 오브 비스트 — 20,172명",
+       "극장판 치이카와: 인어 섬의 비밀 — 18,453명",
+       "명탐정 코난: 30호 살인 사건 — 18,203명",
+       "마도카☆마기카 발푸르기스의 회천 — 5,924명",
+       "수능, 출제의 비밀 — 3,637명",
+       "와일드 호스 나인 — 3,210명",
+       "암살자(들) — 3,087명",
+       "모자 쓴 고양이 — 2,176명",
+       "욕쟁이 할머니 — 2,109명"
+      ],
+      "image_query": ""
+     },
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e07",
+   "title": "스포츠 기사 — 웹 검색 모드",
+   "why": "통로에 없는 최신 스포츠 소식은 내 Claude 계정 두뇌가 웹 검색으로 찾아 날짜·결과·매체와 함께",
+   "steps": [
+    {
+     "step": {
+      "do": "say",
+      "text": "요즘 야구 소식 알려줘",
+      "voice": true
+     },
+     "note": "음성 3.2초 「현비서야 요즘 야구 소식 알려줘」",
+     "t": 0.6
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 75
+     },
+     "note": "답 도착",
+     "t": 47.9
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 2
+     },
+     "note": "",
+     "t": 49.9
+    },
+    {
+     "step": {
+      "shot": "야구 소식"
+     },
+     "note": "야구 소식",
+     "t": 51.7
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018588.15,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 요즘 야구 소식 알려줘.」 · 547ms"
+    },
+    {
+     "t": 1794018588.16,
+     "who": "운전자",
+     "text": "요즘 야구 소식 알려줘."
+    },
+    {
+     "t": 1794018591.71,
+     "who": "현비서",
+     "text": "어디 보자.",
+     "prio": 1
+    },
+    {
+     "t": 1794018601.18,
+     "who": "현비서",
+     "text": "조금만 더 찾아볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018624.36,
+     "who": "두뇌",
+     "text": "답 도착 · claude+search · 카드 「2026 한국시리즈 삼성 vs KT」"
+    },
+    {
+     "t": 1794018624.36,
+     "who": "카드",
+     "text": "2026 한국시리즈 삼성 vs KT|5|kind=list|img=0|1차전 11-03 · KT 8:7 삼성 / 2차전 11-04 · 삼성 3:2 KT (연장 12회) / 3차전 11-06 · 삼성 승 (대구)"
+    },
+    {
+     "t": 1794018624.36,
+     "who": "현비서",
+     "text": "한국시리즈에서 삼성이 KT에 2승 1패로 앞서 있어요. 어제 3차전은 삼성이 이겼고, 4차전은 오늘 두 시 대구예요. 정차하면 화면에서 보세요.",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "검색 모드로 답함",
+     "rule": "claude\\+search",
+     "src": "server",
+     "ok": true
+    },
+    {
+     "what": "소식을 말함",
+     "rule": "say\\|P1\\|.{20,}",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e07_1.jpg",
+     "caption": "야구 소식",
+     "t": 1794018638.9893048
+    }
+   ],
+   "video": {
+    "file": "raw/e07.mp4",
+    "dur": 53.5705,
+    "t0": 1794018586.926265,
+    "offset": 244.36
+   },
+   "t_start": 1794018587.2937582,
+   "t_end": 1794018640.496765,
+   "secs": 53.2,
+   "latency": [
+    13.0
+   ],
+   "engines": [
+    "claude+search"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 11,
+     "ts": "11:29:48",
+     "kind": "talk",
+     "text": "요즘 야구 소식 알려줘.",
+     "ctx": {
+      "t": "11:29",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 264,
+      "eta": "15:53",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 145분, 평균 29km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 600m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 11,
+     "say": "한국시리즈에서 삼성이 KT에 2승 1패로 앞서 있어요. 어제 3차전은 삼성이 이겼고, 4차전은 오늘 두 시 대구예요. 정차하면 화면에서 보세요.",
+     "listen": false,
+     "mood": "fun",
+     "prio": 1,
+     "ts": "11:30:24",
+     "by": "claude+search",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "kind": "",
+      "title": "2026 한국시리즈 삼성 vs KT",
+      "source": "파이낸셜뉴스·뉴스핌 · 11-06 기준",
+      "items": [
+       "1차전 11-03 · KT 8:7 삼성",
+       "2차전 11-04 · 삼성 3:2 KT (연장 12회)",
+       "3차전 11-06 · 삼성 승 (대구)",
+       "전적 — 삼성 2승 1패",
+       "4차전 — 11-07 14시 대구"
+      ],
+      "image_query": ""
+     },
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e08",
+   "title": "인물 기사 — 사진 · 기사 표",
+   "why": "인물 근황은 검색해서 소개 카드(왼쪽 인물 사진 — 위키미디어 공용 · 오른쪽 날짜 · 매체 — 기사 요지)",
+   "steps": [
+    {
+     "step": {
+      "do": "say",
+      "text": "손흥민 최근 기사 알려줘",
+      "voice": true
+     },
+     "note": "음성 3.4초 「현비서야 손흥민 최근 기사 알려줘」",
+     "t": 0.6
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 75
+     },
+     "note": "답 도착",
+     "t": 28.0
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 4
+     },
+     "note": "",
+     "t": 32.0
+    },
+    {
+     "step": {
+      "shot": "인물 기사 카드(전체)"
+     },
+     "note": "인물 기사 카드(전체)",
+     "t": 34.4
+    },
+    {
+     "step": {
+      "do": "split",
+      "on": true
+     },
+     "note": "2칸(내비와 나란히)",
+     "t": 37.2
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 3
+     },
+     "note": "",
+     "t": 40.2
+    },
+    {
+     "step": {
+      "shot": "인물 기사 카드(반반)"
+     },
+     "note": "인물 기사 카드(반반)",
+     "t": 41.9
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018645.49,
+     "who": "귀",
+     "text": "받아 적음 「현비서야 손흥민 최근 기사 알려줘.」 · 561ms"
+    },
+    {
+     "t": 1794018645.49,
+     "who": "운전자",
+     "text": "손흥민 최근 기사 알려줘."
+    },
+    {
+     "t": 1794018649.06,
+     "who": "현비서",
+     "text": "음, 잠깐만요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018658.55,
+     "who": "현비서",
+     "text": "조금만 더 찾아볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018659.91,
+     "who": "두뇌",
+     "text": "답 도착 · claude+search · 카드 「손흥민 (LAFC)」"
+    },
+    {
+     "t": 1794018659.91,
+     "who": "카드",
+     "text": "손흥민 (LAFC)|4|kind=info|img=1|최근 확인 기사 — 2026년 4월 / 시즌 기록 — 11경기 2골 11도움 (4월 기준) / 계약 — 2027년까지, 2029년 6월 연장 옵션"
+    },
+    {
+     "t": 1794018660.79,
+     "who": "현비서",
+     "text": "11월 최신 기사는 아직 확인 못 했어요. 가장 최근에 찾은 건 4월 기사인데, MLS 선정 이번 시즌 LAFC에서 11경기 2골 11도움이에요.",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "검색 모드로 답함",
+     "rule": "claude\\+search",
+     "src": "server",
+     "ok": true
+    },
+    {
+     "what": "인물 사진 소개 카드",
+     "rule": "card\\|.*kind=info\\|img=1",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e08_1.jpg",
+     "caption": "인물 기사 카드(전체)",
+     "t": 1794018679.0041206
+    },
+    {
+     "file": "shots/e08_2.jpg",
+     "caption": "인물 기사 카드(반반)",
+     "t": 1794018686.5460842
+    }
+   ],
+   "video": {
+    "file": "raw/e08.mp4",
+    "dur": 43.731489,
+    "t0": 1794018644.3152478,
+    "offset": 297.93
+   },
+   "t_start": 1794018644.6511953,
+   "t_end": 1794018688.0467367,
+   "secs": 43.4,
+   "latency": [
+    13.1
+   ],
+   "engines": [
+    "claude+search"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 12,
+     "ts": "11:30:45",
+     "kind": "talk",
+     "text": "손흥민 최근 기사 알려줘.",
+     "ctx": {
+      "t": "11:30",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 143,
+      "remainMin": 264,
+      "eta": "15:54",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 145분, 평균 29km/h)",
+      "trafficAhead": [
+       "약 400m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 500m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 600m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 12,
+     "say": "11월 최신 기사는 아직 확인 못 했어요. 가장 최근에 찾은 건 4월 기사인데, MLS 선정 이번 시즌 LAFC에서 11경기 2골 11도움이에요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "11:31:00",
+     "by": "claude+search",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "kind": "info",
+      "title": "손흥민 (LAFC)",
+      "source": "경향신문 등 검색 · 11월 기사는 확인 못 함 · 사진 위키미디어 공용 CC BY-SA 4.0",
+      "items": [
+       "최근 확인 기사 — 2026년 4월",
+       "시즌 기록 — 11경기 2골 11도움 (4월 기준)",
+       "계약 — 2027년까지, 2029년 6월 연장 옵션",
+       "11월 근황 — 아직 확인 못 했어요"
+      ],
+      "image_query": "Son Heung-min",
+      "images": [
+       "/hyun/img?u=https%3A%2F%2Fthumb.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fb%2Fb0%2FBFA_2023_-2_Heung-Min_Son_%2528cropped%2529.jpg%2F960px-BFA_2023_-2_Heung-Min_Son_%2528cropped%2529.jpg%3Futm_source%3Dcommons.wikimedia.org%26utm_campaign%3Dimageinfo%26utm_content%3Dthumbnail"
+      ]
+     },
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [
+      "응원팀·운동 좋아함: 손흥민"
+     ],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e09",
+   "title": "주행 중 — 사고 정찰 · 휴게소 알림",
+   "why": "D·60km/h로 달리며 300m 앞 사고(갈림길 없음 → 우회 묻지 않음, 앱 P0 먼저)와 3km 앞 휴게소 알림(말만 — 주행 중 카드 숨김)",
+   "steps": [
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es dest 대전역 --ef lat 36.3322 --ef lng 127.4343"
+     },
+     "note": "--es dest 대전역 --ef lat 36.3322 --ef lng 127.4343",
+     "t": 0.1
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "navi\\|routeStarted",
+      "timeout": 40
+     },
+     "note": "확인",
+     "t": 10.5
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "gear",
+       "Drive"
+      ]
+     },
+     "note": "gear Drive",
+     "t": 11.7
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "speed",
+       "60"
+      ]
+     },
+     "note": "speed 60",
+     "t": 12.8
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 4
+     },
+     "note": "",
+     "t": 16.8
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es traffic 'accident|300|경부고속도로 1차로 추돌 사고'"
+     },
+     "note": "--es traffic 'accident|300|경부고속도로 1차로 추돌 사고'",
+     "t": 17.0
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 45
+     },
+     "note": "답 도착",
+     "t": 28.2
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es restarea '기흥휴게소|2800'"
+     },
+     "note": "--es restarea '기흥휴게소|2800'",
+     "t": 28.3
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "say\\|P\\d\\|.*휴게소",
+      "timeout": 100
+     },
+     "note": "확인",
+     "t": 64.8
+    },
+    {
+     "step": {
+      "wait": "tts"
+     },
+     "note": "",
+     "t": 64.8
+    },
+    {
+     "step": {
+      "shot": "주행 중 화면"
+     },
+     "note": "주행 중 화면",
+     "t": 66.6
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "speed",
+       "0"
+      ]
+     },
+     "note": "speed 0",
+     "t": 67.9
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "gear",
+       "Park"
+      ]
+     },
+     "note": "gear Park",
+     "t": 69.2
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018691.79,
+     "who": "길",
+     "text": "nav 대전역|36.33219909667969,127.4343032836914|est=161054m"
+    },
+    {
+     "t": 1794018691.99,
+     "who": "내비",
+     "text": "cancelled "
+    },
+    {
+     "t": 1794018701.94,
+     "who": "내비",
+     "text": "routeStarted RouteStartInfo(duration=15480, distance=143000, tollFare=5740, name=대전역, remainDestinationChargingValue=59007)"
+    },
+    {
+     "t": 1794018706.93,
+     "who": "이벤트",
+     "text": "depart"
+    },
+    {
+     "t": 1794018708.6,
+     "who": "정찰",
+     "text": "사고|sev=3|ahead=300|detour=none@406|사고 · 약 300m · 경부고속도로 1차로 추돌 사고"
+    },
+    {
+     "t": 1794018708.6,
+     "who": "현비서",
+     "text": "300미터 앞 사고 정보예요. 돌아갈 길은 없어요. 차로 지키고 천천히 가요.",
+     "prio": 0
+    },
+    {
+     "t": 1794018711.79,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018717.54,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794018719.98,
+     "who": "휴게소",
+     "text": "기흥휴게소|2800m"
+    },
+    {
+     "t": 1794018719.98,
+     "who": "이벤트",
+     "text": "restarea|{\"restName\":\"기흥휴게소\",\"aheadM\":2800}"
+    },
+    {
+     "t": 1794018720.49,
+     "who": "현비서",
+     "text": "대전역까지 4시간 18분, 도착은 15시 49분이에요. 내비 교통정보 기준 경로에 97km 정체라 많이 막혀요. 천천히 가요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018724.76,
+     "who": "두뇌",
+     "text": "답 도착 · claude+search"
+    },
+    {
+     "t": 1794018750.68,
+     "who": "현비서",
+     "text": "300m 앞에 추돌 사고가 있어요. 돌아갈 길은 없으니 차로 지키고 천천히 가요.",
+     "prio": 1
+    },
+    {
+     "t": 1794018756.38,
+     "who": "현비서",
+     "text": "기흥휴게소가 곧 나와요. 길이 많이 막히니 잠깐 쉬었다 가는 것도 좋아요.",
+     "prio": 2
+    }
+   ],
+   "checks": [
+    {
+     "what": "앱이 먼저 사고 경고(P0)",
+     "rule": "say\\|P0\\|.*사고",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "우회 타이밍 판정",
+     "rule": "scout\\|demo\\|사고\\|sev=3\\|ahead=300\\|detour=(none|possible|unknown)",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "휴게소 알림 이벤트",
+     "rule": "event\\|restarea",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "휴게소를 말로 소개(주행 중 — 카드는 숨김)",
+     "rule": "say\\|P\\d\\|.*휴게소",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e09_1.jpg",
+     "caption": "주행 중 화면",
+     "t": 1794018758.6750991
+    }
+   ],
+   "video": {
+    "file": "raw/e09.mp4",
+    "dur": 70.551867,
+    "t0": 1794018692.2738872,
+    "offset": 341.66
+   },
+   "t_start": 1794018692.0730255,
+   "t_end": 1794018762.8257542,
+   "secs": 70.8,
+   "latency": [],
+   "engines": [
+    "claude",
+    "claude+search"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 13,
+     "ts": "11:31:47",
+     "kind": "event",
+     "text": "depart",
+     "ctx": {
+      "t": "11:31",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 1,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 142.9,
+      "remainMin": 258,
+      "eta": "15:49",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 140분, 평균 30km/h)",
+      "trafficAhead": [
+       "약 380m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 480m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 580m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "in",
+     "id": 14,
+     "ts": "11:31:48",
+     "kind": "event",
+     "text": "traffic",
+     "ctx": {
+      "t": "11:31",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 1,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 142.9,
+      "remainMin": 258,
+      "eta": "15:49",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 140분, 평균 30km/h)",
+      "trafficAhead": [
+       "약 380m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 480m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 580m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100,
+      "findings": [
+       {
+        "kind": "사고",
+        "sev": 3,
+        "aheadM": 300,
+        "text": "사고 · 약 300m · 경부고속도로 1차로 추돌 사고",
+        "src": "demo",
+        "detour": "none",
+        "branchM": 406
+       }
+      ],
+      "appWarned": "사고 · 약 300m · 경부고속도로 1차로 추돌 사고"
+     }
+    },
+    {
+     "dir": "out",
+     "id": 13,
+     "say": "대전역까지 4시간 18분, 도착은 15시 49분이에요. 내비 교통정보 기준 경로에 97km 정체라 많이 막혀요. 천천히 가요.",
+     "listen": false,
+     "mood": "care",
+     "prio": 1,
+     "ts": "11:31:52",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "out",
+     "id": 14,
+     "say": "300m 앞에 추돌 사고가 있어요. 돌아갈 길은 없으니 차로 지키고 천천히 가요.",
+     "listen": false,
+     "mood": "care",
+     "prio": 1,
+     "ts": "11:31:57",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 15,
+     "ts": "11:32:00",
+     "kind": "event",
+     "text": "restarea",
+     "ctx": {
+      "t": "11:31",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 0,
+      "quietMin": 1,
+      "addr": "수정구 시흥동",
+      "dest": "대전역",
+      "remainKm": 142.7,
+      "remainMin": 258,
+      "eta": "15:49",
+      "totalKm": 143,
+      "traffic": "정체 97.0km(약 140분, 평균 30km/h)",
+      "trafficAhead": [
+       "약 380m 앞 정체 · 대왕판교로 금토동삼거리 100m · 평균 32km/h · 약 1분",
+       "약 480m 앞 서행 · 대왕판교로 금토동삼거리→금토동삼거리 80m · 평균 38km/h · 약 1분",
+       "약 580m 앞 정체 · 대왕판교로 금토동삼거리 40m · 평균 36km/h · 약 1분",
+       "약 1.5km 앞 서행 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 80m · 평균 29km/h · 약 1분",
+       "약 1.6km 앞 정체 · 대왕판교로 판교테크노중앙사거리→판교테크노중앙사거리 60m · 평균 31km/h · 약 1분",
+       "약 1.6km 앞 서행 · 대왕판교로 판교테크노중앙사거리 30m · 평균 61km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "경부고속도로",
+       "동서대로",
+       "동대전로",
+       "대전로"
+      ],
+      "tempC": 4,
+      "rainPct": 0,
+      "soc": 100,
+      "restName": "기흥휴게소",
+      "aheadM": 2800
+     }
+    },
+    {
+     "dir": "out",
+     "id": 15,
+     "say": "기흥휴게소가 곧 나와요. 길이 많이 막히니 잠깐 쉬었다 가는 것도 좋아요.",
+     "listen": false,
+     "mood": "care",
+     "prio": 2,
+     "ts": "11:32:05",
+     "by": "claude+search",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e10",
+   "title": "글레오 — '현비서 지금 상황' 흉내",
+   "why": "Gleo Interface 액션(HYUN_STATUS)에 7초 안에 영어 상황 문장으로 응답",
+   "steps": [
+    {
+     "step": {
+      "do": "gleo",
+      "action": "HYUN_STATUS",
+      "param": {
+       "item": "all"
+      }
+     },
+     "note": "HYUN_STATUS {'item': 'all'}",
+     "t": 0.1
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "gleo\\|response",
+      "timeout": 10
+     },
+     "note": "확인",
+     "t": 0.5
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 2
+     },
+     "note": "",
+     "t": 2.5
+    },
+    {
+     "step": {
+      "shot": "글레오 응답"
+     },
+     "note": "글레오 응답",
+     "t": 4.3
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794018766.45,
+     "who": "글레오",
+     "text": "action|HYUN_STATUS|{\"item\":\"all\"}"
+    },
+    {
+     "t": 1794018766.46,
+     "who": "글레오",
+     "text": "response|{\"functionName\":\"HYUN_STATUS\",\"status\":\"success\",\"message\":\"Heading to 대전역: 142.1 km and about 257 minutes left, arriving at 15:49. The navigation reports 97.0km of congestion, about 140 minutes of delay on the route. The nearest is heavy congestion in 12.0km.\",\"mode\":\"voice\"}"
+    }
+   ],
+   "checks": [
+    {
+     "what": "목적지·남은 시간 영어 응답",
+     "rule": "gleo\\|response\\|.*Heading to",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e10_1.jpg",
+     "caption": "글레오 응답",
+     "t": 1794018770.967911
+    }
+   ],
+   "video": {
+    "file": "raw/e10.mp4",
+    "dur": 5.648967,
+    "t0": 1794018766.8197684,
+    "offset": 412.22
+   },
+   "t_start": 1794018766.6815631,
+   "t_end": 1794018772.4687355,
+   "secs": 5.8,
+   "latency": [],
+   "engines": [],
+   "server": []
+  }
+ ],
+ "video": "video.mp4",
+ "data": "server\\hyun\\data-e2e",
+ "spec": "tools\\hyun_e2e\\cases.json"
+}

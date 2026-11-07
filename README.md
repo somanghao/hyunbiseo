@@ -4,16 +4,16 @@
 
 > 이 저장소는 작업 저장소에서 `tools/export_hyunbiseo.py`로 떼어 낸 **사본**입니다(private). 고칠 땐 원본에서 고치고 다시 내보냅니다.
 
-![휴게소 소개 — 왼쪽 사진 · 오른쪽 표](records/hyun-e2e/20261107-0949/shots/e03_1.jpg)
+![휴게소 소개 — 왼쪽 사진 · 오른쪽 표](records/hyun-e2e/20261107-1125/shots/e03_1.jpg)
 
 | 반반 화면(내비와 나란히) · 교통 표 | 인물 기사 — 사진 · 기사 표 |
 |---|---|
-| ![](records/hyun-e2e/20261107-0949/shots/e02_1.jpg) | ![](records/hyun-e2e/20261107-0949/shots/e08_1.jpg) |
+| ![](records/hyun-e2e/20261107-1125/shots/e02_1.jpg) | ![](records/hyun-e2e/20261107-1125/shots/e08_1.jpg) |
 
 ## 시험 영상 · 기록
 
-- **영상** [`records/hyun-e2e/20261107-0949/video.mp4`](records/hyun-e2e/20261107-0949/video.mp4) — 7분 · 에뮬레이터 화면 녹화 + **자막 = 실제 대화**(운전자 · 현비서 · 화면 카드 · 주행 이벤트). 소리는 없습니다
-- **보고서** `records/hyun-e2e/20261107-0949/report.html`(내려받아 브라우저로 — 영상 장면 이동 · 케이스별 판정 · 대화 · 스크린샷) · 전체 기록 `transcript.json`
+- **영상** [`records/hyun-e2e/20261107-1125/video.mp4`](records/hyun-e2e/20261107-1125/video.mp4) — 7분 · 에뮬레이터 화면 녹화 + **자막 = 실제 대화**(운전자 · 현비서 · 화면 카드 · 주행 이벤트). 소리는 없습니다
+- **보고서** `records/hyun-e2e/20261107-1125/report.html`(내려받아 브라우저로 — 영상 장면 이동 · 케이스별 판정 · 대화 · 스크린샷) · 전체 기록 `transcript.json`
 - 시나리오 정본 [`tools/hyun_e2e/cases.json`](tools/hyun_e2e/cases.json) — 11개, 최종 실행 **11/11 통과**
 
 | 케이스 | 내용 | 응답(말 → 답) |
@@ -41,8 +41,15 @@
 ## 구조
 
 ```
-android/hyun/        앱(Kotlin) — HyunActivity(흐름) · HyunView(화면) · Ear(상시 귀) · EarService(마이크 포그라운드) · Scout(경로 정찰) · Trip · Speaker · assets/schema.json(Gleo)
-server/hyun/         중계 서버(8790) · brain_cli(내 Claude 계정) · brain_api(API 키) · brain_common(규칙·답 형식) · feeds(정보 통로) · taste · taste_refine(정리 봇) · stt_server(Whisper, 8791) · persona.md(캐릭터·말하기 규칙)
+android/hyun/…/hyun/ 앱(Kotlin) — 코어 + 기능 플러그인
+  HyunActivity         껍데기(화면 · 생명주기)
+  core/                Hyun(대화 엔진 — 듣기 · 말하기 · 두뇌 · 1초 루프) · Feature(기능 훅) · Fmt
+  feature/             Registry(기능 목록) · Route(목적지 · 경유지) · Scout(경로 정찰 · 휴게소) · Gleo · Car(날씨 · 배터리 · 장시간) · Command(조용히 · 듣기 모드 · 캐릭터) · Phone(짭비서)
+  voice/ drive/ brain/ ui/ phone/   귀 · 입 · 말하기 스케줄러 / 내비 · 정찰 판정 · 남은 거리 · 눈 / 서버 HTTP / 화면 · 카드 · 캐릭터 / 폰 전용
+server/hyun/         중계 서버(8790) — hyun_server.py(진입) · persona.md(캐릭터 · 말하기 규칙) · stt_server(Whisper, 8791)
+  core/                설정(HYUN_DATA) · 저장 · inbox(말 ↔ 답) · HTTP · 자동 두뇌 워커
+  brain/               prompt(규칙 · 답 형식 · 질문을 기능에서 모음) · cli(내 Claude 계정) · api(API 키)
+  features/            route · traffic · cards · memory · taste · history · briefing · feeds(정보 통로 7) · search · restarea · phone · taste_refine(정리 봇) · login · testaudio
 tools/hyun_e2e/      E2E 시험(시나리오 → 에뮬 · 녹화 · 판정 · 보고서)  ·  tools/hyun_harness/ 질문 하네스
 records/hyun-e2e/    시험 기록
 docs/                설계·실측 문서(작업 저장소 위키 사본 — [[이름]] 링크는 원본 위키 기준)
@@ -65,5 +72,6 @@ adb -s emulator-5554 shell am start --user 10 -n io.github.somanghao.makecar.hyu
 python -I -X utf8 tools/hyun_e2e/run.py --servers --video
 ```
 
-- 시연 인텐트(마이크 없이 말 · 목적지 · 정찰 주입 등)는 `HyunActivity.kt` 맨 위 주석
+- **새 기능 붙이기** = 앱 `feature/<X>Feature.kt` + `Registry` 한 줄 · 서버 `features/<x>.py` + `features/__init__.py` `ALL` 한 줄 · `tools/hyun_e2e/cases.json`에 시험 케이스 → `docs/hyun-architecture.md`
+- 시연 인텐트(마이크 없이 말 · 목적지 · 정찰 주입 등)는 `core/Hyun.kt` `onIntent` 주석(코어)과 각 `feature/*.kt` 맨 위 주석(기능)
 - 상용화 두뇌(현대 클라우드 PC + 사용자 본인 Claude 로그인)는 Anthropic 서면 승인이 필요합니다 — `docs/hyun-brain.md` §약관
