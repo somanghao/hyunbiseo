@@ -1,7 +1,5 @@
 package io.github.somanghao.makecar.hyun
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.app.Activity
 import android.content.Intent
 import android.graphics.drawable.GradientDrawable
@@ -18,8 +16,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
-import com.airbnb.lottie.LottieCompositionFactory
-import com.airbnb.lottie.LottieDrawable
 import android.widget.LinearLayout
 import io.github.somanghao.makecar.hyun.core.Hyun
 import io.github.somanghao.makecar.hyun.feature.Registry
@@ -74,37 +70,26 @@ class HyunActivity : Activity() {
         hyun.onPermissions(permissions, grantResults)
     }
 
-    // ---------- 시작 스플래시 — res/raw/h_ai_splash_lottie 한 번 재생 후 사라진다(누르면 건너뜀) ----------
+    // ---------- 시작 스플래시 — 얼굴 그림(assets/chars/face_splash.png)이 톡 튀어나왔다 사라진다(누르면 건너뜀) ----------
     private fun splash(root: FrameLayout) {
-        val comp = try { LottieCompositionFactory.fromRawResSync(this, R.raw.h_ai_splash_lottie).value } catch (_: Exception) { null } ?: return
-        val anim = LottieDrawable().apply { composition = comp; repeatCount = 0 }
-        val side = minOf(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels) * 6 / 10
+        val bm = try { assets.open("chars/face_splash.png").use { android.graphics.BitmapFactory.decodeStream(it) } } catch (_: Exception) { null } ?: return
+        val side = minOf(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels) * 45 / 100
+        val face = ImageView(this).apply { setImageBitmap(bm); scaleType = ImageView.ScaleType.FIT_CENTER; scaleX = 0.4f; scaleY = 0.4f; alpha = 0f }
         val cover = FrameLayout(this).apply {
             setBackgroundColor(if (hyun.isCar) 0xFF0B0F14.toInt() else 0xFFFFFFFF.toInt())
             isClickable = true
+            addView(face, FrameLayout.LayoutParams(side, side, Gravity.CENTER))
         }
         var gone = false
-        // 그릴 수 없는 파일이면 앱을 죽이지 말고 스플래시만 건너뛴다
-        val img = object : ImageView(this) {
-            override fun onDraw(c: android.graphics.Canvas) {
-                if (gone) return
-                val n = c.saveCount
-                try { super.onDraw(c) } catch (e: Exception) {
-                    c.restoreToCount(n); android.util.Log.w("HYUN", "splash lottie off: $e"); gone = true; anim.cancelAnimation(); post { root.removeView(cover) }
-                }
-            }
-        }.apply { setImageDrawable(anim) }
-        cover.addView(img, FrameLayout.LayoutParams(side, side, Gravity.CENTER))
         fun close() {
             if (gone) return
             gone = true
-            cover.animate().alpha(0f).setDuration(300).withEndAction { anim.cancelAnimation(); root.removeView(cover) }.start()
+            cover.animate().alpha(0f).setDuration(300).withEndAction { root.removeView(cover) }.start()
         }
         cover.setOnClickListener { close() }
-        anim.addAnimatorListener(object : AnimatorListenerAdapter() { override fun onAnimationEnd(a: Animator) { close() } })
         root.addView(cover, FrameLayout.LayoutParams(-1, -1))
-        anim.playAnimation()
-        cover.postDelayed({ close() }, comp.duration.toLong() + 1500)   // 끝 신호가 안 와도 멈춰 있지 않게
+        face.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(450).setInterpolator(android.view.animation.OvershootInterpolator(2f)).start()
+        cover.postDelayed({ close() }, 1600)
     }
 
     // ---------- 글로 묻기(폰) — 지하철·회의 중 ----------
