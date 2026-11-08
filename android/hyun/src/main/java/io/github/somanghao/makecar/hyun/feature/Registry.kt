@@ -14,6 +14,7 @@ object Registry {
         QuietFeature(),        // "조용히 해 줘" · "이제 말해도 돼"
         ListenModeFeature(),   // "상시 모드로" · "버튼 모드로"(차)
         CharacterFeature(),    // 캐릭터 3종 · "캐릭터 바꿔 줘"(차)
+        StageFeature(),        // 상황별 추천 화면 6단계 · 첫 실행 점검·숙련도 · 꾸미기(안전운전 포인트) · 주행 중 내 차 상태(차)
         GleoFeature(),         // Gleo Interface — ASK_HYUN · HYUN_STATUS · HYUN_QUIET(차)
         RouteFeature(),        // 목적지 · 경유지 · 안내 끝 · 주행 이벤트(출발 · 절반 · 곧 도착 · 도착 · 목적지 없이 출발)
         ScoutFeature(),        // 경로 정찰 · 우회 타이밍 · 되돌리기 · 적응 주기 · 휴게소 알림(차)

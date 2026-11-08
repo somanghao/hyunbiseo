@@ -62,6 +62,9 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     @Volatile var gear = 'P'
         private set
     @Volatile private var uxDo = false
+    /** 시동(VehicleIgnitionState) — 4 ON · 5 START · 3 ACC · 2 OFF · 1 LOCK. 폰·못 읽으면 4(켜짐)로 둔다 */
+    @Volatile var ignition = 4
+        private set
     var lat: Double? = null
         private set
     var lng: Double? = null
@@ -503,6 +506,8 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private var reasked = false                   // 못 알아들으면 한 번만 다시 묻는다(대화 창마다)
     private var spoke = false                     // 이번 듣기에서 말소리가 시작됐나(Pleos STT) — 빈 결과면 다시 묻기
     private var greeted = false
+    /** 첫 실행 온보딩(StageFeature)이 직접 인사한다 — 시동 인사(hello)를 건너뛴다 */
+    var holdHello = false
 
     /** 귀를 켤지 — 상시 듣기면 늘, 눌러서 말하기면 대화 창이 열렸을 때만. 차는 마이크 포그라운드 서비스도(내비 화면에서도 듣게) */
     private fun ensureEar() {
@@ -607,6 +612,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     /** 첫 인사 — 서버 health를 한 번 받은 뒤에(안 그러면 두뇌가 있어도 규칙 인사가 나간다, 폰 실측) · 최대 8초 */
     private fun helloWhenReady(tries: Int) {
         if (greeted) return
+        if (holdHello) { greeted = true; log("hello|skip|온보딩이 인사"); return }
         if (!healthSeen && tries < 8) { main.postDelayed({ helloWhenReady(tries + 1) }, 1000); return }
         greeted = true; main.postDelayed({ fire("hello") }, 800)
     }
@@ -673,6 +679,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     override fun onSpeed(ms: Float) { speedMs = ms }
     override fun onGear(g: Char) { if (g != gear) log("gear|$g"); gear = g }
     override fun onDo(on: Boolean) { if (on != uxDo) log("ux|DO=$on"); uxDo = on }
+    override fun onIgnition(state: Int) { if (state != ignition) log("ignition|$state"); ignition = state }
     override fun onPlace(lat: Double, lng: Double, addr: String?) { place(lat, lng, addr) }
 
     private fun place(la: Double, lo: Double, ad: String?) = main.post {

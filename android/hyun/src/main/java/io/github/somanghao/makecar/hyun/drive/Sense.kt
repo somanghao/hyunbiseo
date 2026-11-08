@@ -30,6 +30,8 @@ interface Sense {
         fun onGear(g: Char)
         fun onDo(on: Boolean)
         fun onPlace(lat: Double, lng: Double, addr: String?)
+        /** 시동 상태(VehicleIgnitionState: 1 LOCK · 2 OFF · 3 ACC · 4 ON · 5 START) — 차만 */
+        fun onIgnition(state: Int) {}
     }
 }
 
@@ -47,11 +49,13 @@ class CarSense(private val ctx: Context, private val out: Sense.Out) : Sense {
         cpm = pm
         runCatching { out.onSpeed(pm.getProperty<Float>(VehiclePropertyIds.PERF_VEHICLE_SPEED, 0).value ?: 0f) }
         runCatching { out.onGear(gearChar(pm.getProperty<Int>(VehiclePropertyIds.GEAR_SELECTION, 0).value ?: 4)) }
+        runCatching { out.onIgnition(pm.getProperty<Int>(VehiclePropertyIds.IGNITION_STATE, 0).value ?: 4) }.onFailure { log("car|ignition|${it.message}") }
         val k = object : CarPropertyManager.CarPropertyEventCallback {
             override fun onChangeEvent(v: CarPropertyValue<*>) {
                 when (v.propertyId) {
                     VehiclePropertyIds.PERF_VEHICLE_SPEED -> (v.value as? Float)?.let(out::onSpeed)
                     VehiclePropertyIds.GEAR_SELECTION -> out.onGear(gearChar((v.value as? Int) ?: 4))
+                    VehiclePropertyIds.IGNITION_STATE -> (v.value as? Int)?.let(out::onIgnition)
                 }
             }
             override fun onErrorEvent(propId: Int, zone: Int) { log("car|error|$propId") }
@@ -59,6 +63,7 @@ class CarSense(private val ctx: Context, private val out: Sense.Out) : Sense {
         cb = k
         runCatching { pm.registerCallback(k, VehiclePropertyIds.PERF_VEHICLE_SPEED, CarPropertyManager.SENSOR_RATE_NORMAL) }.onFailure { log("car|speed|${it.message}") }
         runCatching { pm.registerCallback(k, VehiclePropertyIds.GEAR_SELECTION, CarPropertyManager.SENSOR_RATE_ONCHANGE) }.onFailure { log("car|gear|${it.message}") }
+        runCatching { pm.registerCallback(k, VehiclePropertyIds.IGNITION_STATE, CarPropertyManager.SENSOR_RATE_ONCHANGE) }.onFailure { log("car|ignition|${it.message}") }
         runCatching {
             val ux = (c.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as CarUxRestrictionsManager).also { uxm = it }
             out.onDo(ux.currentCarUxRestrictions.isRequiresDistractionOptimization)

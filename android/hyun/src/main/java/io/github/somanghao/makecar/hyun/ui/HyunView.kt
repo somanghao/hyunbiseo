@@ -101,6 +101,11 @@ class HyunView(ctx: Context) : View(ctx) {
     var character = "face"
         set(v) { field = v; charImages().forEach { bmp(it) } }
     var onCharacter: () -> Unit = {}
+    /** 차 가로 화면의 상황별 추천 화면(StageFeature) — 있으면 drawCar 대신 그린다 */
+    var stage: StageUi? = null
+    /** 상황 화면이 잠깐 정하는 표정(온보딩 손 흔들기 등) · 대기 기본 표정(꾸미기) */
+    var faceOverride: String? = null
+    var idleFace = "neutral"
     private val charBtn = RectF()
     private val bmps = java.util.concurrent.ConcurrentHashMap<String, Bitmap>()
     private val loading = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
@@ -162,6 +167,7 @@ class HyunView(ctx: Context) : View(ctx) {
             drawCar(c, w, h, t, b)
             c.restore(); level *= 0.82f
             if (mode != Mode.READY || !driving) postInvalidateDelayed(40)
+            else if (stage?.animating() == true) postInvalidateDelayed(250)   // 주행 중 깜빡이 등 — 4fps
             return
         }
         header(c, w, b)
@@ -562,6 +568,7 @@ class HyunView(ctx: Context) : View(ctx) {
 
     // ---------- 캐릭터 그림(디자인 에셋) ----------
     /** 그림은 처음 쓸 때 뒤에서 읽어 둔다(절반 크기) — 아직 없으면 null(그 사이는 그린 구슬) */
+    internal fun asset(name: String): Bitmap? = bmp(name)
     private fun bmp(name: String): Bitmap? {
         bmps[name]?.let { return it }
         if (loading.add(name)) Thread {
@@ -618,7 +625,7 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     /** 헬멧 로봇 표정 — 경고 > 듣기 > 생각 > 말하기(기분별) > 대기(주행 = 운전대, 기분별). 대기·말하기 중 4초마다 잠깐 눈 감기(깜빡임) */
-    private fun botFace(): String {
+    internal fun botFace(): String {
         val t = (System.nanoTime() - t0) / 1e9
         val blink = t % 4.2 < 0.14 && (mode == Mode.READY || mode == Mode.SPEAKING) && !(driving && mode == Mode.READY)
         return when {
@@ -627,10 +634,11 @@ class HyunView(ctx: Context) : View(ctx) {
             mode == Mode.THINKING -> "thinking"
             blink -> "bored"
             mode == Mode.SPEAKING -> when (mood) { "happy" -> "laugh"; "fun" -> "excited"; "care" -> "worried"; else -> "happy" }
+            faceOverride != null -> faceOverride!!
             driving -> "driving"
             mood == "happy" -> "happy"; mood == "fun" -> "humming"; mood == "care" -> "worried"
             brain == false -> "tired"
-            else -> "neutral"
+            else -> idleFace
         }
     }
 
@@ -653,6 +661,7 @@ class HyunView(ctx: Context) : View(ctx) {
     private fun drawCar(c: Canvas, w: Float, h: Float, t: Float, b: Box) {
         // 앱 영역 2칸(내비와 나란히 — 오른쪽 ⋮ 끌기)이면 폭이 반이라 세로로 쌓는다(11-07 실측: 왼쪽 열이 좁아 도착 시각·버튼이 "…")
         if (w < h * 1.15f) { drawCarNarrow(c, w, h, t); return }
+        stage?.let { if (it.draw(c, w, h, t)) return }
         val u = b.u; val pad = b.pad
         val leftW = w * 0.24f; val lx0 = pad; val lx1 = leftW; val lcx = (lx0 + lx1) / 2
         val k = card?.takeIf { !driving }
@@ -1048,7 +1057,7 @@ class HyunView(ctx: Context) : View(ctx) {
 
     // ---------- 회전 안내(TBT) 그림·말 ----------
     /** 회전 화살표 — 꺾는 각도(0 = 직진, + 오른쪽)로 그린다 · 유턴(왼쪽으로 돌아 내려옴) · 회전교차로(고리) · 도착·경유지(핀) */
-    private fun turnIcon(c: Canvas, type: String, cx: Float, cy: Float, s: Float, col: Int) {
+    internal fun turnIcon(c: Canvas, type: String, cx: Float, cy: Float, s: Float, col: Int) {
         p.shader = null; p.color = col
         val sw = s * 0.12f; val hd = s * 0.26f
         p.strokeWidth = sw; p.strokeJoin = Paint.Join.ROUND; p.strokeCap = Paint.Cap.BUTT
@@ -1148,7 +1157,7 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     /** 내비 화면과 같은 거리 표기 — 100m 넘으면 10m 단위, 1km 넘으면 0.1km */
-    private fun dist(m: Int): String = when {
+    internal fun dist(m: Int): String = when {
         m >= 10_000 -> "${m / 1000}km"
         m >= 1000 -> String.format(java.util.Locale.US, "%.1fkm", m / 1000.0).replace(".0km", "km")
         m >= 100 -> "${(m + 5) / 10 * 10}m"
@@ -1156,7 +1165,7 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     /** 목록 카드(차 오른쪽 칸) — 제목·출처 + 번호 목록 한 칸(최대 10줄), 1~3위 강조, "제목 — 작가"면 작가는 옅게 */
-    private fun listCard(c: Canvas, k: Card, x0: Float, y0: Float, x1: Float, y1: Float, u: Float) {
+    internal fun listCard(c: Canvas, k: Card, x0: Float, y0: Float, x1: Float, y1: Float, u: Float) {
         if (k.kind == "info") { infoCard(c, k, x0, y0, x1, y1, u); return }
         val r = RectF(x0, y0, x1, y1)
         cardHit.set(r); cardHit.offset(paddingLeft.toFloat(), paddingTop.toFloat())
@@ -1384,6 +1393,7 @@ class HyunView(ctx: Context) : View(ctx) {
         val x = e.x - paddingLeft; val y = e.y - paddingTop
         if (e.action != MotionEvent.ACTION_UP) return true
         if (listOpen) { listOpen = false; invalidate(); return true }
+        if (!phone) stage?.let { if (it.touch(x, y)) { invalidate(); return true } }
         if (!phone && !charBtn.isEmpty && RectF(charBtn).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) { onCharacter(); return true }   // 캐릭터 바꾸기
         if (!cardHit.isEmpty && cardHit.contains(e.x, e.y)) { card = null; cardHit.setEmpty(); invalidate(); return true }   // 목록 카드 닫기
         if (phone && (RectF(listBtn).apply { inset(-listBtn.width() * 0.3f, -listBtn.height() * 0.3f) }.contains(x, y) || nextHit.contains(x, y))) {
@@ -1401,7 +1411,8 @@ class HyunView(ctx: Context) : View(ctx) {
 
     companion object {
         /** 화면이 실제로 쓰는 로봇 표정(미리 읽어 둠) — 나머지 표정도 assets/chars/bot_*.webp 에 있음 */
-        private val BOT_USED = listOf("neutral", "happy", "laugh", "excited", "humming", "worried", "alert", "surprised", "thinking", "bored", "driving", "tired")
+        private val BOT_USED = listOf("neutral", "happy", "laugh", "excited", "humming", "worried", "alert", "surprised", "thinking", "bored", "driving", "tired",
+            "waving", "confused", "thumbs_up", "cool", "cheer", "sparkle", "heart_eyes", "proud")
         private const val TEAL = 0xFF4FD1C5.toInt()
         private const val OK = 0xFF3FB950.toInt()
         private const val WARN = 0xFFF0B429.toInt()
