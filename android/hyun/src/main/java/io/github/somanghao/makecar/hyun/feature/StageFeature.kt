@@ -120,7 +120,7 @@ class StageModel {
             AccDef("beret", "베레모", "head", 0.7f, 0.04f, -0.4f, -8f, 120),
             AccDef("maid_frill", "메이드 머리띠", "head", 0.74f, 0f, -0.37f, 0f, 120),
             AccDef("deerstalker", "탐정 모자", "head", 0.8f, 0f, -0.38f, 0f, 120),
-            AccDef("headphones", "헤드폰", "head", 0.94f, 0f, -0.02f, 0f, 180),
+            AccDef("headphones", "목에 건 헤드폰", "neck", 0.72f, 0f, 0.5f, 180f, 180),
             AccDef("sunglasses", "선글라스", "eyes", 0.66f, 0f, 0.06f, 0f, 60),
             AccDef("pixel_glasses", "픽셀 안경", "eyes", 0.66f, 0f, 0.06f, 0f, 60),
             AccDef("heart_glasses", "하트 안경", "eyes", 0.62f, 0f, 0.06f, 0f, 60),
