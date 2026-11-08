@@ -20,18 +20,21 @@
 
 | 패키지 | 파일 | 맡는 것 |
 |---|---|---|
-| (루트) | `HyunActivity.kt` | 화면 만들기·인셋·폰 글자 입력·생명주기를 `Hyun`에 넘김. 기능 코드는 없다 |
+| (루트) | `HyunActivity.kt` | 화면 만들기·인셋·폰 글자 입력·생명주기(onStop 포함)를 `Hyun`에 넘김. 기능 코드는 없다 |
+| | `FrontActivity.kt` | 보이지 않는 한순간 화면 — 내비 명령 직전에 띄워 10초 유예(현비서 화면 지키기 `Hyun.primeFront`·`keepFront` → [[hyun-app]] §차 화면) |
 | `core/` | `Hyun.kt` | 대화 엔진 — 듣기(귀·호출어·다시 묻기) · 말하기(`say`→`Speaker`→`pump`→`speakNow`, 회전 앞 침묵 `turnBusy`) · 두뇌 묻기(`ask`)·답 나누기(`onReply`) · 1초 `tick` · 맥락 `ctx()` · 화면 `render()` · 시연 인텐트(코어 몫: server·line·say·rawrec·debug·listen·turnm·sttfile·earfile) · 공용 상태(`isCar`·`navi`·`trip`·`speedMs`·`lat/lng/addr`·`driving`·`policyOverride`·`silent`) |
 | | `Feature.kt` | 기능 훅(아래 표) — 전부 기본 구현, 필요한 것만 override |
 | | `Fmt.kt` | `km`·`dur`("3시간 52분")·`hhmm`·`whenLabel` |
 | `feature/` | `Registry.kt` | **기능 목록 — 순서 = 훅 순서** |
 | | `CommandFeatures.kt` | `QuietFeature`("조용히") · `ListenModeFeature`(상시/버튼, 차) · `CharacterFeature`(캐릭터 3종, 차) |
 | | `GleoFeature.kt` | 글레오 3액션 ASK_HYUN·HYUN_STATUS·HYUN_QUIET(차) |
+| | `TurnFeature.kt` | 회전 안내(TBT) 화면 값 → 내비 판·반반 회전 줄(차) |
+| | `ArriveFeature.kt` | 도착 추천 — 서버가 준 한 줄(`arrive_line`) · 시연 시계 `--es clock` · 맥락 현재 좌표(차) — 판정·검색·카드는 서버 `places` |
 | | `RouteFeature.kt` | 목적지·경유지(`goTo`·`addVia`·`cancelTrip`) · 주행 이벤트 depart·halfway·near·arrived·no_dest·waypoint |
 | | `ScoutFeature.kt` | 경로 정찰(`nextScanSec`·`report`·`reroute`·`afterReroute`) · 휴게소 알림 `restArea` · 글레오용 `english()`(차) |
 | | `CarFeatures.kt` | `WeatherFeature`(Open-Meteo) · `CarBatteryFeature`(Vehicle SDK, 차) · `DriveCareFeature`(장시간·조용함, 차) |
 | | `PhoneFeature.kt` | 짭비서 — 모드·일정·리마인더·할 일·산책·하차(폰) → [[hyun-phone]] |
-| `drive/` | `Navi.kt` | NaviHelper 하나 + **모든 내비 콜백을 로그(`navi|…`)로 남기고 기능들에 나눔**(`listen`) · `call`(실패 로그) |
+| `drive/` | `Navi.kt` | NaviHelper 하나 + **모든 내비 콜백을 로그(`navi|…`)로 남기고 기능들에 나눔**(`listen`) · `call`(실패 로그 · 명령 이름 `COMMANDS`면 `beforeCommand` → 코어가 현비서 화면 지키기) — 새 내비 명령을 부르면 `COMMANDS`에도 |
 | | `Scout.kt` · `Trip.kt` · `Sense.kt` | 정찰 판정(시작 90초 조용 `calmUntil`) · 남은 거리·연속 주행 · 차/폰 눈(속도·기어·DO) |
 | `voice/` | `Voice.kt` · `Ear.kt` · `EarService.kt` · `Speaker.kt` | 귀·입 인터페이스 · 상시 귀 · 마이크 포그라운드 서비스 · 말하기 스케줄러(`eventPrio`) → [[hyun-app]] §귀·§말하기 |
 | `brain/` | `Link.kt` | 서버 HTTP |
@@ -71,6 +74,7 @@
 |---|---|---|
 | `route` | RouteFeature·ScoutFeature | SCHEMA nav_*·via_*·route · [길·교통] · 주행 이벤트 규칙 · `normalize`(nav_* → nav{}) |
 | `traffic` | ScoutFeature | 교통 질문 → 서버가 교통 표 카드(`traffic_card`) |
+| `places` | ArriveFeature · RouteFeature(맥락 `destLat`·`destLng`) | 도착 추천·주변 장소 — `on_in`은 판정만(잠금 안 — 네트워크 금지) · 카카오 호출은 `block`/`post`의 `_ensure` · [주변 장소] 블록 · 서버가 카드(`nostore`) + `arrive_line` · `rec.places`(로그엔 검색어·개수) |
 | `cards` | HyunView | SCHEMA card · 카드 규칙 · 개수 맞추기 `trim_card` · 웹툰 표지·소개 사진 `enrich_card` · `/hyun/img` |
 | `memory` · `taste` · `history` | 정차 화면 칩 | 기억 · 취향(SCHEMA taste·asked_slot, `/hyun/taste`·`/hyun/me`) · [최근 대화] |
 | `briefing` | — | 시동 브리핑 판정 `on_in` · [브리핑] · `last_line` · SCHEMA brief_order |
@@ -81,16 +85,18 @@
 
 ## 새 기능 붙이는 법 (예: 엔터 "끝말잇기")
 
+0. **기능 명세 + 화면 구성도 쌍을 먼저**(사용자 11-08 — 앞으로의 모든 추가 기능) — 둘 다 만들고 사용자 확인을 받은 뒤 아래 1~7로 구현. 명세 `dashboard/hyun/specs/<id>.md` = 목적·심사 4축 · 언제 켜지나(트리거·이벤트·말) · 현비서가 하는 말(예시·우선순위 P0~P3) · 쓰는 신호·SDK(실측/미시험) · 두뇌 답 필드·서버 훅 · 주행 규칙(주행 중 보이는 것·숨기는 것) · E2E 케이스. 화면 구성도 `dashboard/hyun/specs/<id>.html`(목록 `dashboard/hyun/specs/index.html` · 모듈 6 초안 11-08) = 1칸·반반 × 정차·주행 4장(실제 비율 — 1칸 1706×1210 · 반반 841×1210 앱 영역), 기존 요소(캐릭터·내비 판·마이크 줄)와 새 요소의 자리 · 시연 영상의 케이스 설명 슬라이드에도 씀
 1. **앱** `feature/WordChainFeature.kt` — `class WordChainFeature : Feature { override val id = "wordchain"; override fun enabled(car: Boolean) = car … }`. 앱이 바로 할 말은 `onHeard`(true로 가로챔), 두뇌 답의 새 필드는 `onReply`, 상태 표시는 `render`
 2. `feature/Registry.kt`에 한 줄 — **가로채는 기능은 명령들 뒤·길 앞**처럼 순서를 생각해서
-3. **서버** `server/hyun/features/wordchain.py` — 필요한 것만: `RULES`(두뇌에게 놀이 규칙) · `SCHEMA`(새 답 필드, **빈 값을 꼭 정의** — 구조화 출력이 전부 required) · `block`(진행 상태) · `post`(저장·`rep`에 필드)
+3. **서버** `server/hyun/features/wordchain.py`(예시 · 예정) — 필요한 것만: `RULES`(두뇌에게 놀이 규칙) · `SCHEMA`(새 답 필드, **빈 값을 꼭 정의** — 구조화 출력이 전부 required) · `block`(진행 상태) · `post`(저장·`rep`에 필드)
 4. `features/__init__.py` `ALL`에 한 줄
 5. 새 이벤트를 쓰면 `voice/Speaker.eventPrio`에 단계부터(주행 필수면 P1 — [QUICKMAP-hyun](../QUICKMAP-hyun.md) §3 #17)
-6. 시험: `tools/hyun_e2e/cases.json`에 케이스 → `python -I -X utf8 tools/hyun_e2e/run.py --servers --ids <id>` → 전체 `--servers --video`
+6. **화면**: 기능 한 줄은 `render(v)`에서 `v.lines += HyunView.Line(아이콘, 글)`(1칸 = 내비 판 바로 아래 · 반반 = 길 카드 아래 · 코어가 render마다 비움 — 11-08 도착 추천이 첫 사용). 그 밖엔 기능은 `render(v)`로 `HyunView` 값만 채운다 — 그리기 훅은 없어서 새 화면 요소(판·게임판·점수판)는 `ui/HyunView.kt`에 그리는 코드를 직접 넣는다(예: `TurnFeature` 값 → `HyunView.naviPanel`·`naviStrip`, 11-08)
+7. 시험: `tools/hyun_e2e/cases.json`에 케이스 → `python -I -X utf8 tools/hyun_e2e/run.py --servers --ids <id>` → 전체 `--servers --video`
 
 ## 함정
 
 - **Kotlin 속성 초기화식 안의 익명 객체(`object : Runnable`)는 같은 이름의 생성자 인자를 잡는다** — `Hyun(…, features: List<Feature>)` + `val features = features.filter{…}`에서 tick이 거르기 전 목록을 돌아 폰 전용 기능이 차에서 돌다 죽었다(`UninitializedPropertyAccessException`). 인자 이름을 `all`로 바꿔 끊었다
 - **`python -I`는 스크립트 폴더를 `sys.path`에 안 넣는다** — 진입 파일(`hyun_server.py`·`taste_refine.py`)이 `sys.path.insert(0, 자기 폴더)` 해야 `core`·`brain`·`features`를 찾는다. 기능끼리·두뇌와의 import는 **함수 안에서**(`brain.prompt` ↔ `features` 순환 방지)
-- **서버 기능 모듈 안에서 `SCHEMA`·`RULES`·`block`·`post` 같은 훅 이름을 다른 뜻으로 쓰지 않는다** — 정리 봇의 출력 스키마가 `SCHEMA`라 두뇌 답 형식에 섞였다 → `REFINE_SCHEMA`로
+- **서버 기능 모듈 안에서 `SCHEMA`·`RULES`·`block`·`post`·`search` 같은 훅 이름을 다른 뜻으로 쓰지 않는다** — 정리 봇의 출력 스키마가 `SCHEMA`라 두뇌 답 형식에 섞였다 → `REFINE_SCHEMA`로 · 장소 모듈의 `search(la, lo, …)`를 서버가 검색 모드 훅으로 불러 두뇌 스레드가 죽었다(11-08 E2E 0/2) → `find_places` + **서버 시작 때 훅 인자 검사**(`features/__init__.HOOK_ARGS` — 어긋나면 TypeError로 안 켜짐) + 두뇌 스레드는 한 메시지 예외에 살아남는다(`engine.answer_one`)
 - **Git Bash `curl -d '{"text":"한글"}'`은 CP949로 보낸다** → 서버 `UnicodeDecodeError`. 서버 시험은 Python `urllib`(UTF-8)이나 `--data-binary @파일`로

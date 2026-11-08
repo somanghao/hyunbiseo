@@ -38,11 +38,14 @@ class RouteFeature : Feature {
     data class Via(val name: String, val remainM: Int, val remainS: Int)
     var vias = listOf<Via>()
         private set
-    private var destLat: Double? = null           // 폰: 내비가 없어 GPS 직선거리로 남은 거리를 어림
-    private var destLng: Double? = null
+    var destLat: Double? = null                   // 목적지 좌표 — 폰은 GPS 직선거리 어림 · 차는 맥락(도착 추천이 목적지 근처를 찾는다)
+        private set
+    var destLng: Double? = null
+        private set
     private var noDestS = 0                       // 목적지 없이 달린 초 — NO_DEST_S면 주행당 한 번 "어디로 가세요?"
     private var noDestAsked = false
     @Volatile private var lastRouteAt = 0L        // 마지막으로 새 경로가 선 때 — 내비에서 안내를 끈 것과 새 경로 전 취소를 가른다
+    private var lastAskAt = 0L                    // 마지막으로 경로를 요청한 때 — 그 뒤의 '취소 12초' 판정은 옛 취소라 새 목적지를 지우지 않는다
 
     override fun start(hub: Hyun) {
         this.hub = hub
@@ -101,7 +104,7 @@ class RouteFeature : Feature {
         trip.setDestination(name, est, 0.0, estimate = true)
         vias = emptyList(); noDestS = 0
         hub.tripReset()
-        destLat = dLat; destLng = dLng
+        destLat = dLat; destLng = dLng; lastAskAt = SystemClock.elapsedRealtime()
         hub.log("nav|$name|$dLat,$dLng|est=${est.toInt()}m${via?.let { "|via=${it.first}" } ?: ""}")
         if (hub.isCar) hub.navi?.call("requestRoute") {
             val dest = RouteInfo(latitude = dLat, longitude = dLng, displayLongitude = null, displayLatitude = null,
@@ -151,6 +154,8 @@ class RouteFeature : Feature {
     private val naviL = object : NaviHelperEventListener {
         override fun onDestinationInfo(destinationInfo: DestinationInfo) {
             trip.navi(destinationInfo.name, destinationInfo.remainDistance.toDouble(), destinationInfo.remainTime.toDouble())
+            // 내비에서 정한 목적지(앱을 켜기 전·내비 화면에서)도 좌표를 안다 — 안내가 없으면 0(11-08 실측 latitude=0.0)
+            if (destinationInfo.latitude != 0.0 && destinationInfo.longitude != 0.0) { destLat = destinationInfo.latitude; destLng = destinationInfo.longitude }
         }
         override fun onRouteStarted(routeStartInfo: RouteStartInfo) {
             lastRouteAt = SystemClock.elapsedRealtime()
@@ -178,9 +183,10 @@ class RouteFeature : Feature {
         }
         override fun onRouteCancelled() {
             // 새 경로를 잡을 때도 먼저 cancelled가 온다(경유지 경로 실측) — 12초 안에 새 경로가 안 서면 운전자가 내비에서 끈 것으로 보고 비운다
+            // 단 그 사이 우리가 새 경로를 요청했으면(취소 → 곧바로 "강남역 가자") 옛 취소다 — 11-08 실측: 길이 서기 전(6초)에 새 목적지를 지웠다
             val at = SystemClock.elapsedRealtime()
             hub.main.postDelayed({
-                if (lastRouteAt < at && trip.dest != null) { hub.log("nav|cancelled-by-navi"); trip.clear(); vias = emptyList(); hub.tripReset(); hub.render() }
+                if (lastRouteAt < at && lastAskAt < at && trip.dest != null) { hub.log("nav|cancelled-by-navi"); trip.clear(); vias = emptyList(); hub.tripReset(); hub.render() }
             }, 12_000)
         }
     }
@@ -197,6 +203,7 @@ class RouteFeature : Feature {
         val now = System.currentTimeMillis()
         c.put("dest", d); c.put("remainKm", Fmt.km(trip.remainM)); c.put("remainMin", hub.mins())
         c.put("eta", Fmt.hhmm(now + (trip.remainS * 1000).toLong())); c.put("totalKm", Fmt.km(trip.totalM))
+        destLat?.let { la -> destLng?.let { lo -> c.put("destLat", Math.round(la * 1e5) / 1e5); c.put("destLng", Math.round(lo * 1e5) / 1e5) } }
         if (vias.isNotEmpty()) c.put("via", JSONArray(vias.map { v ->
             v.name + (if (v.remainM > 0) " · ${Fmt.km(v.remainM.toDouble())}km · ${ceil(v.remainS / 60.0).toInt()}분" else "")
         }))

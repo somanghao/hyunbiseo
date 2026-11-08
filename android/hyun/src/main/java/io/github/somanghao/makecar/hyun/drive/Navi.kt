@@ -44,8 +44,16 @@ class Navi(ctx: Context, private val main: Handler, private val log: (String) ->
         }.onFailure { log("navi|init|${it.message}") }
     }
 
-    /** 내비 요청 — 예외는 로그만(`navi|<what>|FAIL|…`) */
+    /** 마지막으로 내비에 '명령'(경로·경유지·취소·옵션)을 보낸 때 — 이 요청들은 내비 화면을 맨 앞으로 띄운다(11-08 실측: requestRoute 1초 안).
+     *  코어가 이 시각 직후 가려지면 현비서를 다시 앞으로 → [io.github.somanghao.makecar.hyun.core.Hyun.onStop] */
+    @Volatile var lastCommandAt = 0L
+        private set
+    /** 명령 직전에 부른다(main) — 코어가 '보이지 않는 한순간 화면'으로 10초 유예를 만든다 */
+    var beforeCommand: (String) -> Unit = {}
+
+    /** 내비 요청 — 예외는 로그만(`navi|<what>|FAIL|…`). 명령 이름은 [COMMANDS] — 새 명령을 부르면 거기에도 */
     fun call(what: String, f: NaviHelper.() -> Unit) {
+        if (what in COMMANDS) { runCatching { beforeCommand(what) }; lastCommandAt = SystemClock.elapsedRealtime() }
         runCatching { helper.f() }.onFailure { log("navi|$what|FAIL|${it.javaClass.simpleName} ${it.message}") }
     }
 
@@ -55,6 +63,7 @@ class Navi(ctx: Context, private val main: Handler, private val log: (String) ->
 
     private var lastDrivingLog = 0L
     private var lastTbtLog = 0L
+    private var lastTbt = ""
 
     private val fan = object : NaviHelperEventListener {
         override fun onCurrentLocationInfo(info: CurrentLocationInfo) { log("navi|location|${info.latitude},${info.longitude}|${info.address}"); each { it.onCurrentLocationInfo(info) } }
@@ -71,7 +80,8 @@ class Navi(ctx: Context, private val main: Handler, private val log: (String) ->
         }
         override fun onTBTInfo(tbtInfos: List<TBTInfo>) {
             val now = SystemClock.elapsedRealtime()
-            if (now - lastTbtLog > 15_000) { lastTbtLog = now; log("navi|tbt|${tbtInfos.size}|${tbtInfos.take(4).joinToString(";") { "${it.type.name}@${it.distance.toInt()}" }}") }
+            val line = "${tbtInfos.size}|${tbtInfos.take(4).joinToString(";") { "${it.type.name}@${it.distance.toInt()}:${it.description}" }}"
+            if (line != lastTbt || now - lastTbtLog > 15_000) { lastTbtLog = now; lastTbt = line; log("navi|tbt|$line") }   // 바뀌면 바로 · 같으면 15초마다
             each { it.onTBTInfo(tbtInfos) }
         }
         override fun onReRouteEnded() { log("navi|reRouteEnded"); each { it.onReRouteEnded() } }
@@ -95,5 +105,10 @@ class Navi(ctx: Context, private val main: Handler, private val log: (String) ->
         override fun onRouteCancelled() { log("navi|cancelled"); each { it.onRouteCancelled() } }
         override fun onDestinationChanged() { log("navi|destinationChanged"); call("getDestinationInfo") { getDestinationInfo() }; each { it.onDestinationChanged() } }
         override fun onError(errorCode: NaviErrorCode) { log("navi|error|$errorCode"); each { it.onError(errorCode) } }
+    }
+
+    companion object {
+        /** 내비 화면을 앞으로 띄우는 요청들(call 이름) — 읽기(get·scan·getTBTInfo·getWaypointInfo)는 안 띄운다 */
+        val COMMANDS = setOf("requestRoute", "cancelRoute", "addWaypoint", "removeWaypoint", "route", "revert")
     }
 }

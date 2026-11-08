@@ -1,0 +1,1296 @@
+{
+ "stamp": "20261108-1613",
+ "cases": [
+  {
+   "id": "e17",
+   "title": "도착 추천 — 점심 시간 곧 도착 · 국밥 취향 · 내려서 카드",
+   "why": "도착 시각 · 목적지 · 취향을 합쳐 묻기 전에 먼저: 곧 도착에 한마디 + 한 줄, 내리면 목적지 근처 식당 카드(카카오 로컬 실시간 · 서버가 만듦)",
+   "steps": [
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--ez cancel true"
+     },
+     "note": "--ez cancel true",
+     "t": 0.1
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 3
+     },
+     "note": "",
+     "t": 3.1
+    },
+    {
+     "step": {
+      "do": "say",
+      "text": "나 국밥 좋아해",
+      "voice": false
+     },
+     "note": "글(마이크 없이) 「나 국밥 좋아해」",
+     "t": 3.2
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 40
+     },
+     "note": "답 도착",
+     "t": 16.5
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es clock 11:50"
+     },
+     "note": "--es clock 11:50",
+     "t": 16.6
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es dest 강남역 --ef lat 37.4979 --ef lng 127.0276"
+     },
+     "note": "--es dest 강남역 --ef lat 37.4979 --ef lng 127.0276",
+     "t": 16.7
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "navi\\|routeStarted",
+      "timeout": 40
+     },
+     "note": "확인",
+     "t": 24.0
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "gear",
+       "Drive"
+      ]
+     },
+     "note": "gear Drive",
+     "t": 25.1
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "speed",
+       "60"
+      ]
+     },
+     "note": "speed 60",
+     "t": 26.6
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "event\\|depart",
+      "timeout": 20,
+      "from": "last"
+     },
+     "note": "확인",
+     "t": 29.4
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 12
+     },
+     "note": "",
+     "t": 41.4
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es event near"
+     },
+     "note": "--es event near",
+     "t": 41.6
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "arrive\\|line\\|",
+      "timeout": 60
+     },
+     "note": "확인",
+     "t": 47.2
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "say\\|P\\d\\|.*갈까요",
+      "timeout": 60,
+      "from": "last"
+     },
+     "note": "확인",
+     "t": 65.3
+    },
+    {
+     "step": {
+      "wait": "tts"
+     },
+     "note": "",
+     "t": 74.1
+    },
+    {
+     "step": {
+      "shot": "주행 — 곧 도착 한마디 · 내비 판 아래 한 줄(점심 · 국밥)"
+     },
+     "note": "주행 — 곧 도착 한마디 · 내비 판 아래 한 줄(점심 · 국밥)",
+     "t": 75.8
+    },
+    {
+     "step": {
+      "do": "say",
+      "text": "아니 내려서 볼게",
+      "voice": false
+     },
+     "note": "글(마이크 없이) 「아니 내려서 볼게」",
+     "t": 75.9
+    },
+    {
+     "step": {
+      "wait": "reply",
+      "timeout": 40
+     },
+     "note": "답 도착",
+     "t": 85.9
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "speed",
+       "0"
+      ]
+     },
+     "note": "speed 0",
+     "t": 87.1
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "gear",
+       "Park"
+      ]
+     },
+     "note": "gear Park",
+     "t": 88.4
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es event arrived"
+     },
+     "note": "--es event arrived",
+     "t": 88.6
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "card\\|.*근처",
+      "timeout": 60
+     },
+     "note": "확인",
+     "t": 88.6
+    },
+    {
+     "step": {
+      "wait": "tts"
+     },
+     "note": "",
+     "t": 100.3
+    },
+    {
+     "step": {
+      "shot": "정차 — 도착 추천 카드(목적지 근처 국밥 5곳)"
+     },
+     "note": "정차 — 도착 추천 카드(목적지 근처 국밥 5곳)",
+     "t": 102.0
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es clock off"
+     },
+     "note": "--es clock off",
+     "t": 102.1
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794122040.24,
+     "who": "길",
+     "text": "nav cancel|demo|아오내순대 코엑스몰점"
+    },
+    {
+     "t": 1794122040.75,
+     "who": "내비",
+     "text": "cancelled "
+    },
+    {
+     "t": 1794122043.68,
+     "who": "운전자",
+     "text": "나 국밥 좋아해"
+    },
+    {
+     "t": 1794122047.23,
+     "who": "현비서",
+     "text": "생각해 볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794122049.19,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794122049.19,
+     "who": "현비서",
+     "text": "국밥 좋아하시는군요, 기억해 둘게요. 비 오는 날엔 특히 생각나죠. 요즘 즐겨 듣는 음악은 있어요?",
+     "prio": 1
+    },
+    {
+     "t": 1794122056.88,
+     "who": "길",
+     "text": "nav 강남역|37.49789810180664,127.02760314941406|est=14520m"
+    },
+    {
+     "t": 1794122063.89,
+     "who": "내비",
+     "text": "routeStarted RouteStartInfo(duration=2280, distance=13000, tollFare=700, name=강남역, remainDestinationChargingValue=75715)"
+    },
+    {
+     "t": 1794122069.45,
+     "who": "이벤트",
+     "text": "depart"
+    },
+    {
+     "t": 1794122074.94,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794122074.94,
+     "who": "현비서",
+     "text": "강남역까지 38분, 12시 28분 도착이에요. 양재 쪽 3.6km가 막혀서 20분쯤 더 걸려요, 내비 교통정보 기준이에요.",
+     "prio": 1
+    },
+    {
+     "t": 1794122081.7,
+     "who": "이벤트",
+     "text": "near"
+    },
+    {
+     "t": 1794122087.03,
+     "who": "두뇌",
+     "text": "답 도착 · claude · 카드 「강남역 근처 점심 · 국밥 취향」"
+    },
+    {
+     "t": 1794122087.03,
+     "who": "카드",
+     "text": "강남역 근처 점심 · 국밥 취향|5|kind=list|img=0|콩뿌리 콩나물국밥 — 143m · 국밥 · 걸어서 3분 / 국밥쟁이 강남역점 — 144m · 국밥 · 걸어서 3분 / 보승회관 강남역직영점 — 173m · 국밥 · 걸어서 3분"
+    },
+    {
+     "t": 1794122105.15,
+     "who": "현비서",
+     "text": "곧 강남역이에요. 점심때라 국밥 어떠세요? 콩뿌리 콩나물국밥이 143m, 걸어서 3분이에요. 바로 거기로 갈까요?",
+     "prio": 1
+    },
+    {
+     "t": 1794122116.03,
+     "who": "운전자",
+     "text": "아니 내려서 볼게"
+    },
+    {
+     "t": 1794122119.57,
+     "who": "현비서",
+     "text": "생각해 볼게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794122120.98,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794122122.05,
+     "who": "현비서",
+     "text": "네, 알겠어요. 내리면 화면에서 골라 보세요.",
+     "prio": 1
+    },
+    {
+     "t": 1794122128.69,
+     "who": "이벤트",
+     "text": "arrived"
+    },
+    {
+     "t": 1794122133.64,
+     "who": "두뇌",
+     "text": "답 도착 · claude · 카드 「강남역 근처 점심 · 국밥 취향」"
+    },
+    {
+     "t": 1794122133.65,
+     "who": "카드",
+     "text": "강남역 근처 점심 · 국밥 취향|5|kind=list|img=0|콩뿌리 콩나물국밥 — 143m · 국밥 · 걸어서 3분 / 국밥쟁이 강남역점 — 144m · 국밥 · 걸어서 3분 / 보승회관 강남역직영점 — 173m · 국밥 · 걸어서 3분"
+    },
+    {
+     "t": 1794122133.65,
+     "who": "현비서",
+     "text": "강남역에 도착했어요. 콩뿌리 콩나물국밥이 걸어서 3분이에요. 화면에 다섯 곳 띄웠어요.",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "카카오 실시간 검색(로그엔 검색어·개수만)",
+     "rule": "\"places\": \"kakao\\|near",
+     "src": "server",
+     "ok": true
+    },
+    {
+     "what": "곧 도착 한 줄",
+     "rule": "arrive\\|line\\|.*점심",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "곧 도착 한마디",
+     "rule": "say\\|P\\d\\|.*(점심|국밥)",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "도착 카드 3~5곳",
+     "rule": "card\\|.*근처.*\\|[3-5]\\|",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e17_1.jpg",
+     "caption": "주행 — 곧 도착 한마디 · 내비 판 아래 한 줄(점심 · 국밥)",
+     "t": 1794122117.0600936
+    },
+    {
+     "file": "shots/e17_2.jpg",
+     "caption": "정차 — 도착 추천 카드(목적지 근처 국밥 5곳)",
+     "t": 1794122143.2857025
+    }
+   ],
+   "video": {
+    "file": "raw/e17.mp4",
+    "dur": 104.016789,
+    "t0": 1794122040.895958,
+    "offset": 0.0
+   },
+   "t_start": 1794122041.2884328,
+   "t_end": 1794122144.912747,
+   "secs": 103.6,
+   "latency": [
+    5.5,
+    6.0
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 1,
+     "ts": "16:14:04",
+     "kind": "talk",
+     "text": "나 국밥 좋아해",
+     "ctx": {
+      "t": "16:14",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 2,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "lat": 37.4127,
+      "lng": 127.0947,
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 1,
+     "say": "국밥 좋아하시는군요, 기억해 둘게요. 비 오는 날엔 특히 생각나죠. 요즘 즐겨 듣는 음악은 있어요?",
+     "listen": true,
+     "mood": "happy",
+     "prio": 1,
+     "ts": "16:14:10",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [
+      "음식 좋아함: 국밥"
+     ],
+     "asked_slot": "music"
+    },
+    {
+     "dir": "in",
+     "id": 2,
+     "ts": "16:14:30",
+     "kind": "event",
+     "text": "depart",
+     "ctx": {
+      "t": "11:50",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 2,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "강남역",
+      "remainKm": 12.9,
+      "remainMin": 38,
+      "eta": "12:28",
+      "totalKm": 13,
+      "destLat": 37.4979,
+      "destLng": 127.0276,
+      "traffic": "정체 5.7km(약 20분, 평균 13km/h)",
+      "trafficAhead": [
+       "약 680m 앞 서행 · 경부고속도로 대왕판교IC 100m · 평균 34km/h · 약 1분",
+       "약 7.3km 앞 서행 · 경부고속도로 양재IC 600m · 평균 9km/h · 약 4분",
+       "약 7.8km 앞 정체 · 경부고속도로 3.6km · 평균 14km/h · 약 13분",
+       "약 11.0km 앞 서행 · 서운로 70m · 평균 32km/h · 약 1분",
+       "약 11.0km 앞 서행 · 서운로 50m · 평균 36km/h · 약 1분",
+       "약 11.0km 앞 서행 · 서운로 무지개아파트→무지개아파트 70m · 평균 11km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "경부고속도로",
+       "서운로",
+       "서초대로"
+      ],
+      "clock": "11:50",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 2,
+     "say": "강남역까지 38분, 12시 28분 도착이에요. 양재 쪽 3.6km가 막혀서 20분쯤 더 걸려요, 내비 교통정보 기준이에요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "16:14:36",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 3,
+     "ts": "16:14:42",
+     "kind": "event",
+     "text": "near",
+     "ctx": {
+      "t": "11:50",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 2,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "강남역",
+      "remainKm": 12.7,
+      "remainMin": 38,
+      "eta": "12:27",
+      "totalKm": 13,
+      "destLat": 37.4979,
+      "destLng": 127.0276,
+      "traffic": "정체 5.7km(약 20분, 평균 13km/h)",
+      "trafficAhead": [
+       "약 680m 앞 서행 · 경부고속도로 대왕판교IC 100m · 평균 34km/h · 약 1분",
+       "약 7.3km 앞 서행 · 경부고속도로 양재IC 600m · 평균 9km/h · 약 4분",
+       "약 7.8km 앞 정체 · 경부고속도로 3.6km · 평균 14km/h · 약 13분",
+       "약 11.0km 앞 서행 · 서운로 70m · 평균 32km/h · 약 1분",
+       "약 11.0km 앞 서행 · 서운로 50m · 평균 36km/h · 약 1분",
+       "약 11.0km 앞 서행 · 서운로 무지개아파트→무지개아파트 70m · 평균 11km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "경부고속도로",
+       "서운로",
+       "서초대로"
+      ],
+      "clock": "11:50",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 3,
+     "say": "곧 강남역이에요. 점심때라 국밥 어떠세요? 콩뿌리 콩나물국밥이 143m, 걸어서 3분이에요. 바로 거기로 갈까요?",
+     "listen": true,
+     "mood": "happy",
+     "prio": 1,
+     "ts": "16:14:48",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "title": "강남역 근처 점심 · 국밥 취향",
+      "source": "카카오 로컬 · 실시간",
+      "n": 5
+     },
+     "arrive_line": "도착 12:28 점심 · 국밥 5곳 찾아 둠",
+     "mode": null,
+     "tasks": false,
+     "places": "kakao|near|q=국밥|n=5",
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 4,
+     "ts": "16:15:17",
+     "kind": "talk",
+     "text": "아니 내려서 볼게",
+     "ctx": {
+      "t": "11:51",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 2,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "강남역",
+      "remainKm": 12.2,
+      "remainMin": 36,
+      "eta": "12:26",
+      "totalKm": 13,
+      "destLat": 37.4979,
+      "destLng": 127.0276,
+      "traffic": "정체 5.7km(약 20분, 평균 13km/h)",
+      "trafficAhead": [
+       "약 80m 앞 서행 · 경부고속도로 대왕판교IC 100m · 평균 34km/h · 약 1분",
+       "약 6.7km 앞 서행 · 경부고속도로 양재IC 600m · 평균 9km/h · 약 4분",
+       "약 7.2km 앞 정체 · 경부고속도로 3.6km · 평균 14km/h · 약 13분",
+       "약 10.4km 앞 서행 · 서운로 70m · 평균 32km/h · 약 1분",
+       "약 10.4km 앞 서행 · 서운로 50m · 평균 36km/h · 약 1분",
+       "약 10.4km 앞 서행 · 서운로 무지개아파트→무지개아파트 70m · 평균 11km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "경부고속도로",
+       "서운로",
+       "서초대로"
+      ],
+      "clock": "11:51",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 4,
+     "say": "네, 알겠어요. 내리면 화면에서 골라 보세요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "16:15:22",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "places": "kakao|pick|q=국밥|n=5",
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 5,
+     "ts": "16:15:29",
+     "kind": "event",
+     "text": "arrived",
+     "ctx": {
+      "t": "11:51",
+      "speed": 0,
+      "gear": "P",
+      "driving": false,
+      "bot": "현비서",
+      "driveMin": 3,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "강남역",
+      "remainKm": 12,
+      "remainMin": 36,
+      "eta": "12:26",
+      "totalKm": 13,
+      "destLat": 37.4979,
+      "destLng": 127.0276,
+      "traffic": "정체 5.7km(약 20분, 평균 13km/h)",
+      "trafficAhead": [
+       "약 6.3km 앞 서행 · 경부고속도로 양재IC 600m · 평균 9km/h · 약 4분",
+       "약 6.8km 앞 정체 · 경부고속도로 3.6km · 평균 14km/h · 약 13분",
+       "약 10.0km 앞 서행 · 서운로 70m · 평균 32km/h · 약 1분",
+       "약 10.0km 앞 서행 · 서운로 50m · 평균 36km/h · 약 1분",
+       "약 10.0km 앞 서행 · 서운로 무지개아파트→무지개아파트 70m · 평균 11km/h · 약 1분",
+       "약 10.0km 앞 정체 · 서운로 무지개아파트 100m · 평균 24km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "경부고속도로",
+       "서운로",
+       "서초대로"
+      ],
+      "clock": "11:51",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 5,
+     "say": "강남역에 도착했어요. 콩뿌리 콩나물국밥이 걸어서 3분이에요. 화면에 다섯 곳 띄웠어요.",
+     "listen": false,
+     "mood": "happy",
+     "prio": 1,
+     "ts": "16:15:34",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "title": "강남역 근처 점심 · 국밥 취향",
+      "source": "카카오 로컬 · 실시간",
+      "n": 5
+     },
+     "mode": null,
+     "tasks": false,
+     "places": "kakao|arrived|q=국밥|n=5",
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  },
+  {
+   "id": "e18",
+   "title": "도착 추천 — 곧 도착 제안에 '응' → 그 식당으로 안내",
+   "why": "주행 중 고르기는 말 한마디로 — 두뇌가 [주변 장소] 1번 좌표를 nav로, 앱이 내비 목적지를 바꾼다(현비서 화면 지키기 포함)",
+   "steps": [
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es clock 12:20"
+     },
+     "note": "--es clock 12:20",
+     "t": 0.1
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es dest 코엑스 --ef lat 37.5116 --ef lng 127.0595"
+     },
+     "note": "--es dest 코엑스 --ef lat 37.5116 --ef lng 127.0595",
+     "t": 0.2
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "navi\\|routeStarted",
+      "timeout": 40
+     },
+     "note": "확인",
+     "t": 8.7
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "gear",
+       "Drive"
+      ]
+     },
+     "note": "gear Drive",
+     "t": 10.1
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "speed",
+       "60"
+      ]
+     },
+     "note": "speed 60",
+     "t": 11.4
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "event\\|depart",
+      "timeout": 20,
+      "from": "last"
+     },
+     "note": "확인",
+     "t": 13.8
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 12
+     },
+     "note": "",
+     "t": 25.8
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es event near"
+     },
+     "note": "--es event near",
+     "t": 26.0
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "say\\|P\\d\\|.*갈까요",
+      "timeout": 60
+     },
+     "note": "확인",
+     "t": 55.7
+    },
+    {
+     "step": {
+      "wait": "tts"
+     },
+     "note": "",
+     "t": 64.1
+    },
+    {
+     "step": {
+      "do": "say",
+      "text": "응 거기로 가자",
+      "voice": false
+     },
+     "note": "글(마이크 없이) 「응 거기로 가자」",
+     "t": 64.2
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "^nav\\|(?!코엑스)",
+      "timeout": 40
+     },
+     "note": "확인",
+     "t": 69.4
+    },
+    {
+     "step": {
+      "wait": "log",
+      "pattern": "navi\\|routeStarted",
+      "timeout": 40,
+      "from": "last"
+     },
+     "note": "확인",
+     "t": 77.1
+    },
+    {
+     "step": {
+      "wait": "sec",
+      "sec": 3
+     },
+     "note": "",
+     "t": 80.1
+    },
+    {
+     "step": {
+      "shot": "식당으로 안내 — 내비 판 목적지가 바뀜"
+     },
+     "note": "식당으로 안내 — 내비 판 목적지가 바뀜",
+     "t": 81.6
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "speed",
+       "0"
+      ]
+     },
+     "note": "speed 0",
+     "t": 82.6
+    },
+    {
+     "step": {
+      "do": "vc",
+      "args": [
+       "gear",
+       "Park"
+      ]
+     },
+     "note": "gear Park",
+     "t": 83.8
+    },
+    {
+     "step": {
+      "do": "intent",
+      "extras": "--es clock off"
+     },
+     "note": "--es clock off",
+     "t": 83.9
+    }
+   ],
+   "talk": [
+    {
+     "t": 1794122147.53,
+     "who": "길",
+     "text": "nav 코엑스|37.511600494384766,127.05950164794922|est=14852m"
+    },
+    {
+     "t": 1794122148.1,
+     "who": "내비",
+     "text": "cancelled "
+    },
+    {
+     "t": 1794122155.84,
+     "who": "내비",
+     "text": "routeStarted RouteStartInfo(duration=2100, distance=14000, tollFare=0, name=코엑스, remainDestinationChargingValue=75519)"
+    },
+    {
+     "t": 1794122161.12,
+     "who": "이벤트",
+     "text": "depart"
+    },
+    {
+     "t": 1794122166.18,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794122172.68,
+     "who": "현비서",
+     "text": "코엑스까지 35분, 12시 55분 도착이에요. 판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.",
+     "prio": 1
+    },
+    {
+     "t": 1794122173.29,
+     "who": "이벤트",
+     "text": "near"
+    },
+    {
+     "t": 1794122178.79,
+     "who": "두뇌",
+     "text": "답 도착 · claude · 카드 「코엑스 근처 점심 · 국밥 취향」"
+    },
+    {
+     "t": 1794122178.79,
+     "who": "카드",
+     "text": "코엑스 근처 점심 · 국밥 취향|5|kind=list|img=0|아오내순대 코엑스몰점 — 156m · 국밥 · 걸어서 3분 / 이맛콩나물국밥 삼성동1점 — 239m · 국밥 · 걸어서 4분 / 일품돼지국밥 삼성역직영본점 — 311m · 국밥 · 걸어서 5분"
+    },
+    {
+     "t": 1794122202.81,
+     "who": "현비서",
+     "text": "곧 코엑스예요. 점심때라 아오내순대 코엑스몰점이 목적지에서 156m, 걸어서 3분이에요. 바로 거기로 갈까요?",
+     "prio": 1
+    },
+    {
+     "t": 1794122211.53,
+     "who": "운전자",
+     "text": "응 거기로 가자"
+    },
+    {
+     "t": 1794122216.55,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794122216.55,
+     "who": "길",
+     "text": "nav 아오내순대 코엑스몰점|37.5106,127.0583|est=14751m"
+    },
+    {
+     "t": 1794122217.08,
+     "who": "내비",
+     "text": "cancelled "
+    },
+    {
+     "t": 1794122219.49,
+     "who": "이벤트",
+     "text": "depart"
+    },
+    {
+     "t": 1794122221.7,
+     "who": "현비서",
+     "text": "어디 보자.",
+     "prio": 1
+    },
+    {
+     "t": 1794122223.29,
+     "who": "현비서",
+     "text": "네, 아오내순대 코엑스몰점으로 안내할게요.",
+     "prio": 1
+    },
+    {
+     "t": 1794122224.43,
+     "who": "내비",
+     "text": "routeStarted RouteStartInfo(duration=1980, distance=14000, tollFare=0, name=아오내순대 코엑스몰점, remainDestinationChargingValue=75550)"
+    },
+    {
+     "t": 1794122225.15,
+     "who": "두뇌",
+     "text": "답 도착 · claude"
+    },
+    {
+     "t": 1794122231.11,
+     "who": "현비서",
+     "text": "아오내순대 코엑스몰점까지 30분, 12시 51분 도착이에요. 대왕판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.",
+     "prio": 1
+    }
+   ],
+   "checks": [
+    {
+     "what": "곧 도착에 1번 식당 제안(듣기)",
+     "rule": "say\\|P\\d\\|.*갈까요",
+     "src": "log",
+     "ok": true
+    },
+    {
+     "what": "두뇌가 고른 식당을 nav로",
+     "rule": "\"nav\": \\{\"name\": \"",
+     "src": "server",
+     "ok": true
+    },
+    {
+     "what": "고른 식당으로 경로",
+     "rule": "nav\\|(?!코엑스)",
+     "src": "log",
+     "ok": true
+    }
+   ],
+   "pass": true,
+   "env": [],
+   "shots": [
+    {
+     "file": "shots/e18_1.jpg",
+     "caption": "식당으로 안내 — 내비 판 목적지가 바뀜",
+     "t": 1794122230.1164162
+    }
+   ],
+   "video": {
+    "file": "raw/e18.mp4",
+    "dur": 85.804022,
+    "t0": 1794122148.0861676,
+    "offset": 104.02
+   },
+   "t_start": 1794122148.4993641,
+   "t_end": 1794122233.8901896,
+   "secs": 85.4,
+   "latency": [
+    11.8
+   ],
+   "engines": [
+    "claude"
+   ],
+   "server": [
+    {
+     "dir": "in",
+     "id": 6,
+     "ts": "16:16:02",
+     "kind": "event",
+     "text": "depart",
+     "ctx": {
+      "t": "12:21",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 3,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "코엑스",
+      "remainKm": 13.9,
+      "remainMin": 35,
+      "eta": "12:55",
+      "totalKm": 14,
+      "destLat": 37.5116,
+      "destLng": 127.0595,
+      "traffic": "정체 5.9km(약 13분, 평균 19km/h)",
+      "trafficAhead": [
+       "약 380m 앞 정체 · 대왕판교로 40m · 평균 10km/h · 약 1분",
+       "약 1.4km 앞 정체 · 대왕판교로 40m · 평균 28km/h · 약 1분",
+       "약 1.4km 앞 서행 · 대왕판교로 100m · 평균 18km/h · 약 1분",
+       "약 1.5km 앞 정체 · 대왕판교로 시흥사거리→시흥사거리 60m · 평균 17km/h · 약 1분",
+       "약 1.6km 앞 서행 · 분당내곡간고속화도로 시흥사거리→시흥사거리 90m · 평균 55km/h · 약 1분",
+       "약 6.7km 앞 서행 · 분당내곡간고속화도로 내곡IC→내곡IC 500m · 평균 32km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "분당내곡간고속화도로",
+       "양재대로",
+       "영동대로"
+      ],
+      "clock": "12:21",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 6,
+     "say": "코엑스까지 35분, 12시 55분 도착이에요. 판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "16:16:07",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 7,
+     "ts": "16:16:14",
+     "kind": "event",
+     "text": "near",
+     "ctx": {
+      "t": "12:21",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 3,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "코엑스",
+      "remainKm": 13.7,
+      "remainMin": 35,
+      "eta": "12:55",
+      "totalKm": 14,
+      "destLat": 37.5116,
+      "destLng": 127.0595,
+      "traffic": "정체 5.9km(약 13분, 평균 19km/h)",
+      "trafficAhead": [
+       "약 380m 앞 정체 · 대왕판교로 40m · 평균 10km/h · 약 1분",
+       "약 1.4km 앞 정체 · 대왕판교로 40m · 평균 28km/h · 약 1분",
+       "약 1.4km 앞 서행 · 대왕판교로 100m · 평균 18km/h · 약 1분",
+       "약 1.5km 앞 정체 · 대왕판교로 시흥사거리→시흥사거리 60m · 평균 17km/h · 약 1분",
+       "약 1.6km 앞 서행 · 분당내곡간고속화도로 시흥사거리→시흥사거리 90m · 평균 55km/h · 약 1분",
+       "약 6.7km 앞 서행 · 분당내곡간고속화도로 내곡IC→내곡IC 500m · 평균 32km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "분당내곡간고속화도로",
+       "양재대로",
+       "영동대로"
+      ],
+      "clock": "12:21",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 7,
+     "say": "곧 코엑스예요. 점심때라 아오내순대 코엑스몰점이 목적지에서 156m, 걸어서 3분이에요. 바로 거기로 갈까요?",
+     "listen": true,
+     "mood": "happy",
+     "prio": 1,
+     "ts": "16:16:19",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": {
+      "title": "코엑스 근처 점심 · 국밥 취향",
+      "source": "카카오 로컬 · 실시간",
+      "n": 5
+     },
+     "arrive_line": "도착 12:56 점심 · 국밥 5곳 찾아 둠",
+     "mode": null,
+     "tasks": false,
+     "places": "kakao|near|q=국밥|n=5",
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 8,
+     "ts": "16:16:52",
+     "kind": "talk",
+     "text": "응 거기로 가자",
+     "ctx": {
+      "t": "12:21",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 3,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "코엑스",
+      "remainKm": 13.1,
+      "remainMin": 33,
+      "eta": "12:54",
+      "totalKm": 14,
+      "destLat": 37.5116,
+      "destLng": 127.0595,
+      "traffic": "정체 5.9km(약 13분, 평균 19km/h)",
+      "trafficAhead": [
+       "약 380m 앞 정체 · 대왕판교로 40m · 평균 10km/h · 약 1분",
+       "약 1.4km 앞 정체 · 대왕판교로 40m · 평균 28km/h · 약 1분",
+       "약 1.4km 앞 서행 · 대왕판교로 100m · 평균 18km/h · 약 1분",
+       "약 1.5km 앞 정체 · 대왕판교로 시흥사거리→시흥사거리 60m · 평균 17km/h · 약 1분",
+       "약 1.6km 앞 서행 · 분당내곡간고속화도로 시흥사거리→시흥사거리 90m · 평균 55km/h · 약 1분",
+       "약 6.7km 앞 서행 · 분당내곡간고속화도로 내곡IC→내곡IC 500m · 평균 32km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "분당내곡간고속화도로",
+       "양재대로",
+       "영동대로"
+      ],
+      "clock": "12:21",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 8,
+     "say": "네, 아오내순대 코엑스몰점으로 안내할게요.",
+     "listen": false,
+     "mood": "happy",
+     "prio": 1,
+     "ts": "16:16:57",
+     "by": "claude",
+     "nav": {
+      "name": "아오내순대 코엑스몰점",
+      "lat": 37.5106,
+      "lng": 127.0583
+     },
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "places": "kakao|pick|q=국밥|n=5",
+     "remember": [],
+     "taste": [
+      "음식 좋아함: 국밥"
+     ],
+     "asked_slot": ""
+    },
+    {
+     "dir": "in",
+     "id": 9,
+     "ts": "16:17:00",
+     "kind": "event",
+     "text": "depart",
+     "ctx": {
+      "t": "12:21",
+      "speed": 60,
+      "gear": "D",
+      "driving": true,
+      "bot": "현비서",
+      "driveMin": 4,
+      "quietMin": 0,
+      "addr": "수정구 시흥동",
+      "dest": "아오내순대 코엑스몰점",
+      "remainKm": 14.7,
+      "remainMin": 30,
+      "eta": "12:51",
+      "totalKm": 14.8,
+      "destLat": 37.5106,
+      "destLng": 127.0583,
+      "traffic": "정체 5.9km(약 13분, 평균 19km/h)",
+      "trafficAhead": [
+       "약 380m 앞 정체 · 대왕판교로 40m · 평균 10km/h · 약 1분",
+       "약 1.4km 앞 정체 · 대왕판교로 40m · 평균 28km/h · 약 1분",
+       "약 1.4km 앞 서행 · 대왕판교로 100m · 평균 18km/h · 약 1분",
+       "약 1.5km 앞 정체 · 대왕판교로 시흥사거리→시흥사거리 60m · 평균 17km/h · 약 1분",
+       "약 1.6km 앞 서행 · 분당내곡간고속화도로 시흥사거리→시흥사거리 90m · 평균 55km/h · 약 1분",
+       "약 6.7km 앞 서행 · 분당내곡간고속화도로 내곡IC→내곡IC 500m · 평균 32km/h · 약 1분"
+      ],
+      "routeRoads": [
+       "대왕판교로",
+       "분당내곡간고속화도로",
+       "양재대로",
+       "영동대로"
+      ],
+      "clock": "12:21",
+      "tempC": 4,
+      "rainPct": 94,
+      "soc": 100
+     }
+    },
+    {
+     "dir": "out",
+     "id": 9,
+     "say": "아오내순대 코엑스몰점까지 30분, 12시 51분 도착이에요. 대왕판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.",
+     "listen": false,
+     "mood": "calm",
+     "prio": 1,
+     "ts": "16:17:06",
+     "by": "claude",
+     "nav": null,
+     "via": null,
+     "route": null,
+     "card": null,
+     "mode": null,
+     "tasks": false,
+     "remember": [],
+     "taste": [],
+     "asked_slot": ""
+    }
+   ]
+  }
+ ],
+ "video": "video.mp4",
+ "data": "server\\hyun\\data-e2e",
+ "spec": "tools\\hyun_e2e\\cases.json"
+}

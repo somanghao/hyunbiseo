@@ -6,11 +6,12 @@
       "id": "e00",
       "title": "시동 — 인사 · 브리핑 순서",
       "why": "새 데이터로 앱을 켜면 순서를 몰라 '뭐부터 들을까요?'를 묻고, 대답한 순서를 저장해 바로 그 순서로 브리핑한다",
+      "situation": "차에 막 타서 시동을 켰어요(정차 · P). 현비서를 처음 써서 아침 브리핑 순서를 아직 몰라요.",
       "steps": [
         {"do": "split", "on": false},
         {"do": "restart"},
         {"wait": "reply", "timeout": 45},
-        {"do": "say", "text": "날씨 먼저 듣고 그다음 뉴스", "voice": false},
+        {"do": "say", "text": "날씨 먼저 듣고 그다음 뉴스", "voice": false, "slide": "현비서가 인사하고 '뭐부터 들을까요?' 물으면"},
         {"wait": "reply", "timeout": 60},
         {"shot": "시동 브리핑"}
       ],
@@ -22,26 +23,33 @@
     },
     {
       "id": "e01",
-      "title": "네비 모드 — 말로 목적지 · 반반 화면",
-      "why": "'현비서야 강남역 가자'(실제 음성 → 받아 적기 → 호출어 → 두뇌)로 내비 경로를 잡고, 앱 영역 2칸으로 왼쪽 현비서 · 오른쪽 내비를 나란히 띄운다",
+      "title": "네비 모드 — 말로 목적지 · 현비서 화면 지키기 · 내비 판 · 반반 화면",
+      "why": "'현비서야 강남역 가자'(실제 음성 → 받아 적기 → 호출어 → 두뇌)로 내비 경로를 잡는다. 내비 앱이 스스로 앞으로 나와도 현비서가 다시 앞으로 오고(11-08), 1칸 화면 오른쪽 정보창에 내비 판(다음 회전 · 그다음 · 이어지는 안내 · 남은 거리)을 보인 뒤, 앱 영역 2칸으로 왼쪽 현비서 · 오른쪽 내비를 나란히 띄운다",
+      "situation": "정차 중, 목적지는 없어요. 말로 내비 목적지를 잡아요 — 내비 앱이 앞으로 나와도 현비서 화면이 남고, 오른쪽 정보창에 다음 회전·남은 거리가 떠요. 끝에 화면을 반반(현비서 | 내비)으로 나눠요.",
       "steps": [
         {"do": "say", "text": "강남역 가자", "voice": true},
         {"wait": "log", "pattern": "navi\\|routeStarted", "timeout": 50},
         {"wait": "tts"},
+        {"wait": "log", "pattern": "navi\\|tbt\\|[1-9]", "timeout": 15},
+        {"wait": "sec", "sec": 2},
+        {"shot": "1칸 — 현비서가 앞에 남고 오른쪽에 내비 판(회전 · 남은 거리)"},
         {"do": "split", "on": true},
         {"wait": "sec", "sec": 4},
-        {"shot": "반반 — 왼쪽 현비서 · 오른쪽 내비"}
+        {"shot": "반반 — 왼쪽 현비서(길 카드 맨 위 회전 줄) · 오른쪽 내비"}
       ],
       "expect": [
         {"log": "ear\\|wake\\+text\\|.*강남", "what": "귀가 호출어와 목적지를 받아 적음"},
         {"log": "nav\\|강남역", "what": "두뇌가 목적지를 정함"},
-        {"log": "navi\\|routeStarted", "what": "내비 경로 시작"}
+        {"log": "navi\\|routeStarted", "what": "내비 경로 시작"},
+        {"log": "front\\|covered", "what": "내비 앱이 덮자 현비서를 다시 앞으로(현비서 화면 지키기)"},
+        {"log": "navi\\|tbt\\|[1-9]\\d*\\|TURN_", "what": "내비 회전 안내 받음(내비 판에 표시)"}
       ]
     },
     {
       "id": "e02",
       "title": "교통상황 — '앞길 어때?' · 내비 기준 교통 표",
       "why": "내비가 준 내 경로 교통(정체 구간·도로명·속도)을 말로 답하고, 정차 화면에 서버가 내비 값으로 만든 표를 띄운다(반반 화면 그대로)",
+      "situation": "강남역으로 안내 중, 화면은 반반이에요. 내비가 준 내 경로 교통 정보로 답해요.",
       "steps": [
         {"do": "say", "text": "앞길 어때?", "voice": true},
         {"wait": "reply", "timeout": 50},
@@ -57,13 +65,14 @@
       "id": "e03",
       "title": "휴게소 소개 — 왼쪽 사진 · 오른쪽 표",
       "why": "고속도로 길(대전역)을 잡고 '다음 휴게소 소개해 줘' → 검색으로 확인한 휴게소 정보 + 취향 맞춤 추천을 소개 카드(사진 · 표)로",
+      "situation": "고속도로로 멀리 가요. 목적지를 대전역으로 바꾸고, 다음 휴게소를 물어요.",
       "steps": [
         {"do": "split", "on": false},
         {"do": "say", "text": "대전역 가자", "voice": true},
         {"wait": "log", "pattern": "navi\\|routeStarted", "timeout": 50},
         {"wait": "tts"},
         {"wait": "sec", "sec": 5},
-        {"do": "say", "text": "다음 휴게소 소개해 줘", "voice": true},
+        {"do": "say", "text": "다음 휴게소 소개해 줘", "voice": true, "slide": "길이 잡히면"},
         {"wait": "reply", "timeout": 75},
         {"wait": "sec", "sec": 4},
         {"shot": "휴게소 소개 카드(전체 화면)"},
@@ -82,10 +91,11 @@
       "id": "e04",
       "title": "취향 질문 — 묻고 · 대답을 취향으로 기록",
       "why": "아직 모르는 취향 칸을 한 번 묻고(asked_slot), 운전자 대답을 그 칸에 누적한다",
+      "situation": "심심한 정차 중. 현비서가 내 취향을 하나 묻고, 대답을 기억해 다음 대화에 써요.",
       "steps": [
         {"do": "say", "text": "심심한데 나에 대해 하나만 물어봐 줘", "voice": true},
         {"wait": "reply", "timeout": 50},
-        {"do": "say", "text": "운전할 땐 아이유 노래 자주 들어", "voice": false},
+        {"do": "say", "text": "운전할 땐 아이유 노래 자주 들어", "voice": false, "slide": "현비서가 물으면"},
         {"wait": "reply", "timeout": 50},
         {"shot": "취향 기록 뒤"}
       ],
@@ -98,6 +108,7 @@
       "id": "e05",
       "title": "웹툰 순위 — 표지 격자",
       "why": "정보 통로(네이버 웹툰)의 순위를 앞 3개만 말하고, 10개를 표지 그림 격자로",
+      "situation": "정차 중 · 반반 화면. 네이버 웹툰 인기 순위 — 앞 3개는 말로, 10개는 표지 그림으로.",
       "steps": [
         {"do": "say", "text": "웹툰 순위 알려줘", "voice": true},
         {"wait": "reply", "timeout": 50},
@@ -116,6 +127,7 @@
       "id": "e06",
       "title": "영화 순위 — 목록 표",
       "why": "영화진흥위원회 박스오피스(어제 기준)를 앞 3개 말하고 10개 목록 표",
+      "situation": "정차 중. 영화진흥위원회 박스오피스(어제 기준) — 앞 3개는 말로, 10개는 표로.",
       "steps": [
         {"do": "say", "text": "요즘 영화 순위 알려줘", "voice": true},
         {"wait": "reply", "timeout": 50},
@@ -131,6 +143,7 @@
       "id": "e07",
       "title": "스포츠 기사 — 웹 검색 모드",
       "why": "통로에 없는 최신 스포츠 소식은 내 Claude 계정 두뇌가 웹 검색으로 찾아 날짜·결과·매체와 함께",
+      "situation": "현비서 정보 통로에 없는 최신 스포츠 소식 — 두뇌(내 Claude 계정)가 웹을 검색해 날짜·결과·매체와 함께 답해요.",
       "steps": [
         {"do": "say", "text": "요즘 야구 소식 알려줘", "voice": true},
         {"wait": "reply", "timeout": 75},
@@ -146,6 +159,7 @@
       "id": "e08",
       "title": "인물 기사 — 사진 · 기사 표",
       "why": "인물 근황은 검색해서 소개 카드(왼쪽 인물 사진 — 위키미디어 공용 · 오른쪽 날짜 · 매체 — 기사 요지)",
+      "situation": "인물 근황 — 검색한 기사를 왼쪽 인물 사진, 오른쪽 날짜·매체·요지 표로 보여 줘요.",
       "steps": [
         {"do": "say", "text": "손흥민 최근 기사 알려줘", "voice": true},
         {"wait": "reply", "timeout": 75},
@@ -164,6 +178,8 @@
       "id": "e09",
       "title": "주행 중 — 사고 정찰 · 휴게소 알림",
       "why": "D·60km/h로 달리며 300m 앞 사고(갈림길 없음 → 우회 묻지 않음, 앱 P0 먼저)와 3km 앞 휴게소 알림(말만 — 주행 중 카드 숨김)",
+      "situation": "대전역으로 고속도로를 60km/h로 달리는 중. 300m 앞에 사고가 났고, 3km 앞에 휴게소가 있어요. 주행 중엔 카드 대신 말로만 알려요.",
+      "ask": ["(말하지 않아요 — 현비서가 먼저 알려요)"],
       "steps": [
         {"do": "intent", "extras": "--es dest 대전역 --ef lat 36.3322 --ef lng 127.4343"},
         {"wait": "log", "pattern": "navi\\|routeStarted", "timeout": 40},
@@ -190,6 +206,8 @@
       "id": "e10",
       "title": "글레오 — '현비서 지금 상황' 흉내",
       "why": "Gleo Interface 액션(HYUN_STATUS)에 7초 안에 영어 상황 문장으로 응답",
+      "situation": "차 기본 음성 비서 글레오에게 '현비서한테 지금 상황 물어봐'라고 한 상황 — 글레오가 현비서에 묻고, 현비서가 7초 안에 상황 문장으로 답해요.",
+      "ask": ["(글레오에게 \"현비서한테 지금 상황 물어봐\" — 시험에선 글레오 액션을 직접 보내요)"],
       "steps": [
         {"do": "gleo", "action": "HYUN_STATUS", "param": {"item": "all"}},
         {"wait": "log", "pattern": "gleo\\|response", "timeout": 10},
@@ -198,6 +216,78 @@
       ],
       "expect": [
         {"log": "gleo\\|response\\|.*Heading to", "what": "목적지·남은 시간 영어 응답"}
+      ]
+    },
+    {
+      "id": "e17",
+      "title": "도착 추천 — 점심 시간 곧 도착 · 국밥 취향 · 내려서 카드",
+      "situation": "11시 50분 · 국밥 좋아함 · 강남역 가는 중(도착 예정 점심) — 1km 앞",
+      "why": "도착 시각 · 목적지 · 취향을 합쳐 묻기 전에 먼저: 곧 도착에 한마디 + 한 줄, 내리면 목적지 근처 식당 카드(카카오 로컬 실시간 · 서버가 만듦)",
+      "situation": "점심 무렵(시연 시계 11:50) 강남역으로 달리는 중. 곧 도착하면 현비서가 시간과 내 취향을 보고 목적지 근처 식당을 먼저 제안해요. 이번엔 내려서 고를래요.",
+      "steps": [
+        {"do": "intent", "extras": "--ez cancel true"},
+        {"wait": "sec", "sec": 3},
+        {"do": "say", "text": "나 국밥 좋아해", "voice": false, "slide": "출발 전에 취향을 말해 둬요"},
+        {"wait": "reply", "timeout": 40},
+        {"do": "intent", "extras": "--es clock 11:50"},
+        {"do": "intent", "extras": "--es dest 강남역 --ef lat 37.4979 --ef lng 127.0276"},
+        {"wait": "log", "pattern": "navi\\|routeStarted", "timeout": 40},
+        {"do": "vc", "args": ["gear", "Drive"]},
+        {"do": "vc", "args": ["speed", "60"]},
+        {"wait": "log", "pattern": "event\\|depart", "timeout": 20, "from": "last"},
+        {"wait": "sec", "sec": 12},
+        {"do": "intent", "extras": "--es event near"},
+        {"wait": "log", "pattern": "arrive\\|line\\|", "timeout": 60},
+        {"wait": "log", "pattern": "say\\|P\\d\\|.*갈까요", "timeout": 60, "from": "last"},
+        {"wait": "tts"},
+        {"shot": "주행 — 곧 도착 한마디 · 내비 판 아래 한 줄(점심 · 국밥)"},
+        {"do": "say", "text": "아니 내려서 볼게", "voice": false, "slide": "곧 도착 — '바로 거기로 갈까요?'에"},
+        {"wait": "reply", "timeout": 40},
+        {"do": "vc", "args": ["speed", "0"]},
+        {"do": "vc", "args": ["gear", "Park"]},
+        {"do": "intent", "extras": "--es event arrived"},
+        {"wait": "log", "pattern": "card\\|.*근처", "timeout": 60},
+        {"wait": "tts"},
+        {"shot": "정차 — 도착 추천 카드(목적지 근처 국밥 5곳)"},
+        {"do": "intent", "extras": "--es clock off"}
+      ],
+      "expect": [
+        {"server": "\"places\": \"kakao\\|near", "what": "카카오 실시간 검색(로그엔 검색어·개수만)"},
+        {"log": "arrive\\|line\\|.*점심", "what": "곧 도착 한 줄"},
+        {"log": "say\\|P\\d\\|.*(점심|국밥)", "what": "곧 도착 한마디"},
+        {"log": "card\\|.*근처.*\\|[3-5]\\|", "what": "도착 카드 3~5곳"}
+      ]
+    },
+    {
+      "id": "e18",
+      "title": "도착 추천 — 곧 도착 제안에 '응' → 그 식당으로 안내",
+      "situation": "점심 시간 · 코엑스 1km 앞 · 현비서가 '바로 거기로 갈까요?' — 운전자 '응'",
+      "why": "주행 중 고르기는 말 한마디로 — 두뇌가 [주변 장소] 1번 좌표를 nav로, 앱이 내비 목적지를 바꾼다(현비서 화면 지키기 포함)",
+      "situation": "12시 20분, 코엑스로 달리는 중이고 곧 도착해요. 현비서가 근처 식당을 제안하면 말 한마디로 그 식당으로 길을 바꿔요.",
+      "steps": [
+        {"do": "intent", "extras": "--es clock 12:20"},
+        {"do": "intent", "extras": "--es dest 코엑스 --ef lat 37.5116 --ef lng 127.0595"},
+        {"wait": "log", "pattern": "navi\\|routeStarted", "timeout": 40},
+        {"do": "vc", "args": ["gear", "Drive"]},
+        {"do": "vc", "args": ["speed", "60"]},
+        {"wait": "log", "pattern": "event\\|depart", "timeout": 20, "from": "last"},
+        {"wait": "sec", "sec": 12},
+        {"do": "intent", "extras": "--es event near"},
+        {"wait": "log", "pattern": "say\\|P\\d\\|.*갈까요", "timeout": 60},
+        {"wait": "tts"},
+        {"do": "say", "text": "응 거기로 가자", "voice": false, "slide": "곧 도착 — '바로 거기로 갈까요?'에"},
+        {"wait": "log", "pattern": "^nav\\|(?!코엑스)", "timeout": 40},
+        {"wait": "log", "pattern": "navi\\|routeStarted", "timeout": 40, "from": "last"},
+        {"wait": "sec", "sec": 3},
+        {"shot": "식당으로 안내 — 내비 판 목적지가 바뀜"},
+        {"do": "vc", "args": ["speed", "0"]},
+        {"do": "vc", "args": ["gear", "Park"]},
+        {"do": "intent", "extras": "--es clock off"}
+      ],
+      "expect": [
+        {"log": "say\\|P\\d\\|.*갈까요", "what": "곧 도착에 1번 식당 제안(듣기)"},
+        {"server": "\"nav\": \\{\"name\": \"", "what": "두뇌가 고른 식당을 nav로"},
+        {"log": "nav\\|(?!코엑스)", "what": "고른 식당으로 경로"}
       ]
     }
   ]

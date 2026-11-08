@@ -45,21 +45,31 @@ def brain_worker():
             if not engine:
                 continue
             m["auto"] = True
-        search = engine == "claude" and features.any_hook("search", m)   # 최신 사실이 필요하면 내 계정 두뇌에 웹 검색을 열어 준다
-        recent = [] if (m.get("ctx") or {}).get("harness") else store.recent_text()
-        if engine == "claude":
-            data, err = brain_cli.answer(m, store.load_memory(), recent, search=search)
-        else:
-            data, err = brain_api.answer(m, store.load_memory(), recent)
-        if search:
-            engine = "claude+search"
-        if data:
-            features.hook("normalize", data)   # 자동 두뇌의 평평한 필드 → 세션(say.py)과 같은 모양(nav{} · via{} …)
-            print(f"{engine}|{m['id']}|{data.get('_model')}|{data.get('_ms', '')}ms|{data.get('say')}", flush=True)
-            inbox.apply_answer(m["id"], data, by=engine)
-        else:
-            print(f"{engine}|{m['id']}|FAIL|{err}", flush=True)
-            store.append_log({"dir": "app", "ts": time.strftime("%H:%M:%S"), "auto_fail": err, "engine": engine, "id": m["id"]})
+        try:   # 한 메시지에서 기능이 터져도 두뇌 스레드는 살린다(11-08: 훅 이름 충돌로 스레드가 죽어 이후 답이 전부 시간 초과)
+            answer_one(m, engine)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"{engine}|{m['id']}|ERROR|{type(e).__name__} {e}", flush=True)
+            store.append_log({"dir": "app", "ts": time.strftime("%H:%M:%S"), "auto_fail": f"{type(e).__name__} {e}", "engine": engine, "id": m["id"]})
+
+
+def answer_one(m, engine):
+    search = engine == "claude" and features.any_hook("search", m)   # 최신 사실이 필요하면 내 계정 두뇌에 웹 검색을 열어 준다
+    recent = [] if (m.get("ctx") or {}).get("harness") else store.recent_text()
+    if engine == "claude":
+        data, err = brain_cli.answer(m, store.load_memory(), recent, search=search)
+    else:
+        data, err = brain_api.answer(m, store.load_memory(), recent)
+    if search:
+        engine = "claude+search"
+    if data:
+        features.hook("normalize", data)   # 자동 두뇌의 평평한 필드 → 세션(say.py)과 같은 모양(nav{} · via{} …)
+        print(f"{engine}|{m['id']}|{data.get('_model')}|{data.get('_ms', '')}ms|{data.get('say')}", flush=True)
+        inbox.apply_answer(m["id"], data, by=engine)
+    else:
+        print(f"{engine}|{m['id']}|FAIL|{err}", flush=True)
+        store.append_log({"dir": "app", "ts": time.strftime("%H:%M:%S"), "auto_fail": err, "engine": engine, "id": m["id"]})
 
 
 def cli_warmup():

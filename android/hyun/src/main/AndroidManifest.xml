@@ -64,6 +64,16 @@
             </intent-filter>
         </activity>
 
+        <!-- 보이지 않는 한순간 화면 — 내비 명령 직전에 켰다 닫아 10초 유예를 만든다(내비가 덮으면 현비서를 다시 앞으로) → FrontActivity.kt -->
+        <activity
+            android:name=".FrontActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <meta-data android:name="distractionOptimized" android:value="true" />
+        </activity>
+
         <!-- 마이크 포그라운드 서비스 — 앱이 뒤로 가도 상시 귀가 듣는다(차) -->
         <service
             android:name=".voice.EarService"
