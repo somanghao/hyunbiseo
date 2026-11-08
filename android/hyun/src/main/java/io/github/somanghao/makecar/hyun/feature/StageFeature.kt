@@ -68,6 +68,12 @@ class StageModel {
     var reactAt = 0L
     var unlockAt = 0L                         // 테마 해금 문 열림 연출 시작
     var previewAt = 0L                        // 잠긴 테마 미리보기 시작(10초)
+    // 다른 화면(브리핑 · 할 일 · 내 차 · 기록)이 읽는 것
+    var newsList: List<String> = emptyList(); var newsSource = ""
+    var weatherLine = ""; var weatherShort = ""
+    var todos: List<String> = listOf("세탁물 찾기 · 가는 길 0.4km", "엄마 생신 선물 고르기 · 백화점 경유", "다음 주 정비 예약 · 블루핸즈", "장보기 — 우유 · 계란")
+    var weekPoints = 0; val weekGoal = 300
+    var todayPoints = 0
     var preview: String? = null               // 상점에서 미리보기 중인 컨셉
     var owned: Set<String> = setOf("concept:pleos", "face:neutral", "acc:")
     var decoTab = "concept"
@@ -155,6 +161,7 @@ class StageFeature : Feature {
         m.concept = pr.getString("stage.concept", "pleos")!!; m.face = pr.getString("stage.face", "neutral")!!; m.acc = pr.getString("stage.acc", "")!!
         m.owned = pr.getStringSet("stage.owned", m.owned)!!.toSet() + m.owned
         m.decor = pr.getStringSet("stage.decor", emptySet())!!.toSet()
+        if (pr.getInt("stage.weekNo", -1) == Calendar.getInstance().get(Calendar.WEEK_OF_YEAR)) m.weekPoints = pr.getInt("stage.week", 0)
         status = CarStatus(hub.act).also { runCatching { it.start() }; m.status = it }
         ui = StageUi(hub.view, m, ::act).also { hub.view.stage = it }
         val f = IntentFilter(ACTION)
@@ -304,7 +311,11 @@ class StageFeature : Feature {
         return LIMITS.getOrElse(i) { 60 }
     }
 
-    private fun addPoints(n: Int) { m.points = (m.points + n).coerceAtLeast(0) }
+    private fun addPoints(n: Int) {
+        m.points = (m.points + n).coerceAtLeast(0)
+        m.todayPoints += n; m.weekPoints = (m.weekPoints + n).coerceAtLeast(0)
+        hub.prefs.edit().putInt("stage.week", m.weekPoints).putInt("stage.weekNo", Calendar.getInstance().get(Calendar.WEEK_OF_YEAR)).apply()
+    }
     private fun award(icon: String, why: String, n: Int) { m.ledger += Entry(icon, why, n); addPoints(n); hub.log("stage|point|+$n|$why"); save() }
     private fun penalty(icon: String, why: String, n: Int) { penalties++; m.ledger += Entry(icon, why, -n); addPoints(-n); hub.log("stage|point|-$n|$why"); save() }
 
@@ -427,6 +438,7 @@ class StageFeature : Feature {
             a == "deco" -> if (!movingNow()) m.overlay = "deco" else toast("주행 중엔 꾸미기를 열 수 없어요")
             a == "settings" -> if (!movingNow()) m.overlay = "settings" else toast("정차하면 열 수 있어요")
             a == "debug" -> m.overlay = if (m.overlay == "debug") null else "debug"
+            a.startsWith("screen:") -> a.substringAfter(":").let { sc -> m.overlay = if (m.overlay == sc || movingNow()) null else sc }
             a == "close" -> { m.overlay = null; m.preview = null; hub.view.faceOverride = null }
             a == "recheck" -> startOnboarding()
             a.startsWith("tab:") -> m.decoTab = a.substringAfter(":")
@@ -776,6 +788,7 @@ class StageFeature : Feature {
                 rain = (0 until pr.length()).maxOfOrNull { pr.optInt(it, 0) } ?: 0
                 tomorrow = "내일 $tmn~$tmx°" + if (trn >= 40) " · 비 $trn%" else ""
                 hub.log("stage|weather|${tempC}°|code=$wcode|rain=$rain|$tomorrow")
+                m.weatherShort = "${tempC}° ${wname()}"; m.weatherLine = "지금 ${tempC}° ${wname()} · 비 확률 $rain% · $tomorrow"
                 refresh()
             }
         }.onFailure { hub.log("stage|weather|FAIL|${it.message}") }
@@ -795,6 +808,7 @@ class StageFeature : Feature {
             val hit = likes.firstOrNull { k -> titles.any { it.contains(k) } }
             hub.main.post {
                 news = if (hit != null) titles.filter { it.contains(hit) }.take(2) + titles.filterNot { it.contains(hit) }.take(1) else titles.take(2)
+                m.newsList = (if (hit != null) titles.sortedBy { if (it.contains(hit)) 0 else 1 } else titles).take(8); m.newsSource = n.optString("source").ifBlank { "현비서 서버 정보 통로" } + " · " + n.optString("asof")
                 newsTag = if (hit != null) "관심 뉴스 · $hit" else "오늘의 헤드라인"
                 hub.log("stage|news|${newsTag}|${news.size}")
                 refresh()
