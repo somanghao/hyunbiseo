@@ -305,7 +305,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val iw = zone.width() - pad * 2
         val title = adult(tl?.value?.let { firstSentence(it) } ?: m.headline)
         val bodyText = (tl?.value?.let { restOf(it) }?.ifBlank { null } ?: tl?.sub)?.let { adult(it) }
-        val caption = if (bodyText == tl?.sub) null else tl?.sub
+        val caption = if (bodyText == tl?.sub || m.sit == Sit.IGNITION || m.sit == Sit.PARK) null else tl?.sub   // 그림 칸이 있으면 캡션 생략(겹침 방지)
         val ledger = tl?.lines.orEmpty()
         // 높이 계산
         val titleSize = 50 * U * headScale(); val bodySize = 27 * U
