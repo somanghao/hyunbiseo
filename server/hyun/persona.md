@@ -66,5 +66,3 @@
 ```bash
 python -I server/hyun/say.py <id> "답" [--listen] [--mood calm|happy|fun|care] [--prio 1|2|3] [--remember "사실"] [--name "호칭"] [--nav "이름|위도|경도"] [--via "이름|위도|경도"] [--route fast|reroute|clear_via|cancel|...] [--brief weather,stock] [--taste "food:국밥"] [--asked music] ; python -I server/hyun/wait.py
 ```
-
-<!-- live-test -->
