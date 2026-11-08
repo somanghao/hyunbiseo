@@ -51,7 +51,10 @@ interface Voice {
     }
 
     companion object {
-        fun create(ctx: Context, car: Boolean, ev: Events): Voice = if (car) PleosVoice(ctx, ev) else PhoneVoice(ctx, ev)
+        /** 차라도 Pleos 음성 서비스가 없는 기기(표준 AAOS 에뮬레이터 등)면 안드로이드 표준 음성으로 — 권한 정의가 있는지로 판단 */
+        fun create(ctx: Context, car: Boolean, ev: Events): Voice = if (car && hasPleosVoice(ctx)) PleosVoice(ctx, ev) else PhoneVoice(ctx, ev)
+
+        private fun hasPleosVoice(ctx: Context) = runCatching { ctx.packageManager.getPermissionInfo("pleos.car.permission.TTS_SERVICE", 0) }.isSuccess
     }
 }
 
