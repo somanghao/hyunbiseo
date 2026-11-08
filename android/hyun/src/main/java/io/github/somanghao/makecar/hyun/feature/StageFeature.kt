@@ -825,7 +825,7 @@ class StageFeature : Feature {
             }.getOrDefault(emptyList())
             val n = getJson("$base/hyun/feed?cat=news&top=10")
             val items = n.optJSONArray("items")
-            val titles = (0 until (items?.length() ?: 0)).map { items!!.getJSONObject(it).optString("title") }.filter { it.isNotBlank() }
+            val titles = (0 until (items?.length() ?: 0)).map { items!!.getJSONObject(it).optString("title") }.filter { it.isNotBlank() && !it.startsWith("[알림]") && !it.contains("저작권") }
             val hit = likes.firstOrNull { k -> titles.any { it.contains(k) } }
             hub.main.post {
                 news = if (hit != null) titles.filter { it.contains(hit) }.take(2) + titles.filterNot { it.contains(hit) }.take(1) else titles.take(2)
@@ -847,7 +847,7 @@ class StageFeature : Feature {
                 val title = Regex("<title><!\\[CDATA\\[(.*?)]]></title>").find(b)?.groupValues?.get(1) ?: return@mapNotNull null
                 val img = Regex("<media:content url=\"(.*?)\"").find(b)?.groupValues?.get(1)
                 title to img
-            }.take(12).toList()
+            }.filterNot { it.first.startsWith("[알림]") || it.first.contains("저작권") }.take(12).toList()
             hub.main.post {
                 m.newsImgs = items.filter { it.second != null }.associate { it.first to it.second!! }
                 if (m.newsList.isEmpty()) { m.newsList = items.map { it.first }.take(8); m.newsSource = "연합뉴스 최신 기사 RSS" }
