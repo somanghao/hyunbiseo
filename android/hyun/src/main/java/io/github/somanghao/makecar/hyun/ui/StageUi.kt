@@ -251,7 +251,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val bot = v.asset("bot_$face.webp")
         if (m.overlay != "deco") aroundCharacter(c, cx, cy, s, t, alive, bot)
         bot?.let { bm -> p.isFilterBitmap = true; p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p) }
-        accessory(c, cx, cy, s, t)
+        // 캐릭터에는 아무것도 덧그리지 않는다(댄 11-09 — 스프라이트 그대로)
         // 날씨 소품(그림) — 우산·목도리·차 한 잔·선글라스
         val spots = listOf(-0.52f to -0.12f, 0.5f to 0.22f, -0.5f to 0.3f, 0.48f to -0.2f)
         m.weatherStickers.mapNotNull { PROPS[it] }.distinct().take(4).forEachIndexed { i, prop ->
@@ -1158,11 +1158,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 p.style = Paint.Style.FILL }
             "camp" -> { val fl = if (alive) 0.8f + 0.2f * sin(t * 9f) * sin(t * 5.3f) else 0.9f   // 모닥불 빛(아래에서)
                 p.shader = RadialGradient(cx, cy + s * 0.7f, s * 0.9f, Glass.a(0xFFFFA24A.toInt(), (120 * fl).toInt()), 0x00FFA24A, Shader.TileMode.CLAMP); c.drawCircle(cx, cy + s * 0.7f, s * 0.9f, p); p.shader = null
-                // 장작 + 불꽃
-                val fx = cx + s * 0.75f; val fy = cy + s * 0.5f
-                p.color = 0xFF5A3A22.toInt(); c.save(); c.rotate(14f, fx, fy); c.drawRoundRect(RectF(fx - 34 * U, fy - 5 * U, fx + 34 * U, fy + 5 * U), 5 * U, 5 * U, p); c.restore()
-                c.save(); c.rotate(-14f, fx, fy); c.drawRoundRect(RectF(fx - 34 * U, fy - 5 * U, fx + 34 * U, fy + 5 * U), 5 * U, 5 * U, p); c.restore()
-                for ((col, sc) in listOf(0xFFFF7A2F.toInt() to 1f, 0xFFFFC94A.toInt() to 0.6f)) { val hh = 46 * U * sc * fl; path.reset(); path.moveTo(fx - 16 * U * sc, fy - 2 * U); path.quadTo(fx - 14 * U * sc, fy - hh * 0.6f, fx, fy - hh); path.quadTo(fx + 14 * U * sc, fy - hh * 0.6f, fx + 16 * U * sc, fy - 2 * U); path.close(); p.color = col; c.drawPath(path, p) } }
+            }
             "neon" -> if (bm != null) {   // 젖은 바닥에 비친 모습
                 c.save(); c.translate(0f, (cy + s * 0.5f) * 2); c.scale(1f, -1f)
                 p.alpha = 60; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p); p.alpha = 255; c.restore()
