@@ -251,7 +251,18 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val bot = v.asset("bot_$face.webp")
         if (m.overlay != "deco") aroundCharacter(c, cx, cy, s, t, alive, bot)
         bot?.let { bm -> p.isFilterBitmap = true; p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p) }
-        // 캐릭터에는 아무것도 덧그리지 않는다(댄 11-09 — 스프라이트 그대로)
+        // 캐릭터 그림은 그대로 — 사용자가 고른 소품만 따로 얹는다(칸 순서: 목 → 얼굴 → 눈 → 머리핀 → 머리 → 효과)
+        for (slot in listOf("neck", "face", "eyes", "hair", "head", "effect")) {
+            val id = m.equipped[slot] ?: continue
+            if (face == "driving" && (slot == "neck" || slot == "face")) continue   // 운전대 자세와 겹침
+            val d = StageModel.ACC_DEFS.firstOrNull { it.id == id } ?: continue
+            val bm = v.asset("acc_$id.webp") ?: continue
+            val (ss, cyy) = if (face == "driving") (s * 0.9f) to (cy + s * 0.04f) else s to cy   // 운전 자세 그림은 헬멧이 조금 작고 낮다
+            val aw = d.w * ss; val ah = aw * bm.height / bm.width
+            val ax = cx + d.dx * ss; val ay = cyy + d.dy * ss
+            c.save(); c.rotate(d.rot, ax, ay); p.color = Color.WHITE; p.isFilterBitmap = true
+            c.drawBitmap(bm, null, RectF(ax - aw / 2, ay - ah / 2, ax + aw / 2, ay + ah / 2), p); c.restore()
+        }
         // 날씨 소품(그림) — 우산·목도리·차 한 잔·선글라스
         val spots = listOf(-0.52f to -0.12f, 0.5f to 0.22f, -0.5f to 0.3f, 0.48f to -0.2f)
         m.weatherStickers.mapNotNull { PROPS[it] }.distinct().take(4).forEachIndexed { i, prop ->
@@ -723,7 +734,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val pr2 = RectF(x1 - 132 * U - pw, panel.top + 28 * U, x1 - 132 * U, panel.top + 84 * U)
         p.color = Glass.a(WARN, 36); c.drawRoundRect(pr2, 28 * U, 28 * U, p); icon(c, "star", pr2.left + 26 * U, pr2.centerY(), 24 * U, WARN); text(c, "${m.points}", pr2.left + 46 * U, pr2.centerY() + 9 * U, 24 * U, FG, bold)
         var tx = x0; val ty = panel.top + 160 * U
-        for ((key, lab) in listOf("concept" to "테마", "face" to "표정", "decor" to "소품")) {
+        for ((key, lab) in listOf("concept" to "테마", "decor" to "꾸미기 소품", "face" to "표정")) {
             val on = m.decoTab == key
             p.textSize = 24 * U; p.typeface = semi
             val r = RectF(tx, ty - 26 * U, tx + p.measureText(lab) + 48 * U, ty + 26 * U)
@@ -760,7 +771,24 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 button(c, if (own) "이 테마 쓰기" else "★ ${cc.price} 열기", br, own || m.points >= cc.price, "buy:$lk")
             }
         } else {
-            val items = if (m.decoTab == "face") StageModel.FACES else StageModel.DECOR
+            if (m.decoTab == "decor") {   // 꾸미기 소품 30종 — 칸마다 하나
+                val cols = 6; val rows = 5; val g2 = 10 * U
+                val cw = (x1 - x0 - g2 * (cols - 1)) / cols; val ch = (panel.bottom - 40 * U - gy - g2 * (rows - 1)) / rows
+                StageModel.ACC_DEFS.forEachIndexed { i, d ->
+                    val r = RectF(x0 + (i % cols) * (cw + g2), gy + (i / cols) * (ch + g2), 0f, 0f).also { it.right = it.left + cw; it.bottom = it.top + ch }
+                    val own = "acc:${d.id}" in m.owned; val on = m.equipped[d.slot] == d.id
+                    p.color = SURF2; c.drawRoundRect(r, 12 * U, 12 * U, p)
+                    if (on) { p.style = Paint.Style.STROKE; p.strokeWidth = 3 * U; p.color = ACC; c.drawRoundRect(r, 12 * U, 12 * U, p); p.style = Paint.Style.FILL }
+                    v.asset("acc_${d.id}.webp")?.let { bm -> val iw2 = min(r.width() * 0.7f, (r.height() - 34 * U) * 0.9f * bm.width / bm.height); val ih2 = iw2 * bm.height / bm.width
+                        p.color = Color.WHITE; p.alpha = if (own || m.points >= d.price) 255 else 150
+                        c.drawBitmap(bm, null, RectF(r.centerX() - iw2 / 2, r.top + (r.height() - 30 * U) / 2 - ih2 / 2, r.centerX() + iw2 / 2, r.top + (r.height() - 30 * U) / 2 + ih2 / 2), bp); p.alpha = 255 }
+                    text(c, d.name, r.left + 10 * U, r.bottom - 10 * U, 17 * U, FG, medium, maxW = r.width() * 0.62f)
+                    text(c, when { on -> "착용"; own -> "보유"; else -> "★${d.price}" }, r.right - 10 * U, r.bottom - 10 * U, 16 * U, when { on -> ACC; own -> MUTED; m.points >= d.price -> WARN; else -> FAINT }, semi, Paint.Align.RIGHT)
+                    hits += r to "acc:${d.id}"
+                }
+            } else {
+            val items = StageModel.FACES
+
             val cols = 3; val cw = (x1 - x0 - g * (cols - 1)) / cols; val ch = (panel.bottom - 40 * U - gy - g) / 2
             items.forEachIndexed { i, d ->
                 val r = RectF(x0 + (i % cols) * (cw + g), gy + (i / cols) * (ch + g), 0f, 0f).also { it.right = it.left + cw; it.bottom = it.top + ch }
@@ -775,6 +803,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 val (st, sc) = when { using -> (if (d.kind == "decor") "놓음" else "사용 중") to ACC; own -> (if (d.kind == "decor") "치움" else "보유") to MUTED; else -> "★ ${d.price}" to (if (m.points >= d.price) WARN else FAINT) }
                 text(c, st, r.right - 16 * U, r.bottom - 16 * U, 20 * U, sc, semi, Paint.Align.RIGHT)
                 hits += r to (if (d.kind == "decor" && own) "place:${d.id}" else "item:$key")
+            }
             }
         }
         if (m.unlockAt > 0 && SystemClock.elapsedRealtime() - m.unlockAt < 1200) doors(c, w, h, (SystemClock.elapsedRealtime() - m.unlockAt) / 1200f)

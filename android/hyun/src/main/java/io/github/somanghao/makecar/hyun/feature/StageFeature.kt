@@ -38,6 +38,9 @@ data class Entry(val icon: String, val why: String, val delta: Int)
 /** 꾸미기 상품 — kind theme(배경 조명 색) · face(기본 표정) · acc(소품 스티커) */
 data class Deco(val kind: String, val id: String, val name: String, val price: Int, val color: Int = 0, val glyph: String = "")
 
+/** 캐릭터 꾸미기 소품(assets/chars/acc_<id>.webp, 댄 11-09 소품 시트에서 오림) — 칸(slot)마다 하나. 위치는 캐릭터 그림 한 변 기준 비율 */
+data class AccDef(val id: String, val name: String, val slot: String, val w: Float, val dx: Float, val dy: Float, val rot: Float, val price: Int)
+
 /** 화면(StageUi)이 읽는 상태 — 기능이 채우고 화면은 그리기만 */
 class StageModel {
     var sit = Sit.IGNITION
@@ -60,6 +63,7 @@ class StageModel {
     var tripPoints = 0
     var concept = "pleos"; var face = "neutral"; var acc = ""
     var decor: Set<String> = emptySet()       // 방에 놓은 소품(꾸미기)
+    val equipped = linkedMapOf<String, String>()   // 칸 → 소품 id(머리 · 눈 · 얼굴 · 목 · 머리핀 · 효과)
     var heroIdx = 0                           // 지금 크게 보이는 이야기
     var heroAt = SystemClock.elapsedRealtime()
     var carEvent: Pair<String, String>? = null   // 주행 중 한 줄 알림(아이콘 이름, 글) — 바뀔 때만 잠깐
@@ -104,6 +108,39 @@ class StageModel {
         val DECOR = listOf(
             Deco("decor", "plant", "화분", 30, glyph = "🪴"), Deco("decor", "balloon", "풍선", 40, glyph = "🎈"), Deco("decor", "bear", "곰인형", 60, glyph = "🧸"),
             Deco("decor", "frame", "액자", 80, glyph = "🖼️"), Deco("decor", "cat", "고양이", 120, glyph = "🐈"), Deco("decor", "lamp", "무드등", 150, glyph = "🏮"))
+        val ACC_DEFS = listOf(
+            AccDef("cat_ears", "고양이 귀", "head", 0.74f, 0f, -0.37f, 0f, 120),
+            AccDef("bunny_ears", "토끼 귀", "head", 0.7f, 0f, -0.5f, 0f, 120),
+            AccDef("bear_ears", "곰 귀", "head", 0.74f, 0f, -0.37f, 0f, 120),
+            AccDef("devil_horns", "악마 뿔", "head", 0.74f, 0f, -0.39f, 0f, 120),
+            AccDef("halo", "천사 링", "head", 0.62f, 0f, -0.52f, 0f, 200),
+            AccDef("crown", "왕관", "head", 0.4f, 0f, -0.5f, -6f, 250),
+            AccDef("witch_hat", "마녀 모자", "head", 0.86f, 0.02f, -0.48f, -4f, 120),
+            AccDef("santa_hat", "산타 모자", "head", 0.8f, 0.04f, -0.4f, -6f, 150),
+            AccDef("beret", "베레모", "head", 0.7f, 0.04f, -0.4f, -8f, 120),
+            AccDef("maid_frill", "메이드 머리띠", "head", 0.74f, 0f, -0.37f, 0f, 120),
+            AccDef("deerstalker", "탐정 모자", "head", 0.8f, 0f, -0.38f, 0f, 120),
+            AccDef("headphones", "헤드폰", "head", 0.94f, 0f, -0.02f, 0f, 180),
+            AccDef("sunglasses", "선글라스", "eyes", 0.66f, 0f, 0.06f, 0f, 60),
+            AccDef("pixel_glasses", "픽셀 안경", "eyes", 0.66f, 0f, 0.06f, 0f, 60),
+            AccDef("heart_glasses", "하트 안경", "eyes", 0.62f, 0f, 0.06f, 0f, 60),
+            AccDef("star_glasses", "별 안경", "eyes", 0.62f, 0f, 0.06f, 0f, 60),
+            AccDef("pixel_glasses2", "픽셀 안경 2", "eyes", 0.7f, 0.03f, 0.06f, 0f, 60),
+            AccDef("glasses_3d", "3D 안경", "eyes", 0.66f, 0.02f, 0.06f, 0f, 60),
+            AccDef("bandage_heart", "하트 밴드", "face", 0.22f, 0.27f, -0.12f, -20f, 30),
+            AccDef("bandage_cross", "십자 밴드", "face", 0.2f, -0.27f, -0.12f, 0f, 30),
+            AccDef("mask", "마스크", "face", 0.44f, 0f, 0.2f, 0f, 30),
+            AccDef("scarf", "체크 목도리", "neck", 0.62f, 0f, 0.44f, 0f, 70),
+            AccDef("bow_tie", "나비넥타이", "neck", 0.36f, 0f, 0.43f, 0f, 70),
+            AccDef("necktie", "넥타이", "neck", 0.18f, 0f, 0.49f, 0f, 70),
+            AccDef("ribbon_blue", "파란 리본", "hair", 0.24f, -0.32f, -0.32f, -12f, 40),
+            AccDef("ribbon_pink", "분홍 리본", "hair", 0.24f, -0.32f, -0.32f, -12f, 40),
+            AccDef("star_clip", "별 핀", "hair", 0.22f, 0.3f, -0.3f, 10f, 40),
+            AccDef("cherry_blossom", "벚꽃", "hair", 0.24f, -0.32f, -0.3f, 0f, 40),
+            AccDef("blue_flame", "푸른 불꽃", "effect", 0.26f, 0.58f, -0.3f, 0f, 180),
+            AccDef("hearts", "하트", "effect", 0.3f, 0.58f, -0.3f, 0f, 150),
+        )
+        val SLOT_NAMES = mapOf("head" to "머리", "eyes" to "눈", "face" to "얼굴", "neck" to "목", "hair" to "머리핀", "effect" to "효과")
         fun all() = CONCEPTS + FACES + DECOR
     }
 }
@@ -166,6 +203,7 @@ class StageFeature : Feature {
         m.concept = pr.getString("stage.concept", "pleos")!!; m.face = pr.getString("stage.face", "neutral")!!; m.acc = pr.getString("stage.acc", "")!!
         m.owned = pr.getStringSet("stage.owned", m.owned)!!.toSet() + m.owned
         m.decor = pr.getStringSet("stage.decor", emptySet())!!.toSet()
+        pr.getString("stage.equip", "")!!.split(',').filter { ':' in it }.forEach { m.equipped[it.substringBefore(':')] = it.substringAfter(':') }
         if (pr.getInt("stage.weekNo", -1) == Calendar.getInstance().get(Calendar.WEEK_OF_YEAR)) m.weekPoints = pr.getInt("stage.week", 0)
         status = CarStatus(hub.act).also { runCatching { it.start() }; m.status = it }
         ui = StageUi(hub.view, m, ::act).also { hub.view.stage = it }
@@ -181,7 +219,7 @@ class StageFeature : Feature {
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
-    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
 
     /**
      * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive
@@ -200,8 +238,8 @@ class StageFeature : Feature {
     /** 시연 extra — 방송·인텐트 공통 */
     private fun apply(i: Intent) {
         if (i.getBooleanExtra("reset", false)) {
-            hub.prefs.edit().remove("stage.onboarded").remove("stage.skill").remove("stage.points").remove("stage.owned").remove("stage.concept").remove("stage.face").remove("stage.acc").remove("stage.decor").apply()
-            m.skill = null; m.points = 0; m.concept = "pleos"; m.preview = null; m.face = "neutral"; m.acc = ""; m.owned = setOf("concept:pleos", "face:neutral", "acc:"); m.ledger.clear(); m.dayLedger.clear(); m.decor = emptySet()
+            hub.prefs.edit().remove("stage.onboarded").remove("stage.skill").remove("stage.points").remove("stage.owned").remove("stage.concept").remove("stage.face").remove("stage.acc").remove("stage.decor").remove("stage.equip").apply()
+            m.skill = null; m.points = 0; m.concept = "pleos"; m.preview = null; m.face = "neutral"; m.acc = ""; m.owned = setOf("concept:pleos", "face:neutral", "acc:"); m.ledger.clear(); m.dayLedger.clear(); m.decor = emptySet(); m.equipped.clear()
             startOnboarding()
         }
         i.getStringExtra("turn")?.let { t -> m.status?.sim("turn=$t") }   // 깜빡이 시연(표준 AAOS 는 외부 앱에 안 열림)
@@ -209,6 +247,12 @@ class StageFeature : Feature {
         i.getStringExtra("night")?.let { m.nightOverride = when (it) { "on" -> true; "off" -> false; else -> null } }
         i.getStringExtra("sim")?.let { sp -> val done = m.status?.sim(sp).orEmpty(); hub.log("stage|sim|$done") }
         i.getStringExtra("preview")?.let { m.preview = it.takeIf { p -> Concept.ALL.any { c -> c.id == p } }; m.previewAt = SystemClock.elapsedRealtime() }
+        i.getStringExtra("tab")?.let { m.decoTab = it }   // 시연: 상점 탭(concept · decor · face)
+        i.getStringExtra("equip")?.let { spec ->   // 시연: --es equip "cat_ears,sunglasses" (보유+착용) · "none" 이면 모두 벗기
+            if (spec == "none") m.equipped.clear()
+            else spec.split(',').map { it.trim() }.forEach { id -> StageModel.ACC_DEFS.firstOrNull { it.id == id }?.let { d -> m.owned = m.owned + "acc:${d.id}"; m.equipped[d.slot] = d.id } }
+            save()
+        }
         if (i.hasExtra("hero")) { m.heroIdx = i.getIntExtra("hero", 0); m.heroAt = SystemClock.elapsedRealtime() }
         if (i.hasExtra("points")) { m.points = i.getIntExtra("points", m.points); save() }
         i.getStringExtra("skill")?.let { setSkill(it, say = false) }
@@ -471,6 +515,7 @@ class StageFeature : Feature {
             a.startsWith("hero:") -> { m.heroIdx = a.substringAfter(":").toInt(); m.heroAt = SystemClock.elapsedRealtime() + 20_000; m.reactAt = SystemClock.elapsedRealtime(); m.reactFace = "happy" }
             a.startsWith("say:") -> hub.heard(a.substringAfter(":"))
             a.startsWith("sim:") -> { m.status?.sim(a.substringAfter(":")) }
+            a.startsWith("acc:") -> wearAcc(a.substringAfter(":"))
             a.startsWith("place:") -> a.substringAfter(":").let { id -> m.decor = if (id in m.decor) m.decor - id else m.decor + id; save() }
             a.startsWith("listen:") -> hub.view.onListenMode(a.endsWith("always"))
             a == "card:close" -> hub.view.card = null
@@ -493,10 +538,22 @@ class StageFeature : Feature {
         save()
     }
 
+    /** 소품 — 없으면 별로 사고, 있으면 입기/벗기(같은 칸은 하나만) */
+    private fun wearAcc(id: String) {
+        val d = StageModel.ACC_DEFS.firstOrNull { it.id == id } ?: return
+        val key = "acc:$id"
+        if (key !in m.owned) {
+            if (m.points < d.price) { toast("별이 ${d.price - m.points}개 모자라요 — 안전운전으로 모아요"); return }
+            m.points -= d.price; m.owned = m.owned + key; toast("${d.name} 샀어요  −${d.price}")
+        }
+        if (m.equipped[d.slot] == id) m.equipped.remove(d.slot) else { m.equipped[d.slot] = id; m.reactAt = SystemClock.elapsedRealtime(); m.reactFace = "happy" }
+        save()
+    }
+
     private fun toast(s: String) { m.toast = s; m.toastAt = SystemClock.elapsedRealtime() }
 
     private fun save() = hub.prefs.edit().putInt("stage.points", m.points).putStringSet("stage.owned", m.owned)
-        .putString("stage.concept", m.concept).putString("stage.face", m.face).putString("stage.acc", m.acc).putStringSet("stage.decor", m.decor).apply()
+        .putString("stage.concept", m.concept).putString("stage.face", m.face).putString("stage.acc", m.acc).putStringSet("stage.decor", m.decor).putString("stage.equip", m.equipped.entries.joinToString(",") { "${it.key}:${it.value}" }).apply()
 
     // ======================================================================
     // 말 명령 — 숙련도 · 꾸미기 · 포인트 · 점검 (온보딩 질문 중엔 넓게 받는다)
