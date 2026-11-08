@@ -498,7 +498,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         micGlyph(c, mx, my, rr * 1.15f, Color.WHITE)
         hits += RectF(mx - rr, my - rr, mx + rr, my + rr) to "mic"
         val lab = when (v.mode) { HyunView.Mode.LISTENING -> "듣고 있어요"; HyunView.Mode.THINKING -> "생각 중…"; HyunView.Mode.SPEAKING -> ""; else -> if (v.listenAlways) "\"현비서야\"" else "" }
-        if (lab.isNotBlank()) text(c, lab, mx - rr - 16 * U, my + 8 * U, 22 * U, if (darkUi || !k.light) 0xEEFFFFFF.toInt() else MUTED, medium, Paint.Align.RIGHT)
+        if (lab.isNotBlank()) text(c, lab, mx, my - rr - 16 * U, 20 * U, if (darkUi || !k.light) 0xEEFFFFFF.toInt() else MUTED, medium, Paint.Align.CENTER)
     }
 
     /** 해금 연출 — 1.2초 동안 문 두 짝이 열린다 */
