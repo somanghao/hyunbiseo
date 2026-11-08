@@ -293,7 +293,7 @@ class HyunView(ctx: Context) : View(ctx) {
     private val m = Matrix()
 
     // ---------- 대기 캐릭터: Lottie(res/raw/h_ai_idle_lottie) 반복 재생 — 듣기·생각·말하기는 그린 구슬/그림 그대로 ----------
-    private val idleLottie: com.airbnb.lottie.LottieDrawable? = try {
+    private var idleLottie: com.airbnb.lottie.LottieDrawable? = try {
         com.airbnb.lottie.LottieCompositionFactory.fromRawResSync(ctx, io.github.somanghao.makecar.hyun.R.raw.h_ai_idle_lottie).value
             ?.let { comp -> com.airbnb.lottie.LottieDrawable().apply { composition = comp } }
     } catch (_: Exception) { null }
@@ -310,7 +310,11 @@ class HyunView(ctx: Context) : View(ctx) {
         val half = r * 2f
         d.setBounds((cx - half).toInt(), (cy - half).toInt(), (cx + half).toInt(), (cy + half).toInt())
         p.shader = null
-        d.draw(c)
+        val n = c.save()
+        try { d.draw(c) } catch (e: Exception) {   // 그릴 수 없는 파일이면 앱을 죽이지 말고 대기 Lottie를 끄고 원래 구슬로
+            android.util.Log.w("HYUN", "idle lottie off: $e"); idleLottie = null; c.restoreToCount(n); return false
+        }
+        c.restoreToCount(n)
         return true
     }
     private fun idleShown() = idleLottie != null && mode == Mode.READY
