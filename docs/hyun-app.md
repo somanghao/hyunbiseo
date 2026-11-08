@@ -49,7 +49,7 @@ Claude Code 세션(두뇌): wait.py를 run_in_background로 띄워 두고(대기
 - **목록 카드**(정차만, 주행 중엔 숨김): 두뇌 답 `card {title, source, items≤10}` → 한 칸 번호 목록(1~3위 강조, "제목 — 작가"면 작가 옅게) · 누르면 닫힘 · 3분 뒤 닫힘(`CARD_MS`) · 말은 앞 3개만 · 실측: 웹소설 TOP 10, 한국시리즈 현황 5줄
 
 ## 상황별 추천 화면 (댄 2026-11-08 — `feature/StageFeature.kt` · `ui/StageUi.kt`)
-"큰 글씨 위주 말고 기획서대로" — 차 가로 화면은 이제 **캐릭터가 가운데 서는 카드형 화면**(왼쪽 무대 · 오른쪽 상황 카드). 좁은 화면(내비와 반반)·폰은 예전 그대로.
+"큰 글씨 위주 말고 기획서대로" — 차 가로 화면은 이제 **캐릭터가 가운데 서는 카드형 화면**(왼쪽 무대 · 오른쪽 상황 카드 — 벤토 격자, 상황이 바뀌면 카드가 차례로 튀어 오름). 좁은 화면(내비와 반반)·폰은 예전 그대로.
 - **상황 6단계**(AAOS 신호로 판정 — `IGNITION_STATE` · `GEAR_SELECTION` · `PERF_VEHICLE_SPEED`, 신호가 바뀔 때만 다시 판정):
   시동(전원 ON·P) → 출발 준비(D·정지, 주행 전) → 주행 중(속도>5km/h) → 잠깐 정차(D·정지 2초, 주행 뒤) → 주차(주행 뒤 P) → 시동 끔(전원 OFF·LOCK)
   - 시동: 인사 · 날씨 개그(목도리·우산·차 한 잔 스티커를 캐릭터가 걸침) · 관심 뉴스(서버 `/hyun/feed?cat=news` + `/hyun/taste` 좋아요 키워드) · 차 상태
@@ -57,10 +57,34 @@ Claude Code 세션(두뇌): wait.py를 run_in_background로 띄워 두고(대기
   - 잠깐 정차: 동네 이야기(예시 — 카카오 로컬은 서버 도착 추천에만 열려 있음) + 다음 안내 / 주차: 주행 요약 · 안전운전 포인트 · 쉼표 · 꾸미기 / 시동 끔: 하루 정리 · 두고 내린 것 · 내일
 - **첫 실행**: 차량 점검(`drive/CarCheck.kt` — 읽히는 것만, 못 읽는 건 "확인 불가") → "운전이 처음이세요?"(말 "처음이야/익숙해" 또는 탭) → 맞춤 완료(+100 환영 포인트). 숙련도는 설정(⚙)·말("나 초보야")로 바꾼다
   - 초보: 출발·정차·주차 팁(말 + 팁 띠) · 회전 300m 앞 차로 알림 · 급정거 코칭 · 50분 쉼표 / 숙련: 꼭 필요한 말만
-- **꾸미기**: 조명 테마 6 · 기본 표정 6 · 소품 6 — 안전운전 포인트(100m = 1점, 급정거 없이 0.5km 이상이면 주차 때 +10)로 연다. prefs `stage.*`
+- **디자인(댄 11-08 최종)**: 기본 = **Pleos 기본** 컨셉 — 시스템 화면(왼쪽 1/3)과 이질감 없게 밝은 회색 그라데이션 · 흰 카드(부드러운 그림자 · 1px 선) · 얇은 선 아이콘 · 청록 하나. 시스템 밤 모드(uiMode)면 깊은 회청색 카드. 유리·화려한 바탕은 상점 컨셉에서만(`ui/Glass.kt` — 흐린 판은 컨셉이 바뀔 때만 만들고 프레임마다 블러하지 않음)
+  - 앱 영역 = 실차에선 오른쪽 약 2/3(1280×1000 안팎) — 이 크기에서 깨지지 않게. 확인용 `--ei sideL 643`(왼쪽을 시스템 칸만큼 비우고 그림)
+  - 주행 중: 움직임 없음 · 요소 둘(길 안내 1장 + 내 차 상태 카드 6칸 — 왼쪽 시스템 칸에 3D 차가 있으니 차 그림은 그리지 않음)
+- **안전운전 포인트**: 100m = +1 · 급정거(1초에 12.6km/h 넘게 줄면) −5(초보 −2) · 과속(제한+10 넘게 8초, 지금은 모의 경로 구간 제한) −3(−1) · 깜빡이 없이 회전(Pleos 조향각 90° 넘게) −2(−1) / 켜고 회전 +1 · 크루즈 1분 +5 · 쉼표 없이 120분(초보 90분) −5(−2) · 감점 없이 0.5km 넘게 완주 +10. 주차·시동 끔 화면에 내역(+/− 이유). 주행 중 말은 초보에게만 부드럽게
+- **컨셉 상점**(포인트로 구매, 미리보기 = 상점 화면 전체가 그 컨셉으로): Pleos 기본(무료) · 오로라 글래스 100 · 카페 우드 150(나무 결·전구·세리프) · 나이트 크루즈 300(별·행성·각진 패널·"크레딧") · 레트로 아케이드 450(네온 격자·도트 테두리·모노 글꼴·"코인"). 컨셉마다 배경 그림 · 카드 모양 · 글꼴 · 캐릭터 표정·소품 · 말투(인사 앞말)가 다르다. 표정 6 · 소품 6 은 따로
 - **내 차 상태 출처**(`drive/CarStatus.kt`): Pleos Vehicle SDK(Odometer·TurnSignal·DrivingMode·EvBattery) → 없으면 AAOS CarPropertyManager → 없으면 예시 값(옅게). 표준 AAOS 에뮬은 배터리·주행 가능 거리만 실제(누적 주행·깜빡이·문·공조는 시그니처 권한이라 외부 앱엔 막힘)
-- 시연: `adb shell am broadcast -a io.github.somanghao.makecar.hyun.STAGE --es sit ignition|ready|drive|stop|park|off|auto` · `--es screen onboard|deco|settings|debug|none` · `--es skill novice|expert` · `--ei points 300` · `--es turn left|right|off` · `--ez reset true`(첫 실행 다시). 화면 왼쪽 위 상황 칩 세 번 = 디버그 판
+- 시연: `adb shell am broadcast -a io.github.somanghao.makecar.hyun.STAGE --es sit ignition|ready|drive|stop|park|off|auto` · `--es screen onboard|deco|settings|debug|none` · `--es skill novice|expert` · `--ei points 300` · `--es turn left|right|off` · `--ef steer 120` · `--ez cruise true` · `--es concept pleos|glass|cafe|space|arcade` · `--es preview space` · `--es night on|off|auto` · `--ei sideL 643` · `--ez reset true`(첫 실행 다시). 화면 왼쪽 위 상황 칩 세 번 = 디버그 판
 - 에뮬 VHAL 로 진짜 신호 주기: `adb shell su 0 dumpsys android.hardware.automotive.vehicle.IVehicle/default --set 0x11600207 -f 13.5`(속도 m/s) · `--set 0x11400400 -i 8`(기어 D, P=4) · `--set 0x11400409 -i 2`(시동 끔, 켬=4)
+
+### 차 신호 → 캐릭터 반응 (Pleos SDK 데이터 활용, `drive/CarStatus.kt` · `StageFeature.react()`)
+데이터 층: **Pleos Vehicle SDK → AAOS CarPropertyManager → 시뮬레이터**(디버그 판·`--es sim "wiper=on,passenger=on,…"`, 넣은 값은 고정). 값이 *바뀔 때*만 한 번 반응 — 주행 중엔 카드 대신 말 + 6초 한 줄.
+
+| 신호(SDK) | 상황 | 캐릭터 반응 · 추천 |
+|---|---|---|
+| Wiper 켜짐 | 언제나 | "비가 오네요" + 우산 소품 · 초보에겐 간격 두 배 안내 · 창이 열려 있으면 "창문 닫을까요?" |
+| Door 열림(운전석) | 주차·시동 끔 / 주행 | 하차 리마인더(휴대폰·지갑·뒷좌석) / 주행 중이면 P0 경고 |
+| HVAC 설정 온도 ≥27° · ≤17° | 언제나 | "23도로 맞출까요?" → "응"이면 Pleos HVAC `setHvacTemperature`(에뮬은 화면 값만) |
+| Seat 착석(조수석) | 언제나 | 동승자 모드 인사 · 같이 들을 노래 제안 · 혼잣말 줄임 |
+| Seat 착석(뒷좌석) | 언제나 | 꼬마 손님 — 동요·끝말잇기 |
+| SeatBelt 풀림 | 출발 준비·주행 | "벨트부터 매요" |
+| Light 전조등 꺼짐(밤) | 주행 | "전조등 켜 볼까요?" |
+| DrivingMode 크루즈 작동 | 주행 | 한 줄 알림 · 초보 "발은 브레이크 가까이" · 1분 유지 +5 |
+| DrivingMode ECO / SPORT | 주행 | 에코 칭찬 / 초보에게 스포츠 주의 |
+| TurnSignal | 주행 | 한 줄 알림(깜빡임) · 조향 90° 넘는 회전과 짝지어 +1 / 깜빡이 없이 회전 −2(초보 −1) |
+| SteeringWheel · Brake · 속도 | 주행 | 급정거 감점 · 회전 판정 |
+| EvBattery/Fuel ≤20% | 언제나 | "가는 김에 충전소 들를까요?" → "응"이면 경유 요청 |
+| Odometer 이번 주행 거리·시간 | 주행·주차 | 10km마다 +3 · 30분 칭찬 · 주차 때 "24분 동안 12km 달렸어요" |
+| CarInfo VIN · 차종 | 첫 실행 | 차량 점검 카드 |
 
 ## 귀 — 상시 듣기 (2026-11-06, 차)
 
