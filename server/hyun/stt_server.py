@@ -83,4 +83,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     transcribe(b"\0\0" * 8000)   # 첫 호출 지연(커널 준비)을 미리 치른다
     print(f"stt server http://127.0.0.1:{PORT} model={MODEL} device={DEVICE}", flush=True)
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    # HYUN_STT_HOST=0.0.0.0 — 격리 컨테이너 안에서 돌릴 때만(포트는 호스트 127.0.0.1 에만 게시). 기본은 127.0.0.1
+    ThreadingHTTPServer((os.environ.get("HYUN_STT_HOST", "127.0.0.1"), PORT), Handler).serve_forever()
