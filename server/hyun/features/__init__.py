@@ -13,15 +13,16 @@
   GET / POST: {경로: fn(h, q | body)} HTTP 라우트(h = core.http.Handler — send_json · send_html · send_bytes)
   threads() -> [callable]             서버가 띄울 백그라운드 일(예열 · 정리 봇)
 
-순서가 뜻이 있다 — 질문 블록: 길 → 기억 → 취향 → 최근 대화 → 브리핑 → 정보 통로 · 답 등록: 길 → 교통 표 → 카드(손질·사진) → 기억 → 취향 → 브리핑 → 폰.
+순서가 뜻이 있다 — 질문 블록: 길 → 주변 장소 → 기억 → 취향 → 최근 대화 → 브리핑 → 정보 통로 · 답 등록: 길 → 교통 표 → 주변 장소 → 카드(손질·사진) → 기억 → 취향 → 브리핑 → 폰.
 앱 쪽 짝 = android/hyun/…/feature/ (Registry.kt). 설계 → .claude/docs/wiki/hyun-architecture.md
 """
-from features import (briefing, cards, feeds, history, login, memory, phone, restarea, route, search, taste, taste_refine,
+from features import (briefing, cards, feeds, history, login, memory, phone, places, restarea, route, search, taste, taste_refine,
                       testaudio, traffic)
 
 ALL = [
     route,          # 목적지 · 경유지 · 우회 · 안내 끝 · [길·교통] 블록 · 주행 이벤트 규칙
     traffic,        # 길·교통 질문 → 내비 값으로 교통 표(카드)
+    places,         # 도착 추천 · 주변 장소(카카오 로컬 실시간) — 식사 시간 곧 도착·도착 · "근처 맛집" → 서버가 카드
     cards,          # 카드 형식(목록 · 표지 격자 · 소개) · 개수 맞추기 · 사진(위키미디어 공용) · /hyun/img
     memory,         # 기억(호칭 · 일화) · [기억] 블록 · /hyun/memory
     taste,          # 취향 누적 · 취향 질문 · [취향] 블록 · /hyun/taste · /hyun/me
@@ -35,6 +36,26 @@ ALL = [
     login,          # Claude 로그인 페이지(API 키) · /hyun/login
     testaudio,      # 귀 시험 녹음 · /hyun/testaudio
 ]
+
+
+# 훅 이름 → 인자 개수. 기능 모듈이 같은 이름을 다른 뜻으로 쓰면(예: places.search(la, lo, …)) 서버가 그 함수를 훅으로 불러
+# 두뇌 스레드가 죽는다(11-08 E2E 0/2) → 서버를 켤 때 막는다
+HOOK_ARGS = {"block": 2, "feed_cats": 1, "last_line": 1, "search": 1, "on_in": 1, "normalize": 1, "post": 5, "threads": 0}
+
+
+def _check_hooks():
+    import inspect
+    for f in ALL:
+        for name, n in HOOK_ARGS.items():
+            fn = getattr(f, name, None)
+            if fn is None:
+                continue
+            ps = [p for p in inspect.signature(fn).parameters.values() if p.default is p.empty and p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+            if not callable(fn) or len(ps) != n:
+                raise TypeError(f"기능 {f.__name__}.{name}: 훅 이름인데 인자 {len(ps)}개(약속 {n}개) — 다른 이름으로 바꿀 것")
+
+
+_check_hooks()
 
 
 def hook(name, *args):

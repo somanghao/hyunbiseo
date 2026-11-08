@@ -14,6 +14,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
+import io.github.somanghao.makecar.hyun.FrontActivity
 import io.github.somanghao.makecar.hyun.brain.Link
 import io.github.somanghao.makecar.hyun.drive.CarSense
 import io.github.somanghao.makecar.hyun.drive.Navi
@@ -97,7 +98,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     fun start(intent: Intent?) {
         view.phone = !isCar; view.lightTheme = !isCar; view.botName = botName; view.hyunLine = "안녕하세요, ${botName}예요"
         view.onMic = ::micPressed
-        if (isCar) navi = Navi(act, main, ::log).also { it.listen(naviCore) }
+        if (isCar) navi = Navi(act, main, ::log).also { it.listen(naviCore); it.beforeCommand = ::primeFront }
         features.forEach { it.start(this) }
         intent?.let { onIntent(it, first = true) }
         log("start|${if (isCar) "car" else "phone"}|${Build.MANUFACTURER} ${Build.MODEL} API ${Build.VERSION.SDK_INT}|server=${link.base}|기능 ${features.joinToString(",") { it.id }}")
@@ -137,6 +138,31 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private var fg = false   // 앱이 앞에 있나(onResume ~ onPause) — 마이크 포그라운드 서비스는 앞에 있을 때만 새로 켤 수 있다
     fun onResume() { fg = true; ensureEar() }
     fun onPause() { fg = false }
+    fun onStop() { keepFront() }
+
+    // ---------- 현비서 화면 지키기 — 내비 명령(경로·취소·경유지·옵션)을 받으면 내비 앱이 스스로 맨 앞으로 나와 현비서를 덮는다(11-08 실측) ----------
+    // 운전자가 고른 게 아니니 현비서를 다시 앞으로 — 회전 안내는 현비서 화면의 내비 판이 보여 준다(사용자 11-08 "현비서 화면에서 좌회전·우회전").
+    // 덮인 뒤엔 '뒤에서 화면 띄우기'가 막힌다(BAL_BLOCK — onPause 때도 이미 창이 안 보임) → 명령 직전에 보이지 않는 한순간 화면(FrontActivity)을
+    // 켰다 닫아 10초 유예(BAL_ALLOW_GRACE_PERIOD)를 만들고, 덮이면(onStop) 그 안에 다시 앞으로. 다른 앱을 보던 중(뒤에서 음성 명령)이면 내비가 떠도 둔다.
+    // 반반 화면에서 내비가 옆 칸에 뜨면 현비서는 가려지지 않아 onStop이 오지 않는다
+    private var primedAt = 0L                     // 앞에 있을 때 내비 명령을 보낸 시각(0 = 지킬 것 없음)
+
+    private fun primeFront(what: String) {
+        if (!isCar || !fg) { primedAt = 0L; return }
+        primedAt = SystemClock.elapsedRealtime()
+        runCatching { act.startActivity(Intent(act, FrontActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)) }
+            .onFailure { log("front|prime|FAIL|$what|${it.javaClass.simpleName} ${it.message}") }
+    }
+
+    private fun keepFront() {
+        val at = primedAt; if (at == 0L) return
+        val since = SystemClock.elapsedRealtime() - at
+        primedAt = 0L                              // 명령 하나에 한 번만
+        if (since > KEEP_FRONT_MS) return          // 한참 뒤 가려짐 = 운전자가 다른 화면을 고른 것
+        log("front|covered|명령 ${since}ms 뒤 → 현비서 다시 앞으로")
+        runCatching { act.startActivity(Intent(act, act.javaClass).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) }
+            .onFailure { log("front|FAIL|${it.javaClass.simpleName} ${it.message}") }
+    }
 
     fun stop() {
         main.removeCallbacksAndMessages(null)
@@ -156,6 +182,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     //   말 --es say "강남역 가자" [--ez harness true] · 이벤트 강제 --es event halfway · 말하기 주입 --es line "P3|수다"
     //   서버 --es server http://… · 받아 적기 --es stt http://… · 손 안 대고 듣기 --ez listen true · 디버그 화면 --ez debug true
     //   회전 앞 침묵 --ei turnm 250 [--es turntype TURN_LEFT] · 녹음 진단 --ez rawrec true · 귀 시험 --es earfile <이름>(서버 testaudio)
+    //   표 띄우기(화면 점검) --es card '{"title":"…","source":"…","items":["…"]}'
     // ======================================================================
     fun onIntent(i: Intent, first: Boolean) {
         i.getStringExtra("server")?.let { link.base = it }
@@ -175,6 +202,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         }, if (first) 6000 else 0)
         i.getStringExtra("sttfile")?.let { f -> main.postDelayed({ feedStt(f) }, if (first) 7000 else 0) }
         i.getStringExtra("earfile")?.let { f -> main.postDelayed({ feedEar(f) }, if (first) 8000 else 0) }
+        i.getStringExtra("card")?.let { j -> runCatching { JSONObject(j) }.getOrNull()?.let { k -> main.postDelayed({ showCard(k); render() }, if (first) 3000 else 0) } }   // 화면 점검 — 표 띄우기(--es card '{"title":…,"items":[…]}')
         features.forEach { it.onIntent(i, first) }
         i.getStringExtra("event")?.let { e -> main.postDelayed({ trip.fired -= e; fire(e) }, if (first) 5000 else 0) }
     }
@@ -255,6 +283,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
 
     fun ask(kind: String, text: String, extra: JSONObject? = null) {
         val c = ctx().also { c -> extra?.keys()?.forEach { k -> c.put(k, extra.get(k)) } }
+        val destAtSend = trip.dest   // 이벤트 답이 오는 사이 목적지가 바뀌면 그 답은 옛 길 얘기 — onReply에서 버린다
         link.send(kind, text, c) { id ->
             main.post {
                 log("ask|$id|$kind|$text")   // 시험 기록(tools/hyun_e2e)이 이 질문의 답(reply|id)을 짝짓는다
@@ -270,14 +299,17 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
                     main.postDelayed({ if (waitingId == id) say(FILLERS[id % FILLERS.size], "", false, 1, reply = true, tag = "맞장구") }, FILLER_MS)
                     main.postDelayed({ if (waitingId == id) say("조금만 더 찾아볼게요.", "", false, 1, reply = true, tag = "맞장구2") }, FILLER2_MS)
                 }
-                link.awaitReply(id, if (kind == "talk") 45_000 else 30_000) { r -> main.post { onReply(kind, text, id, r) } }
+                link.awaitReply(id, if (kind == "talk") 45_000 else 30_000) { r -> main.post { onReply(kind, text, id, r, destAtSend) } }
             }
         }
     }
 
-    private fun onReply(kind: String, text: String, id: Int, r: JSONObject?) {
+    private fun onReply(kind: String, text: String, id: Int, r: JSONObject?, destAtSend: String? = trip.dest) {
         if (kind == "talk") { if (id != waitingId) return; waitingId = 0 }
         log("reply|$id|$r")
+        // 이벤트를 보낸 뒤 목적지가 바뀌었으면(곧 도착 제안에 "응" → 식당으로) 옛 길의 답(출발 안내·카드)은 말하지 않는다 — 11-08 E2E e18:
+        // 식당으로 바꾼 뒤 '코엑스까지 34분'이 나옴. 목적지가 없다가 생긴 것(시동 인사 뒤 내비 목적지 읽힘)은 그대로
+        if (kind == "event" && destAtSend != null && destAtSend != trip.dest) { log("reply|$id|stale|$text|$destAtSend→${trip.dest}"); render(); return }
         val talk = kind == "talk"
         val base = if (talk) 1 else Speaker.eventPrio(text)
         if (view.mode == Mode.THINKING && waitingId == 0) view.mode = Mode.READY
@@ -331,7 +363,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
 
     private fun fallbackEvent(ev: String, extra: JSONObject?): String? =
         features.firstNotNullOfOrNull { it.fallback(ev, extra) } ?: when (ev) {
-            "hello" -> "안녕하세요, ${botName}예요. 오늘은 어디로 가요?"
+            "hello" -> trip.dest?.let { "안녕하세요, ${botName}예요. ${it}까지 같이 가요." } ?: "안녕하세요, ${botName}예요. 오늘은 어디로 가요?"
             else -> null   // quiet 등은 두뇌가 있을 때만
         }
 
@@ -360,6 +392,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
             else -> ""
         }
         view.waiting = speaker.waiting.map { it.prio }
+        view.lines.clear()   // 기능 한 줄은 매번 기능들이 다시 채운다
         features.forEach { it.render(view) }
         view.update()
     }
@@ -713,6 +746,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         private const val FILLER2_MS = 13_000L      // 검색 질문 — 그래도 안 오면 한 번 더
         private val FILLERS = arrayOf("음, 잠깐만요.", "생각해 볼게요.", "어디 보자.")
         private const val QUIET_MS = 10 * 60_000L
+        private const val KEEP_FRONT_MS = 4_000L    // 내비 명령 뒤 이 안에 가려지면 내비가 스스로 뜬 것 — 그 뒤는 운전자가 고른 것으로 본다
         private const val TURN_GATE_M = 300.0
         private const val TURN_GATE_MAX_MS = 45_000L
         private val OPEN_TURNS = setOf("TURN_UNKNOWN", "TURN_STRAIGHT", "TURN_ARRIVE")

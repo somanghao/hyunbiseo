@@ -1,9 +1,22 @@
-# 현비서가 쓸 수 있는 Pleos 기능·앱 지도 (2026-11-06 조사)
+# 현비서가 쓸 수 있는 Pleos 기능·앱 지도 (2026-11-06 조사 · 11-07 E2E 대조)
 
 > 조사 = 문서·실측 기록 종합(읽기만). 판정 우선순위는 [[gotchas]] #1(실측·AAR > 문서). 상세 근거 → [[sdk-probe]] · [[pleos-gleo]] · [[pleos-platform]] · [[pleos-emulator]] · `reference/pleos-api-index.md` · `reference/pleos-docs/`
 > 상태: **사용중**(현비서 코드가 부름) · **실측OK**(에뮬 응답, 다른 앱·프로브 포함) · **권한거부** · **에뮬미지원** · **미시험** · **승인필요**(Coming Soon·사전 승인) · **막힘** · **API없음** · (추정)
 
 전제: 에뮬에선 SDK 5종이 신청과 무관하게 응답(`adb install -g`). 실차·앱마켓은 Vehicle 조회 `CAR_*`·제어 `CONTROL_CAR_*` 모두 사전 협의·승인된 것만 선언 가능. 현비서 매니페스트 = `CAR_ENERGY`·`CAR_INFO`뿐(`CAR_DOORS`·`CAR_SEATS`·`CONTROL_*`·`NAVI_CUSTOM_MAP` 없음, `assets/schema.json` 없음).
+
+## 현비서 기능별 SDK 검증 현황 (11-07 · 에뮬 · E2E `records/hyun-e2e/20261107-1125/` 앱 로그 대조)
+
+> 실차 검증은 아직 0 — 전부 에뮬(Pleos Connect v2.1). 그 E2E 앱 로그에 SDK 호출 실패(`FAIL`) 0. 대조법: 콜백 수신 `grep -oE "navi\|[a-zA-Z_]+" records/hyun-e2e/<run>/logcat.txt | sort | uniq -c` · 호출 지점 = `navi.call("<이름>")`(`drive/Navi.kt` — 실패하면 `navi|<이름>|FAIL`) · 괄호 숫자 = 그 실행의 수신 횟수
+
+| 판정 | 현비서 기능 → SDK |
+|---|---|
+| ✅ 호출·응답 확인 | 말로 목적지 `requestRoute`(routeStarted 3) · 남은 거리·시간·위치 `onDrivingInfo`·`onDestinationInfo`·`getCurrentLocationInfo` · 교통 표·경로 정찰 `getRouteStateInfo` → `trafficStatus`(routeState 14) · 휴게소 알림·우회 게이트·**회전 안내 화면(내비 판, 11-08)** `getTBTInfo`·`onTBTInfo`(tbt 7) · 경유지 `addWaypoint`·`removeWaypoint`·`getWaypointInfo`(waypoints 4) · 안내 끝 `cancelRoute`(cancelled 3) · 우회 되돌리기 `changeRouteOption`(11-07 실측 fast 21→21분 → RECOMMENDED, E2E 케이스 없음) · 목소리 TTS `speak`(tts done 30) · 주행 판단 AAOS 기어 P/D·`CarUxRestrictions` DO · 반반 화면(앱 영역 2칸) · Gleo `HYUN_STATUS`(응답 4ms — `am start` 흉내) |
+| ✅ 실측OK(E2E 판정 없음) | 속도 `PERF_VEHICLE_SPEED`(10-27 프로브 · e09는 VC 60km/h 주입) · 배터리 `getEvBattery` |
+| ⚠️ 코드는 있는데 에뮬 미수신 | 도착 `onDestinationArrived` · 경유지 도착 `onWayPointArrived`(에뮬 GPS 고정 — `--es event waypoint` 흉내만) · 주의 구간 `onCautionPointInfo` · `onRouteOptionChanged`(→ `RouteStateInfo.routeOption`으로 대신) · 사고 이벤트(에뮬 `trafficStatus`엔 정체만 → e09는 `--es traffic` 시연 주입, 로그·두뇌 출력 `[시연 주입]`) · 글레오 실제 목소리 호출(사람이 말해야 함) |
+| ❌ SDK 대신 다른 길 | 호출어·받아 적기 = 앱 녹음 + PC Whisper — Pleos STT는 에뮬 실인식 ✗, 쓰면 글레오 연결도 끊김(`voice/Voice.kt`) |
+| 미연결(현비서 코드 없음) | 문·좌석(실측OK, 매니페스트 `CAR_DOORS`·`CAR_SEATS` 없음) · 앰비언트(H1 실측OK·승인필요) · 즐겨찾기 `getBookmarkInfo` · 제한속도·카메라 · TTS 화자 `setSpeakerType` — 아래 표 '미시험' → [[roadmap]] §현비서 모듈 1 프로브 확장 |
+| SDK 무관 | 웹툰·영화 순위 · 스포츠·인물 기사 · 취향 질문 · 시동 브리핑 · 휴게소 소개 내용 = 서버·두뇌(E2E로 동작만 확인) |
 
 ## ① Pleos AI (Gleo)
 
@@ -21,7 +34,7 @@
 | 기능 | 현비서 활용 | 상태 |
 |---|---|---|
 | 현재 위치·주소 · `requestRoute` · 목적지·`onDrivingInfo` · `trafficStatus` · `changeRouteOption`/`requestReRoute` | 위치·말로 목적지·남은 거리·경로 정찰·우회 | 사용중·실측OK |
-| `onTBTInfo` · `onCautionPointInfo` · `onDestinationArrived` | 회전 앞 침묵·주의 구간·도착 | 사용중(실제 수신은 주행 시험 필요) |
+| `onTBTInfo` · `onCautionPointInfo` · `onDestinationArrived` | 회전 앞 침묵·주의 구간·도착 | 사용중 · TBT 실측OK(`getTBTInfo` 응답 — 에뮬은 TBT가 바뀔 때만 옴) · 주의 구간·도착은 에뮬 미수신(주행 시험 필요) |
 | `addWaypoint`·`requestRouteWithWaypoints`·`removeWaypoint`·`onWayPointArrived`(경유지 ≤2) | 말로 경유지 넣기/빼기 · 쉼표 휴게소 경유 · 장소 할 일 | **사용중·실측OK(11-07)** — 도착 콜백은 에뮬 GPS 고정이라 미실측 → [[pleos-sdk-navihelper]] §실측 |
 | `onCurrentRoadSpeedLimit` · `onCameraAlert` | 과속·구간 단속 한마디, 온기 | 미시험 |
 | `getBookmarkInfo`(집·회사·충전소) · `getRecentDestinationInfo` | "집에 가자"를 좌표 없이 | 미시험 |

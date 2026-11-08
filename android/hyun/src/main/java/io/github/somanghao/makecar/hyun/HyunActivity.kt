@@ -60,6 +60,7 @@ class HyunActivity : Activity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); hyun.onIntent(intent, first = false) }
     override fun onResume() { super.onResume(); hyun.onResume() }
     override fun onPause() { hyun.onPause(); super.onPause() }
+    override fun onStop() { hyun.onStop(); super.onStop() }
     override fun onDestroy() { hyun.stop(); super.onDestroy() }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

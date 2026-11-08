@@ -1,0 +1,16 @@
+hyun server: http://127.0.0.1:8790/hyun/health  (emulator: http://10.0.2.2:8790) · login http://127.0.0.1:8790/hyun/login · 내 Claude 계정 로그인됨 · API 없음 · 기능 route, traffic, places, cards, memory, taste, history, briefing, feeds, search, restarea, phone, taste_refine, login, testaudio · 데이터 C:\Users\soman\AntiProject\makecar-hy\server\hyun\data-e2e
+claude|warmup|5115ms|ok
+claude|1|sonnet|5470ms|국밥 좋아하시는군요, 기억해 둘게요. 비 오는 날엔 특히 생각나죠. 요즘 즐겨 듣는 음악은 있어요?
+taste|1|음식 좋아함: 국밥
+claude|2|sonnet|5445ms|강남역까지 38분, 12시 28분 도착이에요. 양재 쪽 3.6km가 막혀서 20분쯤 더 걸려요, 내비 교통정보 기준이에요.
+places|kakao|near|q=국밥|n=5
+claude|3|sonnet|5138ms|곧 강남역이에요. 점심때라 국밥 어떠세요? 콩뿌리 콩나물국밥이 143m, 걸어서 3분이에요. 바로 거기로 갈까요?
+claude|4|sonnet|4907ms|네, 알겠어요. 내리면 화면에서 골라 보세요.
+claude|5|sonnet|4913ms|강남역에 도착했어요. 콩뿌리 콩나물국밥이 걸어서 3분이에요. 화면에 다섯 곳 띄웠어요.
+refine|2마디|4179ms|새로 드러난 취향 없음(국밥은 이미 기록됨), 변경 없음|
+claude|6|sonnet|5014ms|코엑스까지 35분, 12시 55분 도착이에요. 판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.
+places|kakao|near|q=국밥|n=5
+claude|7|sonnet|5320ms|곧 코엑스예요. 점심때라 아오내순대 코엑스몰점이 목적지에서 156m, 걸어서 3분이에요. 바로 거기로 갈까요?
+claude|8|sonnet|4976ms|네, 아오내순대 코엑스몰점으로 안내할게요.
+taste|8|음식 좋아함: 국밥
+claude|9|sonnet|5280ms|아오내순대 코엑스몰점까지 30분, 12시 51분 도착이에요. 대왕판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.

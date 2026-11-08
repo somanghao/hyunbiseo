@@ -63,4 +63,7 @@ def apply_answer(rid, b, by):
             if m["state"] == "pending" and m["id"] <= rid:
                 m["state"] = "answered" if m["id"] == rid else "skipped"
         cond.notify_all()
-    store.append_log({"dir": "out", "id": rid, **rep, **rec, **({"harness": True} if dry else {})})
+    logged = rep
+    if (rep.get("card") or {}).get("nostore"):   # 저장하면 안 되는 결과(카카오 장소 — 약관)는 로그에 개수만
+        logged = {**rep, "card": {"title": rep["card"].get("title"), "source": rep["card"].get("source"), "n": len(rep["card"].get("items") or [])}}
+    store.append_log({"dir": "out", "id": rid, **logged, **rec, **({"harness": True} if dry else {})})

@@ -1,0 +1,159 @@
+--------- beginning of main
+         1794122040.241 30898 30898 I HYUN    : nav|cancel|demo|아오내순대 코엑스몰점
+         1794122040.713 30898 31134 I HYUN    : navi|tbt|0|
+         1794122040.726 30898 31134 I HYUN    : navi|driving|DrivingInfo(destination=DrivingState(name=아오내순대 코엑스몰점, duration=0, distance=0, remainDestinationChargingValue=0, isChargingStation=false, isRecommendedChargingStation=false, maxChargingPower=0, targetSoc=0, chargerCount=0, chargingPlan=null), waypoints=[])
+         1794122040.747 30898 31134 I HYUN    : navi|cancelled
+         1794122040.908 30898 31134 I HYUN    : navi|waypoints|
+         1794122040.954 30898 31134 I HYUN    : navi|destination|DestinationInfo(latitude=0.0, longitude=0.0, displayLatitude=null, displayLongitude=null, name=, address=, remainDistance=0, remainTime=0, tollFare=0, poiId=, poiSubId=null, poiProvider=)
+         1794122040.989 30898 31448 I HYUN    : navi|routeState|SAFE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5800.0, totalCongestionTime=660, totalCongestionAvrSpeed=20.540276130812074)|jams=25|events=0|[]
+         1794122043.678 30898 30898 I HYUN    : heard|나 국밥 좋아해
+         1794122043.719 30898 30898 I HYUN    : ask|1|talk|나 국밥 좋아해
+         1794122047.227 30898 30898 I HYUN    : prio|in|P1·답|맞장구|생각해 볼게요.
+         1794122047.227 30898 30898 I HYUN    : prio|say|P1·답|정차|맞장구
+         1794122047.227 30898 30898 I HYUN    : say|P1|생각해 볼게요.
+         1794122048.782 30898 30898 I HYUN    : tts|done
+         1794122049.191 30898 30898 I HYUN    : reply|1|{"id":1,"say":"국밥 좋아하시는군요, 기억해 둘게요. 비 오는 날엔 특히 생각나죠. 요즘 즐겨 듣는 음악은 있어요?","listen":true,"mood":"happy","prio":1,"ts":"16:14:10","by":"claude","nav":null,"via":null,"route":null,"card":null,"mode":null,"tasks":false}
+         1794122049.191 30898 30898 I HYUN    : prio|in|P1·답|답|국밥 좋아하시는군요, 기억해 둘게요. 비 오는 날엔 특히 생각나죠. 요즘 즐겨 듣는 음악은 있어요?
+         1794122049.191 30898 30898 I HYUN    : prio|say|P1·답|정차|답
+         1794122049.191 30898 30898 I HYUN    : say|P1|국밥 좋아하시는군요, 기억해 둘게요. 비 오는 날엔 특히 생각나죠. 요즘 즐겨 듣는 음악은 있어요?
+         1794122056.286 30898 30898 I HYUN    : tts|done
+         1794122056.779 30898 30898 I HYUN    : arrive|clock|11:50
+         1794122056.883 30898 30898 I HYUN    : nav|강남역|37.49789810180664,127.02760314941406|est=14520m
+         1794122058.157 30898 30898 I HYUN    : front|covered|명령 1273ms 뒤 → 현비서 다시 앞으로
+         1794122063.890 30898 30928 I HYUN    : navi|routeStarted|RouteStartInfo(duration=2280, distance=13000, tollFare=700, name=강남역, remainDestinationChargingValue=75715)
+         1794122063.950 30898 30928 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5800.0, totalCongestionTime=660, totalCongestionAvrSpeed=20.540276130812074)|jams=25|events=0|[]
+         1794122063.969 30898 31134 I HYUN    : navi|tbt|0|
+         1794122064.069 30898 18128 I HYUN    : ear|floor|4|gate=45
+         1794122064.622 30898 30898 I HYUN    : ux|DO=true
+         1794122064.622 30898 30898 I HYUN    : gear|D
+         1794122064.628 30898 30928 I HYUN    : navi|tbt|8|TURN_RIGHT@700:대왕판교IC 방면;TURN_RIGHT@50:양재 방면;TURN_ENTER_IC_C@110:대왕판교IC 방면;TURN_TOLL@40:대왕판교톨게이트
+         1794122064.921 30898 31448 I HYUN    : navi|driving|DrivingInfo(destination=DrivingState(name=강남역, duration=2280, distance=13000, remainDestinationChargingValue=75715, isChargingStation=false, isRecommendedChargingStation=false, maxChargingPower=0, targetSoc=10, chargerCount=0, chargingPlan=null), waypoints=[])
+         1794122066.614 30898 30898 I HYUN    : stt|timeout|(조용)
+         1794122066.615 30898 30898 I HYUN    : stt|level|end|max=0.04
+         1794122066.919 30898 31448 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5700.0, totalCongestionTime=1200, totalCongestionAvrSpeed=13.06918480340039)|jams=15|events=0|[]
+         1794122066.981 30898 31448 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5700.0, totalCongestionTime=1200, totalCongestionAvrSpeed=13.06918480340039)|jams=15|events=0|[]
+         1794122069.447 30898 30898 I HYUN    : event|depart
+         1794122069.477 30898 30898 I HYUN    : ask|2|event|depart
+         1794122074.942 30898 30898 I HYUN    : reply|2|{"id":2,"say":"강남역까지 38분, 12시 28분 도착이에요. 양재 쪽 3.6km가 막혀서 20분쯤 더 걸려요, 내비 교통정보 기준이에요.","listen":false,"mood":"calm","prio":1,"ts":"16:14:36","by":"claude","nav":null,"via":null,"route":null,"card":null,"mode":null,"tasks":false}
+         1794122074.942 30898 30898 I HYUN    : prio|in|P1|depart|강남역까지 38분, 12시 28분 도착이에요. 양재 쪽 3.6km가 막혀서 20분쯤 더 걸려요, 내비 교통정보 기준이에요.
+         1794122074.943 30898 30898 I HYUN    : prio|say|P1|주행|depart
+         1794122074.943 30898 30898 I HYUN    : say|P1|강남역까지 38분, 12시 28분 도착이에요. 양재 쪽 3.6km가 막혀서 20분쯤 더 걸려요, 내비 교통정보 기준이에요.
+         1794122081.699 30898 30898 I HYUN    : event|near
+         1794122081.735 30898 30898 I HYUN    : ask|3|event|near
+         1794122086.355 30898 30898 I HYUN    : tts|done
+         1794122087.034 30898 30898 I HYUN    : reply|3|{"id":3,"say":"곧 강남역이에요. 점심때라 국밥 어떠세요? 콩뿌리 콩나물국밥이 143m, 걸어서 3분이에요. 바로 거기로 갈까요?","listen":true,"mood":"happy","prio":1,"ts":"16:14:48","by":"claude","nav":null,"via":null,"route":null,"card":{"kind":"","title":"강남역 근처 점심 · 국밥 취향","source":"카카오 로컬 · 실시간","nostore":true,"items":["콩뿌리 콩나물국밥 — 143m · 국밥 · 걸어서 3분","국밥쟁이 강남역점 — 144m · 국밥 · 걸어서 3분","보승회관 강남역직영점 — 173m · 국밥 · 걸어서 3분","육전국밥 강남역점 — 212m · 한식 · 걸어서 4분","국밥생각 강남역점 — 218m · 국밥 · 걸어서 4분"]},"arrive_line":"도착 12:28 점심 · 국밥 5곳 찾아 둠","mode":null,"tasks":false}
+         1794122087.034 30898 30898 I HYUN    : arrive|line|도착 12:28 점심 · 국밥 5곳 찾아 둠
+         1794122087.034 30898 30898 I HYUN    : card|강남역 근처 점심 · 국밥 취향|5|kind=list|img=0|콩뿌리 콩나물국밥 — 143m · 국밥 · 걸어서 3분 / 국밥쟁이 강남역점 — 144m · 국밥 · 걸어서 3분 / 보승회관 강남역직영점 — 173m · 국밥 · 걸어서 3분
+         1794122087.034 30898 30898 I HYUN    : prio|in|P1|near|곧 강남역이에요. 점심때라 국밥 어떠세요? 콩뿌리 콩나물국밥이 143m, 걸어서 3분이에요. 바로 거기로 갈까요?
+         1794122094.079 30898 18128 I HYUN    : ear|floor|4|gate=45
+         1794122103.127 30898 30898 I HYUN    : scout|every|25s|분기 64m 앞
+         1794122103.143 30898 31134 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5700.0, totalCongestionTime=1200, totalCongestionAvrSpeed=13.06918480340039)|jams=15|events=0|[]
+         1794122103.180 30898 31134 I HYUN    : navi|tbt|8|TURN_RIGHT@700:대왕판교IC 방면;TURN_RIGHT@50:양재 방면;TURN_ENTER_IC_C@110:대왕판교IC 방면;TURN_TOLL@40:대왕판교톨게이트
+         1794122105.150 30898 30898 I HYUN    : prio|say|P1|주행|near
+         1794122105.150 30898 30898 I HYUN    : say|P1|곧 강남역이에요. 점심때라 국밥 어떠세요? 콩뿌리 콩나물국밥이 143m, 걸어서 3분이에요. 바로 거기로 갈까요?
+         1794122114.206 30898 30898 I HYUN    : tts|done
+         1794122116.026 30898 30898 I HYUN    : stt|level|heard|max=0.04
+         1794122116.026 30898 30898 I HYUN    : heard|아니 내려서 볼게
+         1794122116.066 30898 30898 I HYUN    : ask|4|talk|아니 내려서 볼게
+         1794122119.571 30898 30898 I HYUN    : prio|in|P1·답|맞장구|생각해 볼게요.
+         1794122119.571 30898 30898 I HYUN    : prio|say|P1·답|주행|맞장구
+         1794122119.572 30898 30898 I HYUN    : say|P1|생각해 볼게요.
+         1794122120.981 30898 30898 I HYUN    : reply|4|{"id":4,"say":"네, 알겠어요. 내리면 화면에서 골라 보세요.","listen":false,"mood":"calm","prio":1,"ts":"16:15:22","by":"claude","nav":null,"via":null,"route":null,"card":null,"mode":null,"tasks":false}
+         1794122120.981 30898 30898 I HYUN    : prio|in|P1·답|답|네, 알겠어요. 내리면 화면에서 골라 보세요.
+         1794122122.051 30898 30898 I HYUN    : tts|done
+         1794122122.051 30898 30898 I HYUN    : prio|say|P1·답|주행|답
+         1794122122.051 30898 30898 I HYUN    : say|P1|네, 알겠어요. 내리면 화면에서 골라 보세요.
+         1794122125.872 30898 30898 I HYUN    : tts|done
+         1794122126.179 30898 18128 I HYUN    : ear|floor|4|gate=45
+         1794122128.044 30898 30898 I HYUN    : gear|P
+         1794122128.085 30898 30898 I HYUN    : ux|DO=false
+         1794122128.129 30898 30898 I HYUN    : scout|every|120s|정차
+         1794122128.235 30898 30923 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5700.0, totalCongestionTime=1200, totalCongestionAvrSpeed=13.06918480340039)|jams=15|events=0|[]
+         1794122128.238 30898 30923 I HYUN    : navi|tbt|8|TURN_RIGHT@700:대왕판교IC 방면;TURN_RIGHT@50:양재 방면;TURN_ENTER_IC_C@110:대왕판교IC 방면;TURN_TOLL@40:대왕판교톨게이트
+         1794122128.690 30898 30898 I HYUN    : event|arrived
+         1794122128.723 30898 30898 I HYUN    : ask|5|event|arrived
+         1794122133.644 30898 30898 I HYUN    : reply|5|{"id":5,"say":"강남역에 도착했어요. 콩뿌리 콩나물국밥이 걸어서 3분이에요. 화면에 다섯 곳 띄웠어요.","listen":false,"mood":"happy","prio":1,"ts":"16:15:34","by":"claude","nav":null,"via":null,"route":null,"card":{"kind":"","title":"강남역 근처 점심 · 국밥 취향","source":"카카오 로컬 · 실시간","nostore":true,"items":["콩뿌리 콩나물국밥 — 143m · 국밥 · 걸어서 3분","국밥쟁이 강남역점 — 144m · 국밥 · 걸어서 3분","보승회관 강남역직영점 — 173m · 국밥 · 걸어서 3분","육전국밥 강남역점 — 212m · 한식 · 걸어서 4분","국밥생각 강남역점 — 218m · 국밥 · 걸어서 4분"]},"mode":null,"tasks":false}
+         1794122133.647 30898 30898 I HYUN    : card|강남역 근처 점심 · 국밥 취향|5|kind=list|img=0|콩뿌리 콩나물국밥 — 143m · 국밥 · 걸어서 3분 / 국밥쟁이 강남역점 — 144m · 국밥 · 걸어서 3분 / 보승회관 강남역직영점 — 173m · 국밥 · 걸어서 3분
+         1794122133.647 30898 30898 I HYUN    : prio|in|P1|arrived|강남역에 도착했어요. 콩뿌리 콩나물국밥이 걸어서 3분이에요. 화면에 다섯 곳 띄웠어요.
+         1794122133.648 30898 30898 I HYUN    : prio|say|P1|정차|arrived
+         1794122133.648 30898 30898 I HYUN    : say|P1|강남역에 도착했어요. 콩뿌리 콩나물국밥이 걸어서 3분이에요. 화면에 다섯 곳 띄웠어요.
+         1794122140.301 30898 30898 I HYUN    : tts|done
+         1794122142.248 30898 30898 I HYUN    : arrive|clock|off
+         1794122147.463 30898 30898 I HYUN    : arrive|clock|12:20
+         1794122147.531 30898 30898 I HYUN    : nav|코엑스|37.511600494384766,127.05950164794922|est=14852m
+         1794122148.102 30898 31134 I HYUN    : navi|cancelled
+         1794122148.130 30898 31134 I HYUN    : navi|destination|DestinationInfo(latitude=0.0, longitude=0.0, displayLatitude=null, displayLongitude=null, name=, address=, remainDistance=0, remainTime=0, tollFare=0, poiId=, poiSubId=null, poiProvider=)
+         1794122148.141 30898 30923 I HYUN    : navi|waypoints|
+         1794122148.243 30898 30923 I HYUN    : navi|routeState|SAFE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5700.0, totalCongestionTime=1200, totalCongestionAvrSpeed=13.06918480340039)|jams=15|events=0|[]
+         1794122148.256 30898 31134 I HYUN    : navi|driving|DrivingInfo(destination=DrivingState(name=강남역, duration=0, distance=0, remainDestinationChargingValue=0, isChargingStation=false, isRecommendedChargingStation=false, maxChargingPower=0, targetSoc=0, chargerCount=0, chargingPlan=null), waypoints=[])
+         1794122148.263 30898 31134 I HYUN    : navi|tbt|0|
+         1794122149.020 30898 30898 I HYUN    : front|covered|명령 1489ms 뒤 → 현비서 다시 앞으로
+         1794122155.835 30898 30928 I HYUN    : navi|routeStarted|RouteStartInfo(duration=2100, distance=14000, tollFare=0, name=코엑스, remainDestinationChargingValue=75519)
+         1794122155.874 30898 30928 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5700.0, totalCongestionTime=1200, totalCongestionAvrSpeed=13.06918480340039)|jams=15|events=0|[]
+         1794122156.182 30898 18128 I HYUN    : ear|floor|4|gate=45
+         1794122156.275 30898 30928 I HYUN    : navi|tbt|11|TURN_LEFT@80:기업지원허브 방면;TURN_LEFT@390:성남시청 방면;TURN_LEFT@1100:분당내곡고속화도로 방면;TURN_AVOID_UNDER_R@7400:수서IC,양재IC 방면
+         1794122156.948 30898 30898 I HYUN    : gear|D
+         1794122157.008 30898 30898 I HYUN    : ux|DO=true
+         1794122158.650 30898 30928 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5900.0, totalCongestionTime=780, totalCongestionAvrSpeed=19.05176298347422)|jams=26|events=0|[]
+         1794122158.857 30898 30928 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5900.0, totalCongestionTime=780, totalCongestionAvrSpeed=19.05176298347422)|jams=26|events=0|[]
+         1794122161.121 30898 30898 I HYUN    : event|depart
+         1794122161.148 30898 30898 I HYUN    : ask|6|event|depart
+         1794122166.179 30898 30898 I HYUN    : reply|6|{"id":6,"say":"코엑스까지 35분, 12시 55분 도착이에요. 판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.","listen":false,"mood":"calm","prio":1,"ts":"16:16:07","by":"claude","nav":null,"via":null,"route":null,"card":null,"mode":null,"tasks":false}
+         1794122166.179 30898 30898 I HYUN    : prio|in|P1|depart|코엑스까지 35분, 12시 55분 도착이에요. 판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.
+         1794122166.179 30898 30898 I HYUN    : turn|gate|on|TURN_LEFT|80m|대기 1
+         1794122172.680 30898 30898 I HYUN    : turn|gate|off|TURN_LEFT|80m|대기 1
+         1794122172.680 30898 30898 I HYUN    : prio|say|P1|주행|depart
+         1794122172.680 30898 30898 I HYUN    : say|P1|코엑스까지 35분, 12시 55분 도착이에요. 판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.
+         1794122173.286 30898 30898 I HYUN    : event|near
+         1794122173.314 30898 30898 I HYUN    : ask|7|event|near
+         1794122178.791 30898 30898 I HYUN    : reply|7|{"id":7,"say":"곧 코엑스예요. 점심때라 아오내순대 코엑스몰점이 목적지에서 156m, 걸어서 3분이에요. 바로 거기로 갈까요?","listen":true,"mood":"happy","prio":1,"ts":"16:16:19","by":"claude","nav":null,"via":null,"route":null,"card":{"kind":"","title":"코엑스 근처 점심 · 국밥 취향","source":"카카오 로컬 · 실시간","nostore":true,"items":["아오내순대 코엑스몰점 — 156m · 국밥 · 걸어서 3분","이맛콩나물국밥 삼성동1점 — 239m · 국밥 · 걸어서 4분","일품돼지국밥 삼성역직영본점 — 311m · 국밥 · 걸어서 5분","미사리밀빛초계국수 코엑스점 — 64m · 미사리밀빛초계국수 · 걸어서 1분","코엑스전주비빔밥 스타필드코엑스몰 — 166m · 한식 · 걸어서 3분"]},"arrive_line":"도착 12:56 점심 · 국밥 5곳 찾아 둠","mode":null,"tasks":false}
+         1794122178.791 30898 30898 I HYUN    : arrive|line|도착 12:56 점심 · 국밥 5곳 찾아 둠
+         1794122178.791 30898 30898 I HYUN    : card|코엑스 근처 점심 · 국밥 취향|5|kind=list|img=0|아오내순대 코엑스몰점 — 156m · 국밥 · 걸어서 3분 / 이맛콩나물국밥 삼성동1점 — 239m · 국밥 · 걸어서 4분 / 일품돼지국밥 삼성역직영본점 — 311m · 국밥 · 걸어서 5분
+         1794122178.791 30898 30898 I HYUN    : prio|in|P1|near|곧 코엑스예요. 점심때라 아오내순대 코엑스몰점이 목적지에서 156m, 걸어서 3분이에요. 바로 거기로 갈까요?
+         1794122183.057 30898 30898 I HYUN    : tts|done
+         1794122186.184 30898 18128 I HYUN    : ear|floor|4|gate=45
+         1794122202.809 30898 30898 I HYUN    : prio|say|P1|주행|near
+         1794122202.809 30898 30898 I HYUN    : say|P1|곧 코엑스예요. 점심때라 아오내순대 코엑스몰점이 목적지에서 156m, 걸어서 3분이에요. 바로 거기로 갈까요?
+         1794122211.395 30898 30898 I HYUN    : tts|done
+         1794122211.533 30898 30898 I HYUN    : heard|응 거기로 가자
+         1794122211.561 30898 30898 I HYUN    : ask|8|talk|응 거기로 가자
+         1794122215.072 30898 30898 I HYUN    : prio|in|P1·답|맞장구|어디 보자.
+         1794122216.213 30898 18128 I HYUN    : ear|floor|4|gate=45
+         1794122216.549 30898 30898 I HYUN    : reply|8|{"id":8,"say":"네, 아오내순대 코엑스몰점으로 안내할게요.","listen":false,"mood":"happy","prio":1,"ts":"16:16:57","by":"claude","nav":{"name":"아오내순대 코엑스몰점","lat":37.5106,"lng":127.0583},"via":null,"route":null,"card":null,"mode":null,"tasks":false}
+         1794122216.550 30898 30898 I HYUN    : nav|아오내순대 코엑스몰점|37.5106,127.0583|est=14751m
+         1794122216.565 30898 30898 I HYUN    : prio|in|P1·답|답|네, 아오내순대 코엑스몰점으로 안내할게요.
+         1794122217.081 30898 31448 I HYUN    : navi|cancelled
+         1794122217.122 30898 31134 I HYUN    : navi|destination|DestinationInfo(latitude=0.0, longitude=0.0, displayLatitude=null, displayLongitude=null, name=, address=, remainDistance=0, remainTime=0, tollFare=0, poiId=, poiSubId=null, poiProvider=)
+         1794122217.122 30898 31134 I HYUN    : navi|waypoints|
+         1794122217.123 30898 31134 I HYUN    : navi|driving|DrivingInfo(destination=DrivingState(name=코엑스, duration=0, distance=0, remainDestinationChargingValue=0, isChargingStation=false, isRecommendedChargingStation=false, maxChargingPower=0, targetSoc=0, chargerCount=0, chargingPlan=null), waypoints=[])
+         1794122217.203 30898 30924 I HYUN    : navi|routeState|SAFE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5900.0, totalCongestionTime=780, totalCongestionAvrSpeed=19.05176298347422)|jams=26|events=0|[]
+         1794122217.271 30898 30924 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5900.0, totalCongestionTime=780, totalCongestionAvrSpeed=19.05176298347422)|jams=26|events=0|[]
+         1794122217.483 30898 30924 I HYUN    : navi|tbt|0|
+         1794122217.713 30898 30898 I HYUN    : front|covered|명령 1163ms 뒤 → 현비서 다시 앞으로
+         1794122219.489 30898 30898 I HYUN    : event|depart
+         1794122219.547 30898 30898 I HYUN    : ask|9|event|depart
+         1794122221.704 30898 30898 I HYUN    : stt|timeout|(조용)
+         1794122221.705 30898 30898 I HYUN    : stt|level|end|max=0.04
+         1794122221.705 30898 30898 I HYUN    : prio|say|P1·답|주행|맞장구
+         1794122221.705 30898 30898 I HYUN    : say|P1|어디 보자.
+         1794122223.288 30898 30898 I HYUN    : tts|done
+         1794122223.288 30898 30898 I HYUN    : prio|say|P1·답|주행|답
+         1794122223.288 30898 30898 I HYUN    : say|P1|네, 아오내순대 코엑스몰점으로 안내할게요.
+         1794122224.427 30898 31134 I HYUN    : navi|routeStarted|RouteStartInfo(duration=1980, distance=14000, tollFare=0, name=아오내순대 코엑스몰점, remainDestinationChargingValue=75550)
+         1794122224.579 30898 30924 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=5900.0, totalCongestionTime=780, totalCongestionAvrSpeed=19.05176298347422)|jams=26|events=0|[]
+         1794122225.096 30898 30924 I HYUN    : navi|tbt|8|TURN_LEFT@80:기업지원허브 방면;TURN_LEFT@390:성남시청 방면;TURN_LEFT@1100:분당내곡고속화도로 방면;TURN_ENTER_UNDER_L@7400:남부순환로,성수대교 방면
+         1794122225.155 30898 30898 I HYUN    : reply|9|{"id":9,"say":"아오내순대 코엑스몰점까지 30분, 12시 51분 도착이에요. 대왕판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.","listen":false,"mood":"calm","prio":1,"ts":"16:17:06","by":"claude","nav":null,"via":null,"route":null,"card":null,"mode":null,"tasks":false}
+         1794122225.155 30898 30898 I HYUN    : prio|in|P1|depart|아오내순대 코엑스몰점까지 30분, 12시 51분 도착이에요. 대왕판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.
+         1794122225.155 30898 30898 I HYUN    : turn|gate|on|TURN_LEFT|80m|대기 1
+         1794122227.109 30898 30898 I HYUN    : tts|done
+         1794122227.441 30898 30929 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=6500.0, totalCongestionTime=720, totalCongestionAvrSpeed=21.514398499445257)|jams=27|events=0|[]
+         1794122230.725 30898 30898 I HYUN    : gear|P
+         1794122230.762 30898 30898 I HYUN    : ux|DO=false
+         1794122231.108 30898 30898 I HYUN    : turn|gate|off|TURN_LEFT|80m|대기 1
+         1794122231.108 30898 30898 I HYUN    : prio|say|P1|정차|depart
+         1794122231.108 30898 30898 I HYUN    : say|P1|아오내순대 코엑스몰점까지 30분, 12시 51분 도착이에요. 대왕판교로 쪽 5.9km가 막혀서 13분쯤 걸려요, 내비 교통정보 기준이에요.
+         1794122231.229 30898 30898 I HYUN    : arrive|clock|off
+         1794122243.469 30898 30898 I HYUN    : tts|done
+         1794122246.215 30898 18128 I HYUN    : ear|floor|3|gate=45
+         1794122248.172 30898 30924 I HYUN    : navi|routeState|ROUTE_GUIDING|RECOMMENDED|TrafficCongestionSummary(totalCongestionDist=6500.0, totalCongestionTime=720, totalCongestionAvrSpeed=21.514398499445257)|jams=27|events=0|[]
+         1794122248.175 30898 30924 I HYUN    : navi|tbt|8|TURN_LEFT@80:기업지원허브 방면;TURN_LEFT@390:성남시청 방면;TURN_LEFT@1100:분당내곡고속화도로 방면;TURN_ENTER_UNDER_L@7400:남부순환로,성수대교 방면
