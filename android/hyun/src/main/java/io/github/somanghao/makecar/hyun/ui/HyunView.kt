@@ -98,7 +98,7 @@ class HyunView(ctx: Context) : View(ctx) {
     var card: Card? = null
     var debug = false                   // 우선순위 배지·줄 선 말 — 개발용(--ez debug true)
     /** 캐릭터 — human(사람 비서 그림) · orb3d(젤리 구슬 그림) · orb(코드로 그린 구슬). 그림 = assets/chars/(design_assets/hyun에서 복사) */
-    var character = "orb"
+    var character = "face"
         set(v) { field = v; charImages().forEach { bmp(it) } }
     var onCharacter: () -> Unit = {}
     private val charBtn = RectF()
@@ -292,35 +292,8 @@ class HyunView(ctx: Context) : View(ctx) {
     private val arrow = Path()          // 회전 화살표·화살촉
     private val m = Matrix()
 
-    // ---------- 대기 캐릭터: Lottie(res/raw/h_ai_idle_lottie) 반복 재생 — 듣기·생각·말하기는 그린 구슬/그림 그대로 ----------
-    private var idleLottie: com.airbnb.lottie.LottieDrawable? = try {
-        com.airbnb.lottie.LottieCompositionFactory.fromRawResSync(ctx, io.github.somanghao.makecar.hyun.R.raw.h_ai_idle_lottie).value
-            ?.let { comp -> com.airbnb.lottie.LottieDrawable().apply { composition = comp } }
-    } catch (_: Exception) { null }
-    private var idleStill = 0f   // 주행 중 대기엔 멈춘 프레임(화면 규칙 — 움직임 최소)
-
-    /** 대기 상태면 Lottie로 그리고 true. 1024 캔버스에서 얼굴이 ~40%라 구슬 지름(2r)의 두 배 칸에 그린다 */
-    private fun drawIdle(c: Canvas, cx: Float, cy: Float, r: Float, t: Float): Boolean {
-        val d = idleLottie ?: return false
-        if (mode != Mode.READY) return false
-        val comp = d.composition ?: return false
-        val dur = comp.duration / 1000f
-        if (!(driving && mode == Mode.READY)) idleStill = if (dur > 0) (t % dur) / dur else 0f
-        d.progress = idleStill
-        val half = r * 2f
-        d.setBounds((cx - half).toInt(), (cy - half).toInt(), (cx + half).toInt(), (cy + half).toInt())
-        p.shader = null
-        val n = c.save()
-        try { d.draw(c) } catch (e: Exception) {   // 그릴 수 없는 파일이면 앱을 죽이지 말고 대기 Lottie를 끄고 원래 구슬로
-            android.util.Log.w("HYUN", "idle lottie off: $e"); idleLottie = null; c.restoreToCount(n); return false
-        }
-        c.restoreToCount(n)
-        return true
-    }
-    private fun idleShown() = idleLottie != null && mode == Mode.READY
-
     private fun character(c: Canvas, cx: Float, cy0: Float, r: Float, t: Float, label: Boolean = true) {
-        if (drawIdle(c, cx, cy0, r, t)) return
+        if (character == "face") charImage()?.let { bmp(it) }?.let { drawImage(c, it, RectF(cx - r * 1.3f, cy0 - r * 1.3f, cx + r * 1.3f, cy0 + r * 1.3f), t); return }   // 폰 화면도 얼굴 그림
         val pal = palette(); val c1 = pal[0]; val c2 = pal[1]
         val still = driving && mode == Mode.READY
         val cy = cy0 + if (still) 0f else sin(t * 1.1f) * r * 0.02f
@@ -619,6 +592,7 @@ class HyunView(ctx: Context) : View(ctx) {
         "human" -> listOf("sec_portrait", "sec_pose_think", "sec_pose_tablet", "sec_pose_guide", "sec_pose_clap", "sec_pose_rest",
             "sec_sd_calm", "sec_sd_happy", "sec_sd_fun", "sec_sd_care", "sec_sd_think").map { "$it.png" }
         "orb3d" -> listOf("calm", "happy", "fun", "care", "alert", "listen", "think", "speak").map { "orb_$it.png" }
+        "face" -> listOf("calm", "happy", "fun", "care", "alert", "listen", "think", "speak").map { "face_$it.png" }
         else -> emptyList()
     }
 
@@ -629,6 +603,11 @@ class HyunView(ctx: Context) : View(ctx) {
         "orb3d" -> when {
             mood == "alert" || prio == 0 -> "orb_alert.png"; mode == Mode.LISTENING -> "orb_listen.png"
             mode == Mode.THINKING -> "orb_think.png"; mode == Mode.SPEAKING -> "orb_speak.png"; else -> "orb_${moodKey()}.png"
+        }
+        // 얼굴 화면 캐릭터(사용자 그림 시트 11-08 → assets/chars/face_*.png) — 대기 = face_calm
+        "face" -> when {
+            mood == "alert" || prio == 0 -> "face_alert.png"; mode == Mode.LISTENING -> "face_listen.png"
+            mode == Mode.THINKING -> "face_think.png"; mode == Mode.SPEAKING -> "face_speak.png"; else -> "face_${moodKey()}.png"
         }
         "human" -> when {
             driving -> if (mode == Mode.THINKING) "sec_sd_think.png" else "sec_sd_${moodKey()}.png"
@@ -678,7 +657,7 @@ class HyunView(ctx: Context) : View(ctx) {
         y += u * 0.01f
         // 캐릭터 — 사람 비서(정차: 상반신 포즈 크게 / 주행: SD 얼굴) · 젤리 구슬 그림 · 그린 구슬 (목적지는 오른쪽 내비 판에)
         val img = charImage()?.let { bmp(it) }
-        if (img != null && character == "human" && !driving && !idleShown()) {
+        if (img != null && character == "human" && !driving) {
             val boxH = min((lx1 - lx0) / 0.78f, (h - y) * 0.5f)
             val box = RectF(lx0, y + u * 0.015f, lx1, y + u * 0.015f + boxH)
             drawImage(c, img, box, t)
@@ -686,7 +665,7 @@ class HyunView(ctx: Context) : View(ctx) {
         } else {
             val r = min((lx1 - lx0) * 0.3f, h * 0.11f)
             val oy = y + r * 1.45f + u * 0.01f
-            if (img != null && !idleShown()) drawImage(c, img, RectF(lcx - r * 1.3f, oy - r * 1.3f, lcx + r * 1.3f, oy + r * 1.3f), t)
+            if (img != null) drawImage(c, img, RectF(lcx - r * 1.3f, oy - r * 1.3f, lcx + r * 1.3f, oy + r * 1.3f), t)
             else character(c, lcx, oy, r, t, label = false)
             y = oy + r * 1.3f
         }
@@ -917,7 +896,7 @@ class HyunView(ctx: Context) : View(ctx) {
         val charW = min(cw * 0.36f, rowH * 0.8f)
         val img = charImage()?.let { bmp(it) }
         val cbox = RectF(x0, y, x0 + charW, y + rowH)
-        if (img != null && !idleShown()) drawImage(c, img, cbox, t) else character(c, cbox.centerX(), cbox.centerY(), min(charW, rowH) * 0.36f, t, label = false)
+        if (img != null) drawImage(c, img, cbox, t) else character(c, cbox.centerX(), cbox.centerY(), min(charW, rowH) * 0.36f, t, label = false)
         val tx = cbox.right + u * 0.025f; val tw = x1 - tx
         var ty = y + u * 0.035f
         val busy = userLine.startsWith("듣는") || userLine.startsWith("말씀")   // "듣는 중…"이 이미 상태를 말한다

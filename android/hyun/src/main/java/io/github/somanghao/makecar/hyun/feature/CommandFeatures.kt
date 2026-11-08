@@ -45,7 +45,7 @@ class ListenModeFeature : Feature {
     }
 }
 
-/** 캐릭터 3종 — 사람 비서(기본) · 젤리 구슬 · 빛 구슬. 마이크 옆 ⇄ 버튼 · 말("캐릭터 바꿔줘" · "비서로 바꿔" · "구슬로 바꿔"), 앱 설정에 저장 */
+/** 캐릭터 4종 — 얼굴 화면(기본, 11-08) · 사람 비서 · 젤리 구슬 · 빛 구슬. 마이크 옆 ⇄ 버튼 · 말("캐릭터 바꿔줘" · "비서로 바꿔" · "구슬로 바꿔"), 앱 설정에 저장 */
 class CharacterFeature : Feature {
     override val id = "character"
     override fun enabled(car: Boolean) = car
@@ -53,14 +53,15 @@ class CharacterFeature : Feature {
 
     override fun start(hub: Hyun) {
         this.hub = hub
-        hub.view.character = hub.prefs.getString("character", "human") ?: "human"   // 사람 비서가 기본(사용자 11-06)
+        hub.view.character = hub.prefs.getString("character2", "face") ?: "face"   // 얼굴 화면이 기본(사용자 11-08 — 새 키라 예전 선택 대신 얼굴부터)
         hub.view.onCharacter = { set(CHARS[(CHARS.indexOf(hub.view.character) + 1) % CHARS.size]) }
     }
 
     override fun onHeard(text: String): Boolean {
         val s = text.replace(" ", "")
-        if (!Regex("캐릭터|모습|비서로|구슬로").containsMatchIn(s) || !Regex("바꿔|바꾸|변경|해줘|로해").containsMatchIn(s)) return false
+        if (!Regex("캐릭터|모습|비서로|구슬로|얼굴로").containsMatchIn(s) || !Regex("바꿔|바꾸|변경|해줘|로해").containsMatchIn(s)) return false
         val ch = when {
+            Regex("얼굴|로봇").containsMatchIn(s) -> "face"
             Regex("사람|비서로|여자").containsMatchIn(s) -> "human"
             Regex("젤리|3D|입체").containsMatchIn(s) -> "orb3d"
             Regex("구슬").containsMatchIn(s) -> "orb"
@@ -73,12 +74,12 @@ class CharacterFeature : Feature {
 
     private fun set(ch: String) {
         hub.view.character = ch
-        hub.prefs.edit().putString("character", ch).apply()
+        hub.prefs.edit().putString("character2", ch).apply()
         hub.log("character|$ch"); hub.render()
     }
 
     companion object {
-        private val CHARS = listOf("human", "orb3d", "orb")
-        private val HELLO = mapOf("human" to "비서 모습으로 바꿨어요.", "orb3d" to "젤리 구슬로 바꿨어요.", "orb" to "빛 구슬로 바꿨어요.")
+        private val CHARS = listOf("face", "human", "orb3d", "orb")
+        private val HELLO = mapOf("face" to "얼굴 화면으로 바꿨어요.", "human" to "비서 모습으로 바꿨어요.", "orb3d" to "젤리 구슬로 바꿨어요.", "orb" to "빛 구슬로 바꿨어요.")
     }
 }
