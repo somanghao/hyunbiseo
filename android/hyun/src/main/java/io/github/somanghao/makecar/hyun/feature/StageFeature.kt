@@ -39,7 +39,9 @@ data class Entry(val icon: String, val why: String, val delta: Int)
 data class Deco(val kind: String, val id: String, val name: String, val price: Int, val color: Int = 0, val glyph: String = "")
 
 /** 캐릭터 꾸미기 소품(assets/chars/acc_<id>.webp, 댄 11-09 소품 시트에서 오림) — 칸(slot)마다 하나. 위치는 캐릭터 그림 한 변 기준 비율 */
-data class AccDef(val id: String, val name: String, val slot: String, val w: Float, val dx: Float, val dy: Float, val rot: Float, val price: Int)
+data class AccDef(val id: String, val name: String, val slot: String, val price: Int, val parts: List<AccPart>)
+/** 소품 조각 — 그림의 일부(crop, 0~1 비율)를 캐릭터 기준 위치에. back = 헬멧 뒤에 그림(머리띠 끝·반대쪽 헤드폰 등) */
+data class AccPart(val w: Float, val dx: Float, val dy: Float, val rot: Float, val back: Boolean, val cx0: Float, val cy0: Float, val cx1: Float, val cy1: Float)
 
 /** 화면(StageUi)이 읽는 상태 — 기능이 채우고 화면은 그리기만 */
 class StageModel {
@@ -109,36 +111,36 @@ class StageModel {
             Deco("decor", "plant", "화분", 30, glyph = "🪴"), Deco("decor", "balloon", "풍선", 40, glyph = "🎈"), Deco("decor", "bear", "곰인형", 60, glyph = "🧸"),
             Deco("decor", "frame", "액자", 80, glyph = "🖼️"), Deco("decor", "cat", "고양이", 120, glyph = "🐈"), Deco("decor", "lamp", "무드등", 150, glyph = "🏮"))
         val ACC_DEFS = listOf(
-            AccDef("cat_ears", "고양이 귀", "head", 0.74f, 0f, -0.37f, 0f, 120),
-            AccDef("bunny_ears", "토끼 귀", "head", 0.7f, 0f, -0.5f, 0f, 120),
-            AccDef("bear_ears", "곰 귀", "head", 0.74f, 0f, -0.37f, 0f, 120),
-            AccDef("devil_horns", "악마 뿔", "head", 0.74f, 0f, -0.39f, 0f, 120),
-            AccDef("halo", "천사 링", "head", 0.62f, 0f, -0.52f, 0f, 200),
-            AccDef("crown", "왕관", "head", 0.4f, 0f, -0.5f, -6f, 250),
-            AccDef("witch_hat", "마녀 모자", "head", 0.86f, 0.02f, -0.48f, -4f, 120),
-            AccDef("santa_hat", "산타 모자", "head", 0.8f, 0.04f, -0.4f, -6f, 150),
-            AccDef("beret", "베레모", "head", 0.7f, 0.04f, -0.4f, -8f, 120),
-            AccDef("maid_frill", "메이드 머리띠", "head", 0.74f, 0f, -0.37f, 0f, 120),
-            AccDef("deerstalker", "탐정 모자", "head", 0.8f, 0f, -0.38f, 0f, 120),
-            AccDef("headphones", "목에 건 헤드폰", "neck", 0.72f, 0f, 0.5f, 180f, 180),
-            AccDef("sunglasses", "선글라스", "eyes", 0.66f, 0f, 0.06f, 0f, 60),
-            AccDef("pixel_glasses", "픽셀 안경", "eyes", 0.66f, 0f, 0.06f, 0f, 60),
-            AccDef("heart_glasses", "하트 안경", "eyes", 0.62f, 0f, 0.06f, 0f, 60),
-            AccDef("star_glasses", "별 안경", "eyes", 0.62f, 0f, 0.06f, 0f, 60),
-            AccDef("pixel_glasses2", "픽셀 안경 2", "eyes", 0.7f, 0.03f, 0.06f, 0f, 60),
-            AccDef("glasses_3d", "3D 안경", "eyes", 0.66f, 0.02f, 0.06f, 0f, 60),
-            AccDef("bandage_heart", "하트 밴드", "face", 0.22f, 0.27f, -0.12f, -20f, 30),
-            AccDef("bandage_cross", "십자 밴드", "face", 0.2f, -0.27f, -0.12f, 0f, 30),
-            AccDef("mask", "마스크", "face", 0.44f, 0f, 0.2f, 0f, 30),
-            AccDef("scarf", "체크 목도리", "neck", 0.62f, 0f, 0.44f, 0f, 70),
-            AccDef("bow_tie", "나비넥타이", "neck", 0.36f, 0f, 0.43f, 0f, 70),
-            AccDef("necktie", "넥타이", "neck", 0.18f, 0f, 0.49f, 0f, 70),
-            AccDef("ribbon_blue", "파란 리본", "hair", 0.24f, -0.32f, -0.32f, -12f, 40),
-            AccDef("ribbon_pink", "분홍 리본", "hair", 0.24f, -0.32f, -0.32f, -12f, 40),
-            AccDef("star_clip", "별 핀", "hair", 0.22f, 0.3f, -0.3f, 10f, 40),
-            AccDef("cherry_blossom", "벚꽃", "hair", 0.24f, -0.32f, -0.3f, 0f, 40),
-            AccDef("blue_flame", "푸른 불꽃", "effect", 0.26f, 0.58f, -0.3f, 0f, 180),
-            AccDef("hearts", "하트", "effect", 0.3f, 0.58f, -0.3f, 0f, 150),
+            AccDef("cat_ears", "고양이 귀", "head", 120, listOf(AccPart(0.86f, 0.02f, -0.29f, 0f, true, 0f, 0f, 1f, 1f))),
+            AccDef("bunny_ears", "토끼 귀", "head", 120, listOf(AccPart(0.8f, 0.02f, -0.36f, 0f, true, 0f, 0f, 1f, 1f))),
+            AccDef("bear_ears", "곰 귀", "head", 120, listOf(AccPart(0.86f, 0.02f, -0.29f, 0f, true, 0f, 0f, 1f, 1f))),
+            AccDef("devil_horns", "악마 뿔", "head", 120, listOf(AccPart(0.86f, 0.02f, -0.3f, 0f, true, 0f, 0f, 1f, 1f))),
+            AccDef("halo", "천사 링", "head", 200, listOf(AccPart(0.56f, 0.04f, -0.52f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("crown", "왕관", "head", 250, listOf(AccPart(0.36f, 0.04f, -0.46f, -5f, false, 0f, 0f, 1f, 1f))),
+            AccDef("witch_hat", "마녀 모자", "head", 120, listOf(AccPart(0.92f, 0.03f, -0.44f, -4f, false, 0f, 0f, 1f, 1f))),
+            AccDef("santa_hat", "산타 모자", "head", 150, listOf(AccPart(0.84f, 0.05f, -0.4f, -4f, false, 0f, 0f, 1f, 1f))),
+            AccDef("beret", "베레모", "head", 120, listOf(AccPart(0.76f, 0.05f, -0.36f, -6f, false, 0f, 0f, 1f, 1f))),
+            AccDef("maid_frill", "메이드 머리띠", "head", 120, listOf(AccPart(0.86f, 0.02f, -0.3f, 0f, true, 0f, 0f, 1f, 1f))),
+            AccDef("deerstalker", "탐정 모자", "head", 120, listOf(AccPart(0.84f, 0.04f, -0.37f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("headphones", "헤드폰", "head", 180, listOf(AccPart(1.0f, 0.03f, -0.25f, 0f, true, 0.15f, 0.0f, 0.94f, 0.45f), AccPart(0.26f, 0.46f, 0.08f, 0f, true, 0.55f, 0.4f, 1.0f, 1.0f), AccPart(0.26f, -0.42f, 0.08f, 0f, false, 0.0f, 0.4f, 0.43f, 1.0f))),
+            AccDef("sunglasses", "선글라스", "eyes", 60, listOf(AccPart(0.6f, 0.07f, 0.085f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("pixel_glasses", "픽셀 안경", "eyes", 60, listOf(AccPart(0.62f, 0.07f, 0.085f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("heart_glasses", "하트 안경", "eyes", 60, listOf(AccPart(0.58f, 0.07f, 0.085f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("star_glasses", "별 안경", "eyes", 60, listOf(AccPart(0.58f, 0.07f, 0.085f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("pixel_glasses2", "픽셀 안경 2", "eyes", 60, listOf(AccPart(0.66f, 0.09f, 0.085f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("glasses_3d", "3D 안경", "eyes", 60, listOf(AccPart(0.62f, 0.08f, 0.085f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("bandage_heart", "하트 밴드", "face", 30, listOf(AccPart(0.22f, -0.2f, -0.27f, -25f, false, 0f, 0f, 1f, 1f))),
+            AccDef("bandage_cross", "십자 밴드", "face", 30, listOf(AccPart(0.18f, 0.38f, -0.18f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("mask", "마스크", "face", 30, listOf(AccPart(0.44f, 0.1f, 0.17f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("scarf", "체크 목도리", "neck", 70, listOf(AccPart(0.62f, 0.06f, 0.43f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("bow_tie", "나비넥타이", "neck", 70, listOf(AccPart(0.3f, 0.07f, 0.42f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("necktie", "넥타이", "neck", 70, listOf(AccPart(0.17f, 0.07f, 0.52f, 0f, true, 0f, 0f, 1f, 1f))),
+            AccDef("ribbon_blue", "파란 리본", "hair", 40, listOf(AccPart(0.22f, -0.31f, -0.27f, -15f, false, 0f, 0f, 1f, 1f))),
+            AccDef("ribbon_pink", "분홍 리본", "hair", 40, listOf(AccPart(0.22f, -0.31f, -0.27f, -15f, false, 0f, 0f, 1f, 1f))),
+            AccDef("star_clip", "별 핀", "hair", 40, listOf(AccPart(0.22f, 0.33f, -0.22f, 25f, false, 0f, 0f, 1f, 1f))),
+            AccDef("cherry_blossom", "벚꽃", "hair", 40, listOf(AccPart(0.24f, -0.31f, -0.25f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("blue_flame", "푸른 불꽃", "effect", 180, listOf(AccPart(0.24f, 0.62f, -0.28f, 0f, false, 0f, 0f, 1f, 1f))),
+            AccDef("hearts", "하트", "effect", 150, listOf(AccPart(0.28f, 0.62f, -0.3f, 0f, false, 0f, 0f, 1f, 1f))),
         )
         val SLOT_NAMES = mapOf("head" to "머리", "eyes" to "눈", "face" to "얼굴", "neck" to "목", "hair" to "머리핀", "effect" to "효과")
         fun all() = CONCEPTS + FACES + DECOR

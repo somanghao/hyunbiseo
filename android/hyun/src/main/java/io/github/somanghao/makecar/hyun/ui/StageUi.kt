@@ -250,19 +250,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (ga > 0) { p.shader = RadialGradient(cx, cy, s * 0.62f, Glass.a(gc, ga), Glass.a(gc, 0), Shader.TileMode.CLAMP); c.drawCircle(cx, cy, s * 0.62f, p); p.shader = null }
         val bot = v.asset("bot_$face.webp")
         if (m.overlay != "deco") aroundCharacter(c, cx, cy, s, t, alive, bot)
+        accParts(c, cx, cy, s, face, back = true)   // 헬멧 뒤로 가는 조각(머리띠 · 반대쪽 헤드폰 · 넥타이)
         bot?.let { bm -> p.isFilterBitmap = true; p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p) }
-        // 캐릭터 그림은 그대로 — 사용자가 고른 소품만 따로 얹는다(칸 순서: 목 → 얼굴 → 눈 → 머리핀 → 머리 → 효과)
-        for (slot in listOf("neck", "face", "eyes", "hair", "head", "effect")) {
-            val id = m.equipped[slot] ?: continue
-            if (face == "driving" && (slot == "neck" || slot == "face")) continue   // 운전대 자세와 겹침
-            val d = StageModel.ACC_DEFS.firstOrNull { it.id == id } ?: continue
-            val bm = v.asset("acc_$id.webp") ?: continue
-            val (ss, cyy) = if (face == "driving") (s * 0.9f) to (cy + s * 0.04f) else s to cy   // 운전 자세 그림은 헬멧이 조금 작고 낮다
-            val aw = d.w * ss; val ah = aw * bm.height / bm.width
-            val ax = cx + d.dx * ss; val ay = cyy + d.dy * ss
-            c.save(); c.rotate(d.rot, ax, ay); p.color = Color.WHITE; p.isFilterBitmap = true
-            c.drawBitmap(bm, null, RectF(ax - aw / 2, ay - ah / 2, ax + aw / 2, ay + ah / 2), p); c.restore()
-        }
+        accParts(c, cx, cy, s, face, back = false)
         // 날씨 소품(그림) — 우산·목도리·차 한 잔·선글라스
         val spots = listOf(-0.52f to -0.12f, 0.5f to 0.22f, -0.5f to 0.3f, 0.48f to -0.2f)
         m.weatherStickers.mapNotNull { PROPS[it] }.distinct().take(4).forEachIndexed { i, prop ->
@@ -277,6 +267,28 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             v.asset("prop_${d.id}.webp")?.let { bm -> val ps = s * (if (d.id == "lamp" || d.id == "plant") 0.42f else 0.3f); val bx = cx + s * fx; val by = feet + s * fy - ps / 2
                 val bob = if (alive && d.id == "balloon") sin(t * 1.2f) * S else 0f
                 p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(bx - ps / 2, by - ps / 2 + bob, bx + ps / 2, by + ps / 2 + bob), p) }
+        }
+    }
+
+    /** 사용자가 고른 소품 — 캐릭터 그림은 그대로 두고 조각만 얹는다. 위치는 기본 표정 헬멧 기준, 운전 자세는 헬멧이 0.92배 · 조금 위 */
+    private val srcR = android.graphics.Rect()
+    private fun accParts(c: Canvas, cx: Float, cy: Float, s: Float, face: String, back: Boolean) {
+        val drive = face == "driving"
+        val a = if (drive) 0.92f else 1f; val ox = if (drive) 0.005f else 0f; val oy = if (drive) -0.03f else 0f
+        for (slot in listOf("neck", "face", "eyes", "hair", "head", "effect")) {
+            val id = m.equipped[slot] ?: continue
+            if (drive && (slot == "neck" || slot == "face")) continue   // 운전대와 겹침
+            val d = StageModel.ACC_DEFS.firstOrNull { it.id == id } ?: continue
+            val bm = v.asset("acc_$id.webp") ?: continue
+            for (pt in d.parts) {
+                if (pt.back != back) continue
+                srcR.set((pt.cx0 * bm.width).toInt(), (pt.cy0 * bm.height).toInt(), (pt.cx1 * bm.width).toInt(), (pt.cy1 * bm.height).toInt())
+                val aw = pt.w * s * a; val ah = aw * srcR.height() / max(1, srcR.width())
+                val ax = cx + (pt.dx * a + ox) * s; val ay = cy + (pt.dy * a + oy) * s
+                c.save(); if (pt.rot != 0f) c.rotate(pt.rot, ax, ay)
+                p.color = Color.WHITE; p.isFilterBitmap = true
+                c.drawBitmap(bm, srcR, RectF(ax - aw / 2, ay - ah / 2, ax + aw / 2, ay + ah / 2), p); c.restore()
+            }
         }
     }
 
