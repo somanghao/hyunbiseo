@@ -573,7 +573,7 @@ class HyunView(ctx: Context) : View(ctx) {
         bmps[name]?.let { return it }
         if (loading.add(name)) Thread {
             try {
-                context.assets.open("chars/$name").use { s -> BitmapFactory.decodeStream(s, null, BitmapFactory.Options().apply { inSampleSize = if (name.startsWith("bot_")) 1 else 2 }) }
+                context.assets.open("chars/$name").use { s -> BitmapFactory.decodeStream(s, null, BitmapFactory.Options().apply { inSampleSize = if (name.startsWith("bot_") || name.startsWith("room_")) 1 else 2 }) }
                     ?.let { bmps[name] = it; postInvalidate() }
             } catch (_: Exception) { }
         }.start()
@@ -625,9 +625,12 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     /** 헬멧 로봇 표정 — 경고 > 듣기 > 생각 > 말하기(기분별) > 대기(주행 = 운전대, 기분별). 대기·말하기 중 4초마다 잠깐 눈 감기(깜빡임) */
+    private var blinkNext = 3.0
+    private var blinkFrom = -1.0
     internal fun botFace(): String {
         val t = (System.nanoTime() - t0) / 1e9
-        val blink = t % 4.2 < 0.14 && (mode == Mode.READY || mode == Mode.SPEAKING) && !(driving && mode == Mode.READY)
+        if (t > blinkNext) { blinkFrom = t; blinkNext = t + 4.0 + Math.random() * 3.0 }   // 깜빡임 4~7초 무작위(디자인 스펙)
+        val blink = t - blinkFrom < 0.14 && (mode == Mode.READY || mode == Mode.SPEAKING) && !(driving && mode == Mode.READY)
         return when {
             mood == "alert" || prio == 0 -> "alert"
             mode == Mode.LISTENING -> "surprised"
