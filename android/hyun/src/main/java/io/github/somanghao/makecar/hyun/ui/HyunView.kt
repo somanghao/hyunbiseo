@@ -573,7 +573,7 @@ class HyunView(ctx: Context) : View(ctx) {
         bmps[name]?.let { return it }
         if (loading.add(name)) Thread {
             try {
-                context.assets.open("chars/$name").use { s -> BitmapFactory.decodeStream(s, null, BitmapFactory.Options().apply { inSampleSize = if (name.startsWith("bot_") || name.startsWith("room_")) 1 else 2 }) }
+                context.assets.open("chars/$name").use { s -> BitmapFactory.decodeStream(s, null, BitmapFactory.Options().apply { inSampleSize = if (name.startsWith("bot_") || name.startsWith("room_") || name.startsWith("acc_")) 1 else 2 }) }
                     ?.let { bmps[name] = it; postInvalidate() }
             } catch (_: Exception) { }
         }.start()

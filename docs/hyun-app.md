@@ -73,6 +73,12 @@ Claude Code 세션(두뇌): wait.py를 run_in_background로 띄워 두고(대기
 - 상황: `sit` `ignition`/`ready`/`drive`/`stop`/`park`/`off`/`auto`(신호로 되돌림) · `reset` `true`(넣은 모의 값 모두 지움)
 - 넣은 값은 고정(실제 신호가 덮지 않음). 숫자는 `--ei`/`--ef`/`--es` 아무거나. 속도·기어·시동 같은 진짜 차 신호는 VHAL(`su 0 dumpsys android.hardware.automotive.vehicle.IVehicle/default --set …`)로
 
+### 꾸미기 소품(11-09, 댄 소품 시트 30종)
+- 그림: `assets/chars/acc_<id>.webp`(시트에서 흰 바탕만 테두리 기준으로 지워 오림, 256px). 정의·가격·위치 = `StageModel.ACC_DEFS`(칸 head · eyes · face · neck · hair · effect, 위치는 캐릭터 그림 한 변 기준 비율)
+- 칸마다 하나. 상점 "꾸미기 소품" 탭에서 별로 사고(머리 120 · 눈 60 · 얼굴 30 · 목 70 · 머리핀 40 · 효과 150, 왕관 250 등) 눌러서 입기/벗기. prefs `stage.equip`
+- 캐릭터 그림은 그대로, 소품만 따로 얹는다. 운전 자세에선 목·얼굴 칸은 숨긴다(운전대와 겹침). 테마는 소품을 자동으로 붙이지 않는다
+- 시연: `--es equip "cat_ears,sunglasses"`(보유+착용) · `--es equip none` · `--es screen deco --es tab decor`
+
 ### 차 신호 → 캐릭터 반응 (Pleos SDK 데이터 활용, `drive/CarStatus.kt` · `StageFeature.react()`)
 데이터 층: **Pleos Vehicle SDK → AAOS CarPropertyManager → 시뮬레이터**(디버그 판·`--es sim "wiper=on,passenger=on,…"`, 넣은 값은 고정). 값이 *바뀔 때*만 한 번 반응 — 주행 중엔 카드 대신 말 + 6초 한 줄.
 
