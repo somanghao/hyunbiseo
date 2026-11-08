@@ -155,7 +155,7 @@ class StageFeature : Feature {
     private var turnWarned = ""
 
     private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(c: Context, i: Intent) { hub.main.post { apply(i) } }
+        override fun onReceive(c: Context, i: Intent) { hub.main.post { if (i.action == SIM_ACTION) simIntent(i) else apply(i) } }
     }
 
     override fun start(hub: Hyun) {
@@ -169,7 +169,7 @@ class StageFeature : Feature {
         if (pr.getInt("stage.weekNo", -1) == Calendar.getInstance().get(Calendar.WEEK_OF_YEAR)) m.weekPoints = pr.getInt("stage.week", 0)
         status = CarStatus(hub.act).also { runCatching { it.start() }; m.status = it }
         ui = StageUi(hub.view, m, ::act).also { hub.view.stage = it }
-        val f = IntentFilter(ACTION)
+        val f = IntentFilter(ACTION).apply { addAction(SIM_ACTION) }
         runCatching { if (Build.VERSION.SDK_INT >= 33) hub.act.registerReceiver(receiver, f, Context.RECEIVER_EXPORTED) else hub.act.registerReceiver(receiver, f) }
             .onFailure { hub.log("stage|receiver|${it.message}") }
         val need = CAR_PERMS.filter { hub.act.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
@@ -182,6 +182,20 @@ class StageFeature : Feature {
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
     override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+
+    /**
+     * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive
+     * 키: wiper·door·window·passenger·kid·belt·lights·lock(on/off) · cruise(속도 또는 off) · turn(left/right/hazard/off) · cabin(°C) · soc(%) · range(km) · mode(ECO/NORMAL/SPORT) · steer(°) · sit(ignition…off/auto) · reset(true)
+     */
+    private fun simIntent(i: Intent) {
+        val b = i.extras ?: return
+        val parts = mutableListOf<String>()
+        if (b.get("reset")?.toString() == "true") parts += "reset"
+        for (k in SIM_KEYS) b.get(k)?.let { parts += "$k=${it.toString().lowercase().let { v -> if (k == "mode") v.uppercase() else v }}" }
+        if (parts.isNotEmpty()) hub.log("stage|SIM|${m.status?.sim(parts.joinToString(","))}")
+        b.getString("sit")?.let { apply(Intent().putExtra("sit", it)) }
+        refresh(); hub.render()
+    }
 
     /** 시연 extra — 방송·인텐트 공통 */
     private fun apply(i: Intent) {
@@ -855,6 +869,8 @@ class StageFeature : Feature {
 
     companion object {
         const val ACTION = "io.github.somanghao.makecar.hyun.STAGE"
+        const val SIM_ACTION = "io.github.somanghao.makecar.hyun.SIM"
+        private val SIM_KEYS = listOf("wiper", "door", "window", "passenger", "kid", "belt", "lights", "lock", "cruise", "turn", "cabin", "soc", "range", "mode", "steer")
         private const val HARSH_MS = 3.5f          // 1초에 이만큼(약 12.6km/h) 넘게 줄면 급정거
         private const val NOVICE_REST_S = 50 * 60.0
         private const val WELCOME = 100

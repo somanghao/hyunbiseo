@@ -66,6 +66,13 @@ Claude Code 세션(두뇌): wait.py를 run_in_background로 띄워 두고(대기
 - 시연: `adb shell am broadcast -a io.github.somanghao.makecar.hyun.STAGE --es sit ignition|ready|drive|stop|park|off|auto` · `--es screen onboard|deco|settings|debug|none` · `--es skill novice|expert` · `--ei points 300` · `--es turn left|right|off` · `--ef steer 120` · `--ez cruise true` · `--es concept pleos|glass|cafe|space|arcade` · `--es preview space` · `--es night on|off|auto` · `--ei sideL 643` · `--ez reset true`(첫 실행 다시). 화면 왼쪽 위 상황 칩 세 번 = 디버그 판
 - 에뮬 VHAL 로 진짜 신호 주기: `adb shell su 0 dumpsys android.hardware.automotive.vehicle.IVehicle/default --set 0x11600207 -f 13.5`(속도 m/s) · `--set 0x11400400 -i 8`(기어 D, P=4) · `--set 0x11400409 -i 2`(시동 끔, 켬=4)
 
+### 주행 상태 조작(허브·adb) — `io.github.somanghao.makecar.hyun.SIM`
+`adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive`
+- 켜고 끄기(`on`/`off`): `wiper` 와이퍼 · `door` 운전석 문(`open`/`closed`도 됨) · `window` · `passenger` 조수석 · `kid` 뒷좌석 · `belt` 운전석 벨트 · `lights` 전조등 · `lock` 문 잠김
+- 값: `cruise` 목표 속도(예 `100`, `off`) · `turn` `left`/`right`/`hazard`/`off` · `cabin` 실내 설정 온도 °C · `soc` 배터리 % · `range` km · `mode` `ECO`/`NORMAL`/`SPORT` · `steer` 조향각 °
+- 상황: `sit` `ignition`/`ready`/`drive`/`stop`/`park`/`off`/`auto`(신호로 되돌림) · `reset` `true`(넣은 모의 값 모두 지움)
+- 넣은 값은 고정(실제 신호가 덮지 않음). 숫자는 `--ei`/`--ef`/`--es` 아무거나. 속도·기어·시동 같은 진짜 차 신호는 VHAL(`su 0 dumpsys android.hardware.automotive.vehicle.IVehicle/default --set …`)로
+
 ### 차 신호 → 캐릭터 반응 (Pleos SDK 데이터 활용, `drive/CarStatus.kt` · `StageFeature.react()`)
 데이터 층: **Pleos Vehicle SDK → AAOS CarPropertyManager → 시뮬레이터**(디버그 판·`--es sim "wiper=on,passenger=on,…"`, 넣은 값은 고정). 값이 *바뀔 때*만 한 번 반응 — 주행 중엔 카드 대신 말 + 6초 한 줄.
 
