@@ -82,9 +82,19 @@ class HyunActivity : Activity() {
         val cover = FrameLayout(this).apply {
             setBackgroundColor(if (hyun.isCar) 0xFF0B0F14.toInt() else 0xFFFFFFFF.toInt())
             isClickable = true
-            addView(ImageView(this@HyunActivity).apply { setImageDrawable(anim) }, FrameLayout.LayoutParams(side, side, Gravity.CENTER))
         }
         var gone = false
+        // 그릴 수 없는 파일이면 앱을 죽이지 말고 스플래시만 건너뛴다
+        val img = object : ImageView(this) {
+            override fun onDraw(c: android.graphics.Canvas) {
+                if (gone) return
+                val n = c.saveCount
+                try { super.onDraw(c) } catch (e: Exception) {
+                    c.restoreToCount(n); android.util.Log.w("HYUN", "splash lottie off: $e"); gone = true; anim.cancelAnimation(); post { root.removeView(cover) }
+                }
+            }
+        }.apply { setImageDrawable(anim) }
+        cover.addView(img, FrameLayout.LayoutParams(side, side, Gravity.CENTER))
         fun close() {
             if (gone) return
             gone = true
