@@ -368,7 +368,7 @@ class StageFeature : Feature {
         val line = when (s) {
             Sit.IGNITION -> ignitionLine()
             Sit.READY -> if (m.novice) "출발 순서예요. 브레이크를 꾹 밟고, D로 바꾼 다음, 천천히 발을 떼요." else null
-            Sit.DRIVE -> if (m.novice) "출발! 앞차와 간격은 넉넉히, 제가 길을 미리미리 말해 줄게요." else null
+            Sit.DRIVE -> if (m.novice) "출발. 앞차와 간격은 넉넉히, 제가 길을 미리미리 말해 줄게요." else null
             Sit.STOP -> gossip().let { g -> if (m.novice && tipIdx++ % 2 == 0) "신호 대기 중엔 브레이크를 계속 꾹. ${g.second}" else g.second }
             Sit.PARK -> parkLine()
             Sit.OFF -> offLine()
@@ -485,7 +485,7 @@ class StageFeature : Feature {
         if (key !in m.owned) {
             if (m.points < d.price) { toast("포인트가 ${d.price - m.points}점 모자라요 — 안전운전으로 모아요"); return }
             m.points -= d.price; m.owned = m.owned + key
-            toast("${d.name} 열었어요! −${d.price}점")
+            toast("${d.name} 열었어요. −${d.price}점")
             hub.view.faceOverride = "cheer"; hub.main.postDelayed({ if (hub.view.faceOverride == "cheer") hub.view.faceOverride = null }, 1800)
         }
         when (d.kind) { "concept" -> { m.concept = d.id; m.preview = null; m.unlockAt = SystemClock.elapsedRealtime(); m.reactAt = m.unlockAt; m.reactFace = "cheer"; hub.say(Concept.of(d.id).greet + "${d.name} 컨셉으로 갈아입었어요.", "happy", false, 1, reply = true, tag = "컨셉") }
@@ -554,7 +554,7 @@ class StageFeature : Feature {
             Sit.IGNITION -> {
                 m.headline = "${who}${greet()}"
                 out += Tile("cloud", "오늘 날씨", weatherComic(), listOfNotNull(tempC?.let { "지금 ${it}° ${wname()}" }, tomorrow.ifBlank { null }).joinToString(" · "), "info")
-                if (soc != null) out += Tile("battery", "차 컨디션", if (soc >= 80) "배터리 ${soc}% 꽉 찼어요! 오늘은 어디든 거뜬해요." else if (soc >= 30) "배터리 ${soc}%, ${range ?: soc * 5}km는 문제없어요." else "배터리가 ${soc}%예요. 가는 길에 충전하고 가요.",
+                if (soc != null) out += Tile("battery", "차 컨디션", if (soc >= 80) "배터리 ${soc}% 꽉 찼어요. 오늘은 어디든 거뜬해요." else if (soc >= 30) "배터리 ${soc}%, ${range ?: soc * 5}km는 문제없어요." else "배터리가 ${soc}%예요. 가는 길에 충전하고 가요.",
                     "주행 가능 ${range ?: "-"}km · 타이어는 계기판에서", if (soc < 30) "warn" else "good")
                 news.firstOrNull()?.let { out += Tile("news", newsTag.substringBefore(" ·"), "오늘 소식 하나 들려 드릴까요? \"$it\"", news.getOrNull(1)?.let { n -> "다음 소식: $n" } ?: "말로 \"뉴스 들려줘\"", "accent") }
                 tip("출발 전에 시트 → 미러 → 벨트 순서로 맞춰요. 계기판에 빨간 경고등이 없는지도 한 번 봐요.")
@@ -562,7 +562,7 @@ class StageFeature : Feature {
             Sit.READY -> {
                 m.headline = "어디로 갈까요?"
                 val dest = hub.view.dest
-                out += if (dest != null) Tile("pin", "오늘 목적지", "${dest}까지 같이 가요! ${hub.view.remain.ifBlank { "길을 찾는 중이에요." }}", hub.view.eta, "accent")
+                out += if (dest != null) Tile("pin", "오늘 목적지", "${dest}까지 같이 가요. ${hub.view.remain.ifBlank { "길을 찾는 중이에요." }}", hub.view.eta, "accent")
                        else Tile("pin", "추천 목적지", recommendDest().let { "이 시간엔 보통 ${it.first}에 가죠? ${it.second}" }, "말로 \"집으로 가자\"", "accent", "추천")
                 if (soc != null && soc < 30) out += Tile("battery", "가는 김에 충전", "배터리가 ${soc}%라, 가는 길 충전소에 들렀다 가요. 20분이면 80%까지 돼요.", "가는 김에 · 경유지 추가", "warn", action = "say:충전소 들렀다 가자")
                 out += Tile("bag", "가는 김에", "가는 길에 세탁물 찾을까요? 5분이면 돼요.", "할 일 1건 · 가는 길 0.4km", "good", "예시")
@@ -581,17 +581,17 @@ class StageFeature : Feature {
             Sit.PARK -> {
                 m.headline = "주차 완료"
                 val smooth = penalties == 0
-                out += Tile("road", "이번 주행", "${min}분 동안 %.1fkm 달렸어요! ".format(km) + if (smooth) "한 번도 급하게 서지 않았어요. 최고예요." else "급정거가 ${harsh}번 있었어요. 다음엔 조금 더 미리 멈춰 봐요.",
+                out += Tile("road", "이번 주행", "${min}분 동안 %.1fkm 달렸어요. ".format(km) + if (smooth) "한 번도 급하게 서지 않았어요. 최고예요." else "급정거가 ${harsh}번 있었어요. 다음엔 조금 더 미리 멈춰 봐요.",
                     "평균 ${if (tripS > 0) (tripM / tripS * 3.6).roundToInt() else 0}km/h", if (smooth) "good" else "warn")
-                out += Tile("star", "안전운전 포인트", if (m.tripPoints >= 0) "이번엔 ${sign(m.tripPoints)}${look().pointWord.let { if (it == "포인트") "점" else " $it" }} 모았어요! 방 꾸미기에 써 볼까요?" else "이번엔 ${sign(m.tripPoints)}점이에요. 다음엔 꼭 되찾아요!",
+                out += Tile("star", "안전운전 포인트", if (m.tripPoints >= 0) "이번엔 ${sign(m.tripPoints)}${look().pointWord.let { if (it == "포인트") "점" else " $it" }} 모았어요. 방 꾸미기에 써 볼까요?" else "이번엔 ${sign(m.tripPoints)}점이에요. 다음엔 꼭 되찾아요.",
                     m.ledger.take(3).joinToString(" · ") { "${it.why} ${sign(it.delta)}" }.ifBlank { "모은 포인트 ${m.points}" }, "warn", action = "deco", lines = m.ledger.toList())
-                out += Tile("cup", "쉼표", "15분만 쉬어 가요. 등받이 살짝 젖히고, 목 스트레칭 세 번!", "오래 달린 날엔 쉼표가 보약", "good")
+                out += Tile("cup", "쉼표", "15분만 쉬어 가요. 등받이 살짝 젖히고, 목 스트레칭 세 번.", "오래 달린 날엔 쉼표가 보약", "good")
                 tip("주차 요령: 핸들을 똑바로 풀고 → P → 주차 브레이크. 내리기 전에 사이드미러 접기.")
             }
             Sit.OFF -> {
                 m.headline = "오늘도 수고했어요"
-                out += Tile("chart", "하루 정리", "오늘 %.1fkm 함께 달렸어요. ${sign(dayPoints)}점 모았고요!".format(dayKm), "총 ${m.points} · ${nextUnlock()}", "info", action = "deco", lines = m.dayLedger.toList())
-                out += Tile("bag", "두고 내린 것", "휴대폰이랑 지갑 챙겼죠? 뒷좌석도 한 번 봐요!", "창문 · 실내등도 확인", "warn")
+                out += Tile("chart", "하루 정리", "오늘 %.1fkm 함께 달렸어요. ${sign(dayPoints)}점 모았고요.".format(dayKm), "총 ${m.points} · ${nextUnlock()}", "info", action = "deco", lines = m.dayLedger.toList())
+                out += Tile("bag", "두고 내린 것", "휴대폰이랑 지갑 챙겼죠? 뒷좌석도 한 번 봐요.", "창문 · 실내등도 확인", "warn")
                 if (tomorrow.isNotBlank()) out += Tile("clock", "내일", "${tomorrow.replace("내일 ", "내일은 ")}" + if (rain >= 50) "이에요. 우산 꼭 챙겨요." else "이에요. 출발 10분 전에 공조 켜 둘까요?", "아침 출발 전 알림", "accent")
             }
         }
@@ -628,12 +628,12 @@ class StageFeature : Feature {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         st.wiper.v.let { w -> if (changed("wiper", w) && w == true) {
             event("cloud", "와이퍼 켜짐 — 비가 와요")
-            story(Tile("cloud", "비 오는 날", "비가 오네요! 우산 쓰고 있을게요. 앞차랑 간격은 평소의 두 배로 둬요.", "와이퍼 신호(Pleos Wiper)", "info"))
+            story(Tile("cloud", "비 오는 날", "비가 오네요. 우산 쓰고 있을게요. 앞차랑 간격은 평소의 두 배로 둬요.", "와이퍼 신호(Pleos Wiper)", "info"))
             talk(if (m.novice) "비가 오네요. 앞차랑 간격을 평소의 두 배로 두고, 브레이크는 미리미리 밟아요." else "비가 오네요. 간격 넉넉히 가요.", 2, "care")
         } }
         st.doorOpen.v.let { d -> if (changed("door", d) && d == true) {
-            if (hub.speedMs > hub.moveMs) { event("warn", "문이 열려 있어요!"); hub.say("문이 열려 있어요! 바로 확인해 주세요.", "alert", false, 0, tag = "반응·문") }
-            else { event("bag", "문 열림 — 내리시나요?"); story(Tile("bag", "내리기 전에", "내리기 전에 휴대폰이랑 지갑 챙겼죠? 뒷좌석에 두고 내린 건 없나요?", "운전석 문 열림(Pleos Door)", "warn")); talk("내리기 전에 휴대폰이랑 지갑 챙겼죠? 뒷좌석도 한 번 봐요!", 1, "care") }
+            if (hub.speedMs > hub.moveMs) { event("warn", "문이 열려 있어요."); hub.say("문이 열려 있어요. 바로 확인해 주세요.", "alert", false, 0, tag = "반응·문") }
+            else { event("bag", "문 열림 — 내리시나요?"); story(Tile("bag", "내리기 전에", "내리기 전에 휴대폰이랑 지갑 챙겼죠? 뒷좌석에 두고 내린 건 없나요?", "운전석 문 열림(Pleos Door)", "warn")); talk("내리기 전에 휴대폰이랑 지갑 챙겼죠? 뒷좌석도 한 번 봐요.", 1, "care") }
         } }
         st.windowOpen.v.let { w -> if (changed("window", w) && w == true && st.wiper.v == true) { event("cloud", "비 오는데 창문이 열렸어요"); talk("비가 들어와요. 창문 닫을까요?", 2, "care") } }
         st.cabinC.v.let { c -> if (changed("cabin", c) && c != null) {
@@ -642,21 +642,21 @@ class StageFeature : Feature {
         } }
         st.passenger.v.let { p -> if (changed("passenger", p) && p == true) {
             event("chat", "옆자리에 누가 탔어요")
-            story(Tile("chat", "동승자 모드", "옆자리에 친구가 탔네요, 반가워요! 같이 들을 노래 틀어 드릴까요? 혼잣말은 줄일게요.", "조수석 착석(Pleos Seat)", "accent"))
-            talk("옆자리에 친구가 탔네요! 반가워요. 같이 들을 노래 틀어 드릴까요?", 2, "happy")
+            story(Tile("chat", "동승자 모드", "옆자리에 친구가 탔네요, 반가워요. 같이 들을 노래 틀어 드릴까요? 혼잣말은 줄일게요.", "조수석 착석(Pleos Seat)", "accent"))
+            talk("옆자리에 친구가 탔네요. 반가워요. 같이 들을 노래 틀어 드릴까요?", 2, "happy")
         } }
         st.rearKid.v.let { p -> if (changed("kid", p) && p == true) {
-            story(Tile("music", "뒷좌석 손님", "뒷자리에 꼬마 손님인가요? 동요랑 끝말잇기 준비해 뒀어요!", "뒷좌석 착석(Pleos Seat)", "good"))
-            talk("뒷자리에 꼬마 손님인가요? 동요랑 끝말잇기 준비해 뒀어요!", 2, "happy")
+            story(Tile("music", "뒷좌석 손님", "뒷자리에 꼬마 손님인가요? 동요랑 끝말잇기 준비해 뒀어요.", "뒷좌석 착석(Pleos Seat)", "good"))
+            talk("뒷자리에 꼬마 손님인가요? 동요랑 끝말잇기 준비해 뒀어요.", 2, "happy")
         } }
-        st.belt.v.let { b -> if (changed("belt", b) && b == false && (m.sit == Sit.READY || driving)) { event("warn", "벨트를 매 주세요"); hub.say("벨트부터 매요! 매면 바로 출발해요.", "care", false, 1, tag = "반응·벨트") } }
+        st.belt.v.let { b -> if (changed("belt", b) && b == false && (m.sit == Sit.READY || driving)) { event("warn", "벨트를 매 주세요"); hub.say("벨트부터 매요. 매면 바로 출발해요.", "care", false, 1, tag = "반응·벨트") } }
         st.lowBeam.v.let { l -> if (changed("lights", l) && l == false && driving && (hour >= 18 || hour < 6)) { event("warn", "전조등이 꺼져 있어요"); talk("어두워졌어요. 전조등 켜 볼까요?", 1, "care") } }
         st.cruise.v.let { c -> if (changed("cruise", c) && c == "작동") {
             event("cruise", "크루즈 켜짐 · ${st.cruiseKmh.v ?: hub.kmh()}km/h")
             if (m.novice) talk("크루즈 좋아요. 발은 브레이크 가까이에 두세요.", 2) else talk("크루즈 좋네요. 연비도 아껴요.", 3)
         } }
         st.mode.v.let { md -> if (changed("mode", md) && md != null) when (md) {
-            "ECO" -> { event("road", "에코 모드"); talk("에코 모드! 배터리 아끼기 딱 좋아요.", 3, "happy") }
+            "ECO" -> { event("road", "에코 모드"); talk("에코 모드. 배터리 아끼기 딱 좋아요.", 3, "happy") }
             "SPORT" -> { event("speed", "스포츠 모드"); if (m.novice) talk("스포츠 모드는 반응이 빨라요. 살살 밟아요.", 2, "care") }
         } }
         st.turn.v.let { t -> if (changed("turn", t) && t != null && t != 0) event("signal", when (t) { 1 -> "왼쪽 깜빡이"; 2 -> "오른쪽 깜빡이"; else -> "비상등" }) }
@@ -667,7 +667,7 @@ class StageFeature : Feature {
         } }
         // 주행 이정표 — 10km마다 칭찬 +3, 30분·60분 쉼표 안내
         val km10 = (tripM / 10_000).toInt()
-        if (km10 > kmMark) { kmMark = km10; award("flag", "${km10 * 10}km 달성", 3); event("flag", "${km10 * 10}km 달성! +3") }
+        if (km10 > kmMark) { kmMark = km10; award("flag", "${km10 * 10}km 달성", 3); event("flag", "${km10 * 10}km 달성. +3") }
         val tmin = st.tripMin.v ?: (tripS / 60)
         if (changed("min30", tmin >= 30) && tmin >= 30) { event("clock", "벌써 30분 달렸어요"); if (m.novice) talk("벌써 30분 달렸어요. 어깨 힘 빼고 가요.", 3) }
     }
@@ -744,7 +744,7 @@ class StageFeature : Feature {
 
     private fun nextUnlock(): String {
         val next = (StageModel.CONCEPTS.filter { "${it.kind}:${it.id}" !in m.owned }.minByOrNull { it.price }
-            ?: StageModel.all().filter { "${it.kind}:${it.id}" !in m.owned }.minByOrNull { it.price }) ?: return "전부 열었어요!"
+            ?: StageModel.all().filter { "${it.kind}:${it.id}" !in m.owned }.minByOrNull { it.price }) ?: return "전부 열었어요."
         return if (m.points >= next.price) "${next.name} 열 수 있어요" else "${next.name}까지 ${next.price - m.points}점"
     }
 
