@@ -1,5 +1,7 @@
 package io.github.somanghao.makecar.hyun
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.app.Activity
 import android.content.Intent
 import android.graphics.drawable.GradientDrawable
@@ -15,6 +17,9 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
+import com.airbnb.lottie.LottieCompositionFactory
+import com.airbnb.lottie.LottieDrawable
 import android.widget.LinearLayout
 import io.github.somanghao.makecar.hyun.core.Hyun
 import io.github.somanghao.makecar.hyun.feature.Registry
@@ -53,6 +58,7 @@ class HyunActivity : Activity() {
             ins
         }
         setContentView(rootView)
+        if (savedInstanceState == null) splash(rootView)
         if (!hyun.isCar) { lightBars(); view.onKeyboard = ::showInput }   // 창(DecorView)이 생긴 뒤에 — setContentView 전이면 insetsController가 NPE(폰 실측)
         hyun.start(intent)
     }
@@ -66,6 +72,29 @@ class HyunActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         hyun.onPermissions(permissions, grantResults)
+    }
+
+    // ---------- 시작 스플래시 — res/raw/h_ai_splash_lottie 한 번 재생 후 사라진다(누르면 건너뜀) ----------
+    private fun splash(root: FrameLayout) {
+        val comp = try { LottieCompositionFactory.fromRawResSync(this, R.raw.h_ai_splash_lottie).value } catch (_: Exception) { null } ?: return
+        val anim = LottieDrawable().apply { composition = comp; repeatCount = 0 }
+        val side = minOf(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels) * 6 / 10
+        val cover = FrameLayout(this).apply {
+            setBackgroundColor(if (hyun.isCar) 0xFF0B0F14.toInt() else 0xFFFFFFFF.toInt())
+            isClickable = true
+            addView(ImageView(this@HyunActivity).apply { setImageDrawable(anim) }, FrameLayout.LayoutParams(side, side, Gravity.CENTER))
+        }
+        var gone = false
+        fun close() {
+            if (gone) return
+            gone = true
+            cover.animate().alpha(0f).setDuration(300).withEndAction { anim.cancelAnimation(); root.removeView(cover) }.start()
+        }
+        cover.setOnClickListener { close() }
+        anim.addAnimatorListener(object : AnimatorListenerAdapter() { override fun onAnimationEnd(a: Animator) { close() } })
+        root.addView(cover, FrameLayout.LayoutParams(-1, -1))
+        anim.playAnimation()
+        cover.postDelayed({ close() }, comp.duration.toLong() + 1500)   // 끝 신호가 안 와도 멈춰 있지 않게
     }
 
     // ---------- 글로 묻기(폰) — 지하철·회의 중 ----------

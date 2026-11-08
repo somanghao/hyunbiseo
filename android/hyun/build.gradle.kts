@@ -33,4 +33,5 @@ dependencies {
     implementation("ai.pleos.playground:NaviHelper:3.0.5")     // 목적지·남은 거리/시간·현재 위치(주소)
     implementation("ai.pleos.playground:TextToSpeech:3.3.1")   // 말하기
     implementation("ai.pleos.playground:SpeechToText:3.3.1")   // 듣기
+    implementation("com.airbnb.android:lottie:6.6.2")          // 캐릭터 애니메이션 — 시작 스플래시(res/raw/h_ai_splash_lottie) · 대기(h_ai_idle_lottie)
 }
