@@ -27,7 +27,15 @@ from faster_whisper import WhisperModel  # noqa: E402
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8791
 MODEL = os.environ.get("HYUN_STT_MODEL", "large-v3")
 DEVICE = os.environ.get("HYUN_STT_DEVICE", "cuda")
-model = WhisperModel(MODEL, device=DEVICE, compute_type="float16" if DEVICE == "cuda" else "int8")
+model = WhisperModel(MODEL, device=DEVICE, compute_type="float16" if DEVICE == "cuda" else "int8",
+                     cpu_threads=int(os.environ.get("HYUN_STT_THREADS", "0")))
+# 정확도 조절(에뮬 컨테이너용, 기본값 = 원래 동작): 빔 크기 · 우선 단어 · 앞 문맥(앱이 자주 듣는 말)
+BEAM = int(os.environ.get("HYUN_STT_BEAM", "1"))
+# 앱이 자주 듣는 말 — 우선 단어(hotwords) + 앞 문맥(initial_prompt). small 모델 실측(11-08, say Yuna 22문장): 13/22 → 19/22 ("노래방"이 "놀이방"으로 적히던 것 해결)
+DOMAIN_WORDS = "현비서, 노래방, 쉼표, 브리핑, 끝말잇기, 퀴즈, 가는 김에, 휴게소, 웹툰, 내비, 경유지, 목적지, 우회, 정체, 앞길, 강남역, 아이유"
+DOMAIN_PROMPT = "현비서야, 노래방 가자. 쉼표 모드 켜 줘. 오늘 브리핑 들려줘. 끝말잇기 하자. 퀴즈 내 줘. 가는 김에 들러. 목적지로 가자. 앞길 어때? 노래 틀어 줘."
+HOTWORDS = os.environ.get("HYUN_STT_HOTWORDS", DOMAIN_WORDS)
+PROMPT = os.environ.get("HYUN_STT_PROMPT", DOMAIN_PROMPT) or None
 lock = threading.Lock()   # GPU 하나 — 한 번에 하나씩
 
 # Whisper가 조용한 소리·잡음에서 지어내는 상투 문장(유튜브 자막 학습 흔적) — 버린다
@@ -39,10 +47,10 @@ def transcribe(pcm: bytes) -> dict:
     t0 = time.time()
     with lock:
         # 시간 상한: 온도 재시도 없음(temperature 0) · 최대 64토큰 — 잡음 섞인 긴 구간에서 반복 디코딩으로 6~15초 걸린 실측(11-06)
-        segs, _ = model.transcribe(a, language="ko", beam_size=1, vad_filter=False, temperature=0.0,
+        segs, _ = model.transcribe(a, language="ko", beam_size=BEAM, vad_filter=False, temperature=0.0, initial_prompt=PROMPT,
                                    condition_on_previous_text=False, no_speech_threshold=0.6,
                                    without_timestamps=True, max_new_tokens=64,
-                                   hotwords="현비서")   # 호출어를 우선 단어로 — 없으면 "변비서"로 적었다(11-06 실측)
+                                   hotwords=HOTWORDS or None)   # 호출어를 우선 단어로 — 없으면 "변비서"로 적었다(11-06 실측)
         segs = [s for s in segs if s.no_speech_prob < 0.6]
     text = " ".join(s.text.strip() for s in segs).strip()
     if any(j in text for j in JUNK) or text in ("감사합니다.", "감사합니다", "네.", "아."):
