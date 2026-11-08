@@ -96,7 +96,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     // 시작 · 끝
     // ======================================================================
     fun start(intent: Intent?) {
-        view.phone = !isCar; view.lightTheme = !isCar; view.botName = botName; view.hyunLine = "안녕하세요, ${botName}예요"
+        view.phone = !isCar; view.lightTheme = !isCar; view.botName = botName; view.hyunLine = "안녕하세요, ${botName}예요 (시험)"
         view.onMic = ::micPressed
         if (isCar) navi = Navi(act, main, ::log).also { it.listen(naviCore); it.beforeCommand = ::primeFront }
         features.forEach { it.start(this) }
