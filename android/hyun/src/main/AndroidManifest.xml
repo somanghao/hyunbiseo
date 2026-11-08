@@ -5,6 +5,10 @@
     <uses-permission android:name="android.car.permission.CAR_SPEED" />
     <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
     <uses-permission android:name="android.car.permission.CAR_INFO" />
+    <!-- 시동 점검(StageFeature · CarCheck): 배터리·연료·주행 가능 거리 · 누적 주행 · 전조등 — 못 받으면 "확인 불가" -->
+    <uses-permission android:name="android.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="android.car.permission.CAR_MILEAGE" />
+    <uses-permission android:name="android.car.permission.CAR_EXTERIOR_LIGHTS" />
     <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />
     <uses-permission android:name="pleos.car.permission.CAR_INFO" />
     <!-- 목적지 설정(requestRoute) · 경로·위치 조회 -->

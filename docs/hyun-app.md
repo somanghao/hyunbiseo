@@ -48,6 +48,20 @@ Claude Code 세션(두뇌): wait.py를 run_in_background로 띄워 두고(대기
 - **교통 표**: 길·교통 질문엔 서버가 앱 맥락(`trafficAhead` 6개·경유지)으로 목록 카드 "앞길 교통 · ○○까지 N분(도착)"를 만든다(두뇌가 숫자를 옮기다 틀리지 않게)
 - **목록 카드**(정차만, 주행 중엔 숨김): 두뇌 답 `card {title, source, items≤10}` → 한 칸 번호 목록(1~3위 강조, "제목 — 작가"면 작가 옅게) · 누르면 닫힘 · 3분 뒤 닫힘(`CARD_MS`) · 말은 앞 3개만 · 실측: 웹소설 TOP 10, 한국시리즈 현황 5줄
 
+## 상황별 추천 화면 (댄 2026-11-08 — `feature/StageFeature.kt` · `ui/StageUi.kt`)
+"큰 글씨 위주 말고 기획서대로" — 차 가로 화면은 이제 **캐릭터가 가운데 서는 카드형 화면**(왼쪽 무대 · 오른쪽 상황 카드). 좁은 화면(내비와 반반)·폰은 예전 그대로.
+- **상황 6단계**(AAOS 신호로 판정 — `IGNITION_STATE` · `GEAR_SELECTION` · `PERF_VEHICLE_SPEED`, 신호가 바뀔 때만 다시 판정):
+  시동(전원 ON·P) → 출발 준비(D·정지, 주행 전) → 주행 중(속도>5km/h) → 잠깐 정차(D·정지 2초, 주행 뒤) → 주차(주행 뒤 P) → 시동 끔(전원 OFF·LOCK)
+  - 시동: 인사 · 날씨 개그(목도리·우산·차 한 잔 스티커를 캐릭터가 걸침) · 관심 뉴스(서버 `/hyun/feed?cat=news` + `/hyun/taste` 좋아요 키워드) · 차 상태
+  - 출발 준비: 추천 목적지 · 가는 김에(예시) · 출발 편성 · 차 상태 / 주행 중: **길 안내 1장 + 내 차 상태 그림**(위에서 본 차 · 깜빡이 · 배터리 고리 · 크루즈 · 주행 모드 · 실내 온도 · 문 잠김 · 이번 주행)
+  - 잠깐 정차: 동네 이야기(예시 — 카카오 로컬은 서버 도착 추천에만 열려 있음) + 다음 안내 / 주차: 주행 요약 · 안전운전 포인트 · 쉼표 · 꾸미기 / 시동 끔: 하루 정리 · 두고 내린 것 · 내일
+- **첫 실행**: 차량 점검(`drive/CarCheck.kt` — 읽히는 것만, 못 읽는 건 "확인 불가") → "운전이 처음이세요?"(말 "처음이야/익숙해" 또는 탭) → 맞춤 완료(+100 환영 포인트). 숙련도는 설정(⚙)·말("나 초보야")로 바꾼다
+  - 초보: 출발·정차·주차 팁(말 + 팁 띠) · 회전 300m 앞 차로 알림 · 급정거 코칭 · 50분 쉼표 / 숙련: 꼭 필요한 말만
+- **꾸미기**: 조명 테마 6 · 기본 표정 6 · 소품 6 — 안전운전 포인트(100m = 1점, 급정거 없이 0.5km 이상이면 주차 때 +10)로 연다. prefs `stage.*`
+- **내 차 상태 출처**(`drive/CarStatus.kt`): Pleos Vehicle SDK(Odometer·TurnSignal·DrivingMode·EvBattery) → 없으면 AAOS CarPropertyManager → 없으면 예시 값(옅게). 표준 AAOS 에뮬은 배터리·주행 가능 거리만 실제(누적 주행·깜빡이·문·공조는 시그니처 권한이라 외부 앱엔 막힘)
+- 시연: `adb shell am broadcast -a io.github.somanghao.makecar.hyun.STAGE --es sit ignition|ready|drive|stop|park|off|auto` · `--es screen onboard|deco|settings|debug|none` · `--es skill novice|expert` · `--ei points 300` · `--es turn left|right|off` · `--ez reset true`(첫 실행 다시). 화면 왼쪽 위 상황 칩 세 번 = 디버그 판
+- 에뮬 VHAL 로 진짜 신호 주기: `adb shell su 0 dumpsys android.hardware.automotive.vehicle.IVehicle/default --set 0x11600207 -f 13.5`(속도 m/s) · `--set 0x11400400 -i 8`(기어 D, P=4) · `--set 0x11400409 -i 2`(시동 끔, 켬=4)
+
 ## 귀 — 상시 듣기 (2026-11-06, 차)
 
 - **Pleos STT(ON_DEVICE)로는 에뮬에서 못 알아듣는다**: 에뮬 가상 마이크가 최대 -38dBFS로 작게 들어와 말 시작을 못 잡음(같은 녹음을 Whisper는 정확히 "지금 몇 시야?") · 첫 요청 준비 2.8초 · `sendAudio` 녹음 주입은 시스템 음성 서비스를 SIGSEGV로 죽임(그래서 `PleosVoice.feed` 막아 둠) → [QUICKMAP-pleos](../QUICKMAP-pleos.md) §3 #18
