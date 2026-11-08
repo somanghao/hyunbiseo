@@ -109,7 +109,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         darkUi = if (k.id == "pleos") (m.nightOverride ?: m.night) else !k.light && k.darkCard
         loadArt(k)
         val a = art
-        if (a != null && artKey.startsWith("room_${k.room}")) drawArt(c, w, h, a) else ambient(c, RectF(0f, 0f, w, h), k, darkUi)
+        if (a != null && artKey.startsWith("room_${k.room}")) drawArt(c, w, h, a) else if (m.overlay == "deco") ambient(c, RectF(0f, 0f, w, h), k, darkUi) else scene(c, w, h, t, m.sit == Sit.DRIVE)
         when (m.overlay) {
             "onboard" -> { scrim(c, w, h, 0.55f); onboard(c, w, h, t); return true }
             "deco" -> { shop(c, w, h, t); return true }
@@ -120,11 +120,14 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1600)
         if (m.sit == Sit.OFF) scrim(c, w, h, ((now - m.sitAt) / 1500f).coerceIn(0f, 0.35f))
         // 캐릭터
-        val chH = h * (if (driving) 0.62f else 0.56f)
-        val cx = w * (if (driving) 0.33f else 0.29f); val feet = h * 0.87f
+        val showLine = !driving && m.sit != Sit.STOP && !intro
+        val chH = h * (if (driving) 0.6f else 0.52f)
+        val cx = w * (if (driving) 0.33f else 0.29f); val feet = h * (if (showLine) 0.8f else 0.86f)
         val react = m.reactFace.takeIf { now - m.reactAt < 1200 }
         val face = when { intro -> "waving"; m.sit == Sit.OFF && now - m.sitAt > 2500 -> "sleep"; react != null && v.mode == HyunView.Mode.READY -> react; driving -> "driving"; else -> v.botFace() }
         character(c, cx, feet, chH, t, face, alive = !driving)
+        if (!intro) speech(c, cx, feet - chH * (if (m.raining) 1.12f else 0.98f), w * 0.4f)
+        if (showLine) timeline(c, 64 * U, w * 0.52f, h - 100 * U)
         topRight(c, w)
         if (intro) {   // 인트로 — 컨셉 이름이 떴다 사라진다
             val x = ((now - m.sitAt) / 1600f)
@@ -229,6 +232,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             else -> GLOW to (if (darkUi) 55 else 30)
         }
         p.shader = RadialGradient(cx, cy, s * 0.62f, Glass.a(gc, ga), Glass.a(gc, 0), Shader.TileMode.CLAMP); c.drawCircle(cx, cy, s * 0.62f, p); p.shader = null
+        if (m.raining && m.overlay != "deco") umbrella(c, cx + s * 0.1f, cy - s * 0.86f, s)
         v.asset("bot_$face.webp")?.let { bm -> p.isFilterBitmap = true; p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p) }
         // 날씨 소품(그림) — 우산·목도리·차 한 잔·선글라스
         val spots = listOf(-0.52f to -0.12f, 0.5f to 0.22f, -0.5f to 0.3f, 0.48f to -0.2f)
@@ -280,9 +284,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val ledger = tl?.lines.orEmpty()
         // 높이 계산
         val titleSize = 44 * U; val bodySize = 28 * U
+        val newsImg = tl?.takeIf { it.icon == "news" }?.let { m.newsImgs[m.newsList.firstOrNull()] }
+        val imgH = if (m.sit == Sit.IGNITION || m.sit == Sit.PARK || newsImg != null) 150 * U else 0f
         val titleLines = min(2, lineCount(title, iw, titleSize, bold))
         val bodyLines = bodyText?.let { min(2, lineCount(it, iw, bodySize, body)) } ?: 0
-        var hh = pad + 40 * U + 24 * U + titleLines * titleSize * 1.25f + (if (bodyLines > 0) 16 * U + bodyLines * bodySize * 1.45f else 0f) +
+        var hh = imgH + pad + 40 * U + 24 * U + titleLines * titleSize * 1.25f + (if (bodyLines > 0) 16 * U + bodyLines * bodySize * 1.45f else 0f) +
             (if (caption != null) 12 * U + 30 * U else 0f) + (if (ledger.isNotEmpty()) 12 * U + min(3, ledger.size) * 34 * U else 0f) + 32 * U + 64 * U + pad
         hh = min(hh, zone.height())
         val top = zone.centerY() - hh / 2
@@ -294,7 +300,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val r = RectF(zone.left, top + (1 - e) * 12 * U, zone.right, top + hh + (1 - e) * 12 * U)
         if (x < 1f) c.saveLayerAlpha(r.left - 40 * U, r.top - 40 * U, r.right + 40 * U, r.bottom + 40 * U, (e * 255).toInt()) else c.save()
         glassCard(c, r, 28 * U)
-        var y = r.top + pad
+        if (imgH > 0) heroImage(c, RectF(r.left, r.top, r.right, r.top + imgH), tl)
+        var y = r.top + imgH + (if (imgH > 0) pad * 0.7f else pad)
         // 상황 칩
         val chip = "${m.sit.label} · ${m.kicker.substringAfter(" · ")}" + (tl?.label?.let { "  ·  $it" } ?: "")
         p.textSize = 22 * U; p.typeface = semi; p.letterSpacing = 0.02f
@@ -340,6 +347,207 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         return s.substring(0, i + 1).trim()
     }
     private fun restOf(s: String): String { val f = firstSentence(s); return s.removePrefix(f).trim() }
+
+    // ======================================================================
+    // 살아 있는 배경 — 시간대 하늘 · 날씨(실제 날씨 + 와이퍼) · 구름·별·해/달 · 먼 언덕 · 바닥. 컨셉이 색을 물들인다
+    // 주행 중엔 아주 느리게(멈추진 않음). 도형은 부드러운 원·곡선만
+    // ======================================================================
+    private fun mixC(x: Int, y: Int, k2: Float): Int {
+        fun ch(sh: Int) = ((((x shr sh) and 0xFF) * (1 - k2) + ((y shr sh) and 0xFF) * k2).toInt() and 0xFF) shl sh
+        return (0xFF shl 24) or ch(16) or ch(8) or ch(0)
+    }
+    private val stars by lazy { val r = java.util.Random(11); List(90) { floatArrayOf(r.nextFloat(), r.nextFloat() * 0.55f, 0.6f + r.nextFloat() * 1.4f, r.nextFloat() * 6.28f) } }
+    private val drops by lazy { val r = java.util.Random(5); List(80) { floatArrayOf(r.nextFloat(), r.nextFloat(), 0.6f + r.nextFloat() * 0.8f) } }
+
+    private fun scene(c: Canvas, w: Float, h: Float, t0: Float, still: Boolean) {
+        val t = if (still) t0 * 0.2f else t0
+        val hour = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) + it.get(java.util.Calendar.MINUTE) / 60f }
+        val nightSky = darkUi || hour >= 19.5f || hour < 5f
+        var top: Int; var bot: Int
+        when {
+            nightSky -> { top = 0xFF0C1430.toInt(); bot = 0xFF223258.toInt() }
+            hour < 7f -> { top = 0xFFF3C6B6.toInt(); bot = 0xFFFCE8D8.toInt() }
+            hour >= 17f -> { top = 0xFFEE9F7E.toInt(); bot = 0xFFFAD9B8.toInt() }
+            else -> { top = 0xFFA8D2F3.toInt(); bot = 0xFFEAF4FB.toInt() }
+        }
+        if (k.id == "pleos" && !nightSky) { top = mixC(top, 0xFFF4F6F9.toInt(), 0.35f); bot = mixC(bot, 0xFFF4F6F9.toInt(), 0.35f) }
+        if (k.id != "pleos") { top = mixC(top, k.bg[0], 0.55f); bot = mixC(bot, k.bg[2], 0.45f) }
+        val cloudy = m.wcode in setOf(2, 3, 45, 48) || m.raining || m.snowing
+        if (cloudy) { val g = if (nightSky) 0xFF2A3346.toInt() else 0xFFB9C3CE.toInt(); top = mixC(top, g, 0.4f); bot = mixC(bot, g, 0.25f) }
+        val horizon = h * 0.62f
+        p.shader = LinearGradient(0f, 0f, 0f, horizon, top, bot, Shader.TileMode.CLAMP); p.color = Color.WHITE; c.drawRect(0f, 0f, w, horizon + 2, p); p.shader = null
+        // 해 · 달 · 별
+        if (nightSky) {
+            for (s in stars) { val tw = 0.45f + 0.55f * (0.5f + 0.5f * sin(t * 1.3f + s[3])); p.color = Glass.a(Color.WHITE, (190 * tw).toInt()); c.drawCircle(s[0] * w, s[1] * h, s[2] * U * 1.3f, p) }
+            if (!cloudy || !m.raining) {
+                val mx = w * 0.5f; val my = h * 0.16f
+                p.shader = RadialGradient(mx, my, 110 * U, 0x55FFF3C9, 0x00FFF3C9, Shader.TileMode.CLAMP); c.drawCircle(mx, my, 110 * U, p); p.shader = null
+                p.color = 0xFFFFF4D2.toInt(); c.drawCircle(mx, my, 28 * U, p)
+                p.color = top; c.drawCircle(mx + 12 * U, my - 8 * U, 24 * U, p)
+            }
+        } else if (!cloudy) {
+            val sx = if (hour >= 17f || hour < 7f) w * 0.5f else w * 0.46f; val sy = if (hour >= 17f || hour < 7f) horizon - 30 * U else h * 0.16f
+            p.shader = RadialGradient(sx, sy, 260 * U, 0x88FFF1C4.toInt(), 0x00FFF1C4, Shader.TileMode.CLAMP); c.drawCircle(sx, sy, 260 * U, p); p.shader = null
+            p.color = 0xFFFFF6DA.toInt(); c.drawCircle(sx, sy, 34 * U, p)
+        }
+        // 구름 — 천천히 흐른다
+        val cc = if (nightSky) Glass.a(0xFF8FA3C8.toInt(), 46) else Glass.a(Color.WHITE, if (cloudy) 210 else 170)
+        val n = if (cloudy) 6 else 3
+        for (i in 0 until n) {
+            val sp = 6f + i * 3f
+            val span = w + 600 * U
+            val x = ((i * 0.37f * span + t * sp * U) % span) - 300 * U
+            val y = h * (0.1f + (i % 3) * 0.09f)
+            val s = (70 + (i % 3) * 26) * U
+            p.color = cc
+            c.drawCircle(x, y, s * 0.55f, p); c.drawCircle(x + s * 0.55f, y - s * 0.22f, s * 0.7f, p); c.drawCircle(x + s * 1.2f, y, s * 0.5f, p)
+            c.drawRoundRect(RectF(x - s * 0.4f, y, x + s * 1.6f, y + s * 0.42f), s * 0.21f, s * 0.21f, p)
+        }
+        // 먼 언덕 두 겹
+        val hill1 = mixC(bot, if (nightSky) 0xFF0A1022.toInt() else 0xFF9DB4A6.toInt(), if (nightSky) 0.5f else 0.35f)
+        val hill2 = mixC(bot, if (nightSky) 0xFF0A1022.toInt() else 0xFF7F9C8C.toInt(), if (nightSky) 0.65f else 0.45f)
+        path.reset(); path.moveTo(0f, horizon); path.cubicTo(w * 0.2f, horizon - 90 * U, w * 0.38f, horizon - 30 * U, w * 0.55f, horizon - 70 * U); path.cubicTo(w * 0.72f, horizon - 110 * U, w * 0.88f, horizon - 40 * U, w, horizon - 60 * U); path.lineTo(w, h); path.lineTo(0f, h); path.close()
+        p.color = hill1; c.drawPath(path, p)
+        path.reset(); path.moveTo(0f, horizon + 30 * U); path.cubicTo(w * 0.25f, horizon - 20 * U, w * 0.45f, horizon + 40 * U, w * 0.7f, horizon + 10 * U); path.cubicTo(w * 0.85f, horizon - 5 * U, w * 0.95f, horizon + 30 * U, w, horizon + 20 * U); path.lineTo(w, h); path.lineTo(0f, h); path.close()
+        p.color = hill2; c.drawPath(path, p)
+        // 바닥
+        val floorTop = horizon + 40 * U
+        val fA = if (nightSky) 0xFF141C2E.toInt() else if (k.id == "pleos") 0xFFEFF2F6.toInt() else mixC(k.bg[2], Color.WHITE, 0.1f)
+        val fB = if (nightSky) 0xFF0E1422.toInt() else if (k.id == "pleos") 0xFFE3E8EE.toInt() else mixC(k.bg[2], Color.BLACK, 0.2f)
+        p.shader = LinearGradient(0f, floorTop, 0f, h, fA, fB, Shader.TileMode.CLAMP); c.drawRect(0f, floorTop, w, h, p); p.shader = null
+        path.reset(); path.moveTo(0f, floorTop); path.cubicTo(w * 0.3f, floorTop - 14 * U, w * 0.7f, floorTop + 10 * U, w, floorTop - 6 * U); path.lineTo(w, floorTop + 30 * U); path.lineTo(0f, floorTop + 30 * U); path.close()
+        p.color = fA; c.drawPath(path, p)
+        // 비 · 눈
+        if (m.raining) {
+            p.color = Glass.a(if (nightSky) 0xFFB8C8E8.toInt() else 0xFF7F93A8.toInt(), 90); p.strokeWidth = 2f * U; p.strokeCap = Paint.Cap.ROUND
+            for (d in drops) { val len = 26 * U * d[2]; val y = ((d[1] * h + t * 520 * U * d[2]) % (h + len)) - len; val x = d[0] * w - y * 0.18f
+                c.drawLine(x, y, x - len * 0.18f, y + len, p) }
+            p.strokeCap = Paint.Cap.BUTT
+        } else if (m.snowing) {
+            p.color = Glass.a(Color.WHITE, 200)
+            for (d in drops) { val y = ((d[1] * h + t * 40 * U * d[2]) % h); val x = d[0] * w + sin(t + d[2] * 6f) * 12 * U; c.drawCircle(x, y, 3.2f * U * d[2], p) }
+        }
+    }
+
+    /** 비 올 때 캐릭터가 드는 우산(부드러운 선) */
+    private fun umbrella(c: Canvas, cx: Float, top: Float, s: Float) {
+        val r = s * 0.42f; val cy = top + r * 0.2f
+        c.save(); c.rotate(-10f, cx, cy + r)
+        path.reset(); path.moveTo(cx - r, cy + r * 0.05f); path.cubicTo(cx - r, cy - r * 0.95f, cx + r, cy - r * 0.95f, cx + r, cy + r * 0.05f)
+        for (i in 4 downTo 1) { val x2 = cx - r + (2 * r) * (i - 1) / 4f; path.quadTo(x2 + r / 4f, cy - r * 0.12f, x2, cy + r * 0.05f) }
+        path.close()
+        p.color = 0xFFFFC94A.toInt(); c.drawPath(path, p)
+        p.style = Paint.Style.STROKE; p.strokeWidth = 2.4f * U; p.color = 0xFFE0A22A.toInt(); p.strokeCap = Paint.Cap.ROUND
+        for (i in 1..3) { val x2 = cx - r + (2 * r) * i / 4f; c.drawLine(cx, cy - r * 0.7f, x2, cy + r * 0.02f, p) }
+        p.strokeWidth = 4f * U; p.color = 0xFF6B5A44.toInt()
+        c.drawLine(cx, cy - r * 0.72f, cx, cy + r * 1.0f, p)
+        c.drawArc(RectF(cx - r * 0.18f, cy + r * 0.92f, cx + r * 0.02f, cy + r * 1.16f), 0f, 180f, false, p)
+        p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT
+        c.restore()
+    }
+
+    // ---------- 캐릭터 말풍선(짧게, 타자 치듯) ----------
+    private var bubbleText = ""; private var bubbleAt = 0L
+    private fun speech(c: Canvas, cx: Float, headTop: Float, maxW: Float) {
+        val full = when {
+            v.mode == HyunView.Mode.LISTENING -> "듣고 있어요…"
+            v.mode == HyunView.Mode.THINKING -> "음… 생각 중이에요"
+            v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() -> firstSentence(v.hyunLine)
+            else -> m.tiles.getOrNull(m.heroIdx)?.label?.let { lab -> bubbleFor(lab) } ?: m.bubble.let { firstSentence(it) }
+        }.let { if (it.length > 34) it.take(33) + "…" else it }
+        if (full.isBlank()) return
+        if (full != bubbleText) { bubbleText = full; bubbleAt = SystemClock.elapsedRealtime() }
+        val n = ((SystemClock.elapsedRealtime() - bubbleAt) / 38).toInt().coerceIn(0, full.length)
+        val shown = full.take(n)
+        val fs = 26 * U
+        p.textSize = fs; p.typeface = semi
+        val tw = min(p.measureText(full), maxW)
+        val bw = tw + 48 * U; val bh = fs + 36 * U
+        val r = RectF(cx - bw / 2, headTop - bh - 26 * U, cx + bw / 2, headTop - 26 * U)
+        p.color = if (darkUi) SURF else Color.WHITE; p.setShadowLayer(18 * U, 0f, 6 * U, 0x1F111827)
+        c.drawRoundRect(r, bh / 2, bh / 2, p); p.clearShadowLayer()
+        path.reset(); path.moveTo(cx - 12 * U, r.bottom - 1); path.lineTo(cx, r.bottom + 16 * U); path.lineTo(cx + 12 * U, r.bottom - 1); path.close(); c.drawPath(path, p)
+        text(c, shown, r.left + 24 * U, r.centerY() + fs * 0.36f, fs, FG, semi, maxW = tw + 4 * U)
+        if (n < full.length && (SystemClock.elapsedRealtime() / 300) % 2 == 0L) { p.color = ACC; p.textSize = fs; c.drawRect(r.left + 24 * U + p.measureText(shown) + 2 * U, r.centerY() - fs * 0.4f, r.left + 24 * U + p.measureText(shown) + 4.5f * U, r.centerY() + fs * 0.4f, p) }
+    }
+    private fun bubbleFor(label: String): String = when (label) {
+        "오늘 날씨" -> if (m.raining) "비 와요, 우산 챙겼어요!" else "오늘 날씨 알려 줄게요!"
+        "차 컨디션" -> "차 컨디션 좋아요!"
+        "관심 뉴스", "오늘의 헤드라인" -> "재밌는 소식 있어요!"
+        "추천 목적지", "오늘 목적지" -> "어디로 갈까요?"
+        "이번 주행" -> "수고했어요!"
+        "안전운전 포인트" -> "별 모았어요 ✦"
+        "쉼표" -> "잠깐 쉬어 가요"
+        "동승자 모드" -> "안녕하세요~"
+        "비 오는 날" -> "비가 와요!"
+        else -> label
+    }
+
+    // ---------- 오늘의 드라이브 — 가로 타임라인(출발 · 거리 · 별 · 정차) ----------
+    private fun timeline(c: Canvas, x0: Float, x1: Float, y: Float) {
+        val start = if (m.dayStartAt > 0) java.text.SimpleDateFormat("HH:mm", java.util.Locale.KOREA).format(java.util.Date(m.dayStartAt)) else "아직"
+        val nodes = listOf("출발" to start, "달린 거리" to "%.1fkm".format(m.dayKmShown), "오늘 별" to "${if (m.todayPoints >= 0) "+" else ""}${m.todayPoints}", "정차" to "${m.stopsToday}회")
+        val onScene = if (darkUi || k.id != "pleos") 0xEEFFFFFF.toInt() else FG
+        val sub = if (darkUi || k.id != "pleos") 0xAAFFFFFF.toInt() else MUTED
+        text(c, "오늘의 드라이브", x0, y - 30 * U, 20 * U, sub, semi)
+        p.color = Glass.a(onScene, 70); c.drawRect(x0, y - 1 * U, x1, y + 1 * U, p)
+        nodes.forEachIndexed { i, (lab, v2) ->
+            val x = x0 + (x1 - x0) * (i + 0.5f) / nodes.size
+            p.color = if (i == 0 || m.dayStartAt > 0) ACC else Glass.a(onScene, 120); c.drawCircle(x, y, 6 * U, p)
+            p.color = if (darkUi) SURF else Color.WHITE; c.drawCircle(x, y, 2.5f * U, p)
+            text(c, v2, x, y + 34 * U, 24 * U, onScene, bold, Paint.Align.CENTER)
+            text(c, lab, x, y + 58 * U, 18 * U, sub, medium, Paint.Align.CENTER)
+        }
+    }
+
+    // ---------- 카드 위 그림 칸 — 날씨 그림 · 경로 미니맵 · 기사 사진 ----------
+    private fun heroImage(c: Canvas, r: RectF, tl: Tile?) {
+        val rad = 28 * U
+        c.save(); c.clipPath(Path().apply { addRoundRect(RectF(r.left, r.top, r.right, r.bottom + rad), floatArrayOf(rad, rad, rad, rad, 0f, 0f, 0f, 0f), Path.Direction.CW) }); c.clipRect(r)
+        val img = tl?.takeIf { it.icon == "news" }?.let { m.newsImgs[m.newsList.firstOrNull()] }?.let { v.urlBmp(it) }
+        when {
+            img != null -> { val sc = max(r.width() / img.width, r.height() / img.height); val bw = img.width * sc; val bh = img.height * sc
+                c.drawBitmap(img, null, RectF(r.centerX() - bw / 2, r.centerY() - bh / 2, r.centerX() + bw / 2, r.centerY() + bh / 2), bp)
+                p.shader = LinearGradient(0f, r.bottom - 60 * U, 0f, r.bottom, 0x00000000, 0x55000000, Shader.TileMode.CLAMP); c.drawRect(r, p); p.shader = null
+                text(c, "연합뉴스", r.right - 16 * U, r.bottom - 14 * U, 16 * U, 0xDDFFFFFF.toInt(), medium, Paint.Align.RIGHT) }
+            tl?.icon == "road" || tl?.icon == "star" || m.sit == Sit.PARK -> miniMap(c, r)
+            else -> weatherArt(c, r)
+        }
+        c.restore()
+    }
+
+    private fun weatherArt(c: Canvas, r: RectF) {
+        val night = darkUi
+        p.shader = LinearGradient(0f, r.top, 0f, r.bottom, if (night) 0xFF1A2444.toInt() else if (m.raining) 0xFFC9D3DE.toInt() else 0xFFBFE0FA.toInt(), if (night) 0xFF2B3A64.toInt() else 0xFFF1F7FC.toInt(), Shader.TileMode.CLAMP)
+        p.color = Color.WHITE; c.drawRect(r, p); p.shader = null
+        val cx = r.left + r.width() * 0.28f; val cy = r.centerY()
+        if (!m.raining && !m.snowing) { p.color = 0xFFFFD25E.toInt(); c.drawCircle(cx - 20 * U, cy - 10 * U, 34 * U, p); p.color = Glass.a(0xFFFFD25E.toInt(), 70); c.drawCircle(cx - 20 * U, cy - 10 * U, 50 * U, p) }
+        p.color = Color.WHITE
+        c.drawCircle(cx, cy + 6 * U, 26 * U, p); c.drawCircle(cx + 30 * U, cy - 8 * U, 34 * U, p); c.drawCircle(cx + 64 * U, cy + 8 * U, 24 * U, p)
+        c.drawRoundRect(RectF(cx - 20 * U, cy + 6 * U, cx + 84 * U, cy + 32 * U), 13 * U, 13 * U, p)
+        if (m.raining) { p.color = 0xFF4C8DFF.toInt(); p.strokeWidth = 4 * U; p.strokeCap = Paint.Cap.ROUND
+            for (i in 0 until 4) c.drawLine(cx + i * 22 * U, cy + 44 * U, cx + i * 22 * U - 8 * U, cy + 64 * U, p); p.strokeCap = Paint.Cap.BUTT }
+        if (m.snowing) { p.color = Color.WHITE; for (i in 0 until 4) c.drawCircle(cx + i * 22 * U, cy + 54 * U, 5 * U, p) }
+        val t2 = m.tempNow?.let { "$it°" } ?: ""
+        text(c, t2, r.right - 32 * U, cy + 22 * U, 64 * U, if (night) Color.WHITE else 0xFF1D3557.toInt(), bold, Paint.Align.RIGHT)
+        text(c, m.weatherShort.substringAfter(" ", ""), r.right - 32 * U, cy + 52 * U, 20 * U, if (night) 0xCCFFFFFF.toInt() else 0xFF52627A.toInt(), medium, Paint.Align.RIGHT)
+    }
+
+    private fun miniMap(c: Canvas, r: RectF) {
+        p.color = if (darkUi) 0xFF1C2330.toInt() else 0xFFEDF1F5.toInt(); c.drawRect(r, p)
+        p.color = if (darkUi) 0xFF242C3A.toInt() else 0xFFE1E7EE.toInt()
+        val bw = r.width() / 6; val bh = r.height() / 3
+        for (i in 0 until 6) for (j in 0 until 3) if ((i + j) % 3 != 0) c.drawRoundRect(RectF(r.left + i * bw + 8 * U, r.top + j * bh + 8 * U, r.left + (i + 1) * bw - 8 * U, r.top + (j + 1) * bh - 8 * U), 6 * U, 6 * U, p)
+        p.style = Paint.Style.STROKE; p.strokeCap = Paint.Cap.ROUND; p.strokeJoin = Paint.Join.ROUND
+        p.color = Glass.a(ACC, 60); p.strokeWidth = 14 * U
+        path.reset(); path.moveTo(r.left + 40 * U, r.bottom - 30 * U); path.cubicTo(r.left + r.width() * 0.3f, r.bottom - 30 * U, r.left + r.width() * 0.35f, r.top + 30 * U, r.left + r.width() * 0.6f, r.top + r.height() * 0.45f)
+        path.cubicTo(r.left + r.width() * 0.78f, r.top + r.height() * 0.6f, r.right - 80 * U, r.top + 40 * U, r.right - 50 * U, r.top + 36 * U)
+        c.drawPath(path, p); p.color = ACC; p.strokeWidth = 6 * U; c.drawPath(path, p)
+        p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT
+        p.color = Color.WHITE; c.drawCircle(r.left + 40 * U, r.bottom - 30 * U, 10 * U, p); p.color = ACC; c.drawCircle(r.left + 40 * U, r.bottom - 30 * U, 6 * U, p)
+        icon(c, "pin", r.right - 50 * U, r.top + 30 * U, 34 * U, RED)
+        text(c, "%.1fkm".format(m.dayKmShown), r.right - 24 * U, r.bottom - 18 * U, 28 * U, FG, bold, Paint.Align.RIGHT)
+    }
 
     // ======================================================================
     // 다음 이야기 카드 3장 · 아래 독(브리핑 · 할 일 · 내 차 · 테마 · 기록) · 캐릭터 존 배지
@@ -427,7 +635,12 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
         when (which) {
             "brief" -> { if (m.newsList.isEmpty()) row("news", "헤드라인을 불러오는 중이에요", "")
-                m.newsList.forEachIndexed { i, n -> row("news", "${i + 1}. $n", "") }
+                m.newsList.forEachIndexed { i, n ->
+                    val im = m.newsImgs[n]?.let { v.urlBmp(it) }
+                    val yy = y
+                    row("news", "${i + 1}. $n", if (im != null) " ·" else "", ACC, Color.TRANSPARENT)
+                    if (im != null && yy + rowH <= zone.bottom - pad) { val ir = RectF(x1 - 96 * U, yy + 6 * U, x1, yy + rowH - 6 * U); c.save(); c.clipPath(Path().apply { addRoundRect(ir, 10 * U, 10 * U, Path.Direction.CW) })
+                        val sc = max(ir.width() / im.width, ir.height() / im.height); c.drawBitmap(im, null, RectF(ir.centerX() - im.width * sc / 2, ir.centerY() - im.height * sc / 2, ir.centerX() + im.width * sc / 2, ir.centerY() + im.height * sc / 2), bp); c.restore() } }
                 text(c, m.newsSource, x0, zone.bottom - pad + 8 * U, 18 * U, FAINT, medium, maxW = x1 - x0) }
             "todo" -> { m.todos.forEachIndexed { i, t -> row(if (i == 0) "pin" else "bag", t, if (i == 0) "가는 길" else "", if (i == 0) ACC else MUTED, ACC) }
                 text(c, "예시 할 일 — 폰 짭비서·서버 할 일과 이어질 자리", x0, zone.bottom - pad + 8 * U, 18 * U, FAINT, medium) }

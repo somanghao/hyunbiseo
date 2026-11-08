@@ -73,6 +73,11 @@ class StageModel {
     var weatherLine = ""; var weatherShort = ""
     var todos: List<String> = listOf("세탁물 찾기 · 가는 길 0.4km", "엄마 생신 선물 고르기 · 백화점 경유", "다음 주 정비 예약 · 블루핸즈", "장보기 — 우유 · 계란")
     var weekPoints = 0; val weekGoal = 300
+    var newsImgs: Map<String, String> = emptyMap()   // 제목 → 기사 사진(연합뉴스 RSS media:content)
+    var wcode = -1; var tempNow: Int? = null
+    val raining get() = status?.wiper?.v == true || wcode in 51..67 || wcode in 80..82
+    val snowing get() = wcode in 71..77 || wcode in 85..86
+    var dayStartAt = 0L; var stopsToday = 0; var dayKmShown = 0.0
     var todayPoints = 0
     var preview: String? = null               // 상점에서 미리보기 중인 컨셉
     var owned: Set<String> = setOf("concept:pleos", "face:neutral", "acc:")
@@ -171,7 +176,7 @@ class StageFeature : Feature {
         if (need.isNotEmpty()) runCatching { hub.act.requestPermissions(need.toTypedArray(), Hyun.REQ_PERMS) }
         if (!pr.getBoolean("stage.onboarded", false)) { hub.holdHello = true; startOnboarding() }
         enter(Sit.IGNITION, why = "앱 시작")
-        fetchWeather(); fetchNews()
+        fetchWeather(); fetchNews(); fetchRss()
     }
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
@@ -218,7 +223,8 @@ class StageFeature : Feature {
         // 주행 기록 · 안전운전 포인트(100m 마다 1점, 급정거 없이)
         if (moving) {
             inTrip = true
-            tripM += v; tripS += 1; pointM += v; dayKm += v / 1000.0
+            tripM += v; tripS += 1; pointM += v; dayKm += v / 1000.0; m.dayKmShown = dayKm
+            if (m.dayStartAt == 0L) m.dayStartAt = System.currentTimeMillis()
             if (pointM >= 100) { pointM -= 100; m.tripPoints += 1; addPoints(1) }
             settled = false
         }
@@ -340,6 +346,7 @@ class StageFeature : Feature {
             Sit.DRIVE -> if (prev == Sit.READY || prev == Sit.IGNITION || prev == Sit.PARK) newTrip()
             Sit.PARK -> settleTrip()
             Sit.OFF -> inTrip = false
+            Sit.STOP -> m.stopsToday++
             else -> {}
         }
         refresh()
@@ -788,7 +795,7 @@ class StageFeature : Feature {
                 rain = (0 until pr.length()).maxOfOrNull { pr.optInt(it, 0) } ?: 0
                 tomorrow = "내일 $tmn~$tmx°" + if (trn >= 40) " · 비 $trn%" else ""
                 hub.log("stage|weather|${tempC}°|code=$wcode|rain=$rain|$tomorrow")
-                m.weatherShort = "${tempC}° ${wname()}"; m.weatherLine = "지금 ${tempC}° ${wname()} · 비 확률 $rain% · $tomorrow"
+                m.weatherShort = "${tempC}° ${wname()}"; m.wcode = wcode; m.tempNow = tempC; m.weatherLine = "지금 ${tempC}° ${wname()} · 비 확률 $rain% · $tomorrow"
                 refresh()
             }
         }.onFailure { hub.log("stage|weather|FAIL|${it.message}") }
@@ -814,6 +821,27 @@ class StageFeature : Feature {
                 refresh()
             }
         }.onFailure { hub.log("stage|news|FAIL|${it.message}") }
+    }.start()
+
+    /** 연합뉴스 RSS — 제목과 기사 사진(media:content). 서버 헤드라인이 없으면 목록도 여기서 */
+    private fun fetchRss() = Thread {
+        runCatching {
+            val c = (URL("https://www.yna.co.kr/rss/news.xml").openConnection() as HttpURLConnection).apply { connectTimeout = 5000; readTimeout = 8000 }
+            val xml = try { c.inputStream.bufferedReader().use { it.readText() } } finally { c.disconnect() }
+            val items = Regex("<item>([\\s\\S]*?)</item>").findAll(xml).mapNotNull { mi ->
+                val b = mi.groupValues[1]
+                val title = Regex("<title><!\\[CDATA\\[(.*?)]]></title>").find(b)?.groupValues?.get(1) ?: return@mapNotNull null
+                val img = Regex("<media:content url=\"(.*?)\"").find(b)?.groupValues?.get(1)
+                title to img
+            }.take(12).toList()
+            hub.main.post {
+                m.newsImgs = items.filter { it.second != null }.associate { it.first to it.second!! }
+                if (m.newsList.isEmpty()) { m.newsList = items.map { it.first }.take(8); m.newsSource = "연합뉴스 최신 기사 RSS" }
+                if (news.isEmpty()) news = m.newsList.take(2)
+                hub.log("stage|rss|${items.size}|img=${m.newsImgs.size}")
+                refresh()
+            }
+        }.onFailure { hub.log("stage|rss|FAIL|${it.message}") }
     }.start()
 
     private fun getJson(u: String): JSONObject {

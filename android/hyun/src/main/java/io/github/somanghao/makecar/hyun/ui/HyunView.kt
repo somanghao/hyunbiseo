@@ -581,7 +581,7 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     /** 인터넷 그림(웹툰 표지 등) — 뒤에서 받아 캐시, 아직 없으면 null */
-    private fun urlBmp(url: String): Bitmap? {
+    internal fun urlBmp(url: String): Bitmap? {
         if (url.isBlank()) return null
         bmps[url]?.let { return it }
         if (loading.add(url)) Thread {
