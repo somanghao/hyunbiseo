@@ -126,7 +126,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val react = m.reactFace.takeIf { now - m.reactAt < 1200 }
         val face = when { intro -> "waving"; m.sit == Sit.OFF && now - m.sitAt > 2500 -> "sleep"; react != null && v.mode == HyunView.Mode.READY -> react; driving -> "driving"; else -> v.botFace() }
         character(c, cx, feet, chH, t, face, alive = !driving)
-        if (!intro) speech(c, cx, feet - chH * (if (m.raining) 1.12f else 0.98f), w * 0.4f)
+        if (!intro) speech(c, cx + (if (m.raining) chH * 0.25f else 0f), feet - chH * (if (m.raining) 1.02f else 0.98f), w * 0.4f)
         if (showLine) timeline(c, 64 * U, w * 0.52f, h - 100 * U)
         topRight(c, w)
         if (intro) {   // 인트로 — 컨셉 이름이 떴다 사라진다
@@ -232,7 +232,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             else -> GLOW to (if (darkUi) 55 else 30)
         }
         p.shader = RadialGradient(cx, cy, s * 0.62f, Glass.a(gc, ga), Glass.a(gc, 0), Shader.TileMode.CLAMP); c.drawCircle(cx, cy, s * 0.62f, p); p.shader = null
-        if (m.raining && m.overlay != "deco") umbrella(c, cx + s * 0.1f, cy - s * 0.86f, s)
+        if (m.raining && m.overlay != "deco") umbrella(c, cx - s * 0.22f, cy - s * 0.78f, s)
         v.asset("bot_$face.webp")?.let { bm -> p.isFilterBitmap = true; p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p) }
         // 날씨 소품(그림) — 우산·목도리·차 한 잔·선글라스
         val spots = listOf(-0.52f to -0.12f, 0.5f to 0.22f, -0.5f to 0.3f, 0.48f to -0.2f)
@@ -359,10 +359,12 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private val stars by lazy { val r = java.util.Random(11); List(90) { floatArrayOf(r.nextFloat(), r.nextFloat() * 0.55f, 0.6f + r.nextFloat() * 1.4f, r.nextFloat() * 6.28f) } }
     private val drops by lazy { val r = java.util.Random(5); List(80) { floatArrayOf(r.nextFloat(), r.nextFloat(), 0.6f + r.nextFloat() * 0.8f) } }
 
+    private var sceneDark = false
     private fun scene(c: Canvas, w: Float, h: Float, t0: Float, still: Boolean) {
         val t = if (still) t0 * 0.2f else t0
         val hour = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) + it.get(java.util.Calendar.MINUTE) / 60f }
         val nightSky = darkUi || hour >= 19.5f || hour < 5f
+        sceneDark = nightSky || k.id != "pleos"
         var top: Int; var bot: Int
         when {
             nightSky -> { top = 0xFF0C1430.toInt(); bot = 0xFF223258.toInt() }
@@ -431,8 +433,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     /** 비 올 때 캐릭터가 드는 우산(부드러운 선) */
     private fun umbrella(c: Canvas, cx: Float, top: Float, s: Float) {
-        val r = s * 0.42f; val cy = top + r * 0.2f
-        c.save(); c.rotate(-10f, cx, cy + r)
+        val r = s * 0.3f; val cy = top + r * 0.6f
+        c.save(); c.rotate(-18f, cx, cy + r)
         path.reset(); path.moveTo(cx - r, cy + r * 0.05f); path.cubicTo(cx - r, cy - r * 0.95f, cx + r, cy - r * 0.95f, cx + r, cy + r * 0.05f)
         for (i in 4 downTo 1) { val x2 = cx - r + (2 * r) * (i - 1) / 4f; path.quadTo(x2 + r / 4f, cy - r * 0.12f, x2, cy + r * 0.05f) }
         path.close()
@@ -487,8 +489,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private fun timeline(c: Canvas, x0: Float, x1: Float, y: Float) {
         val start = if (m.dayStartAt > 0) java.text.SimpleDateFormat("HH:mm", java.util.Locale.KOREA).format(java.util.Date(m.dayStartAt)) else "아직"
         val nodes = listOf("출발" to start, "달린 거리" to "%.1fkm".format(m.dayKmShown), "오늘 별" to "${if (m.todayPoints >= 0) "+" else ""}${m.todayPoints}", "정차" to "${m.stopsToday}회")
-        val onScene = if (darkUi || k.id != "pleos") 0xEEFFFFFF.toInt() else FG
-        val sub = if (darkUi || k.id != "pleos") 0xAAFFFFFF.toInt() else MUTED
+        val onScene = if (sceneDark) 0xEEFFFFFF.toInt() else FG
+        val sub = if (sceneDark) 0xAAFFFFFF.toInt() else MUTED
         text(c, "오늘의 드라이브", x0, y - 30 * U, 20 * U, sub, semi)
         p.color = Glass.a(onScene, 70); c.drawRect(x0, y - 1 * U, x1, y + 1 * U, p)
         nodes.forEachIndexed { i, (lab, v2) ->
