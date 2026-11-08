@@ -70,9 +70,9 @@ class HyunActivity : Activity() {
         hyun.onPermissions(permissions, grantResults)
     }
 
-    // ---------- 시작 스플래시 — 얼굴 그림(assets/chars/face_splash.png)이 톡 튀어나왔다 사라진다(누르면 건너뜀) ----------
+    // ---------- 시작 스플래시 — 헬멧 로봇이 손 흔들기(assets/chars/bot_waving.webp)이 톡 튀어나왔다 사라진다(누르면 건너뜀) ----------
     private fun splash(root: FrameLayout) {
-        val bm = try { assets.open("chars/face_splash.png").use { android.graphics.BitmapFactory.decodeStream(it) } } catch (_: Exception) { null } ?: return
+        val bm = try { assets.open("chars/bot_waving.webp").use { android.graphics.BitmapFactory.decodeStream(it) } } catch (_: Exception) { null } ?: return
         val side = minOf(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels) * 45 / 100
         val face = ImageView(this).apply { setImageBitmap(bm); scaleType = ImageView.ScaleType.FIT_CENTER; scaleX = 0.4f; scaleY = 0.4f; alpha = 0f }
         val cover = FrameLayout(this).apply {

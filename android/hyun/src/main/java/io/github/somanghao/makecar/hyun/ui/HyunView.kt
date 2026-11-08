@@ -566,7 +566,7 @@ class HyunView(ctx: Context) : View(ctx) {
         bmps[name]?.let { return it }
         if (loading.add(name)) Thread {
             try {
-                context.assets.open("chars/$name").use { s -> BitmapFactory.decodeStream(s, null, BitmapFactory.Options().apply { inSampleSize = 2 }) }
+                context.assets.open("chars/$name").use { s -> BitmapFactory.decodeStream(s, null, BitmapFactory.Options().apply { inSampleSize = if (name.startsWith("bot_")) 1 else 2 }) }
                     ?.let { bmps[name] = it; postInvalidate() }
             } catch (_: Exception) { }
         }.start()
@@ -592,7 +592,7 @@ class HyunView(ctx: Context) : View(ctx) {
         "human" -> listOf("sec_portrait", "sec_pose_think", "sec_pose_tablet", "sec_pose_guide", "sec_pose_clap", "sec_pose_rest",
             "sec_sd_calm", "sec_sd_happy", "sec_sd_fun", "sec_sd_care", "sec_sd_think").map { "$it.png" }
         "orb3d" -> listOf("calm", "happy", "fun", "care", "alert", "listen", "think", "speak").map { "orb_$it.png" }
-        "face" -> listOf("calm", "happy", "fun", "care", "alert", "listen", "think", "speak").map { "face_$it.png" }
+        "face" -> BOT_USED.map { "bot_$it.webp" }
         else -> emptyList()
     }
 
@@ -604,11 +604,8 @@ class HyunView(ctx: Context) : View(ctx) {
             mood == "alert" || prio == 0 -> "orb_alert.png"; mode == Mode.LISTENING -> "orb_listen.png"
             mode == Mode.THINKING -> "orb_think.png"; mode == Mode.SPEAKING -> "orb_speak.png"; else -> "orb_${moodKey()}.png"
         }
-        // 얼굴 화면 캐릭터(사용자 그림 시트 11-08 → assets/chars/face_*.png) — 대기 = face_calm
-        "face" -> when {
-            mood == "alert" || prio == 0 -> "face_alert.png"; mode == Mode.LISTENING -> "face_listen.png"
-            mode == Mode.THINKING -> "face_think.png"; mode == Mode.SPEAKING -> "face_speak.png"; else -> "face_${moodKey()}.png"
-        }
+        // 얼굴 화면 캐릭터 = 헬멧 로봇(댄 11-08 새 시트 7×5 → assets/chars/bot_*.webp, 35표정). 상태별 표정은 botFace()
+        "face" -> "bot_${botFace()}.webp"
         "human" -> when {
             driving -> if (mode == Mode.THINKING) "sec_sd_think.png" else "sec_sd_${moodKey()}.png"
             mode == Mode.THINKING -> "sec_pose_think.png"
@@ -618,6 +615,23 @@ class HyunView(ctx: Context) : View(ctx) {
             else -> "sec_portrait.png"
         }
         else -> null
+    }
+
+    /** 헬멧 로봇 표정 — 경고 > 듣기 > 생각 > 말하기(기분별) > 대기(주행 = 운전대, 기분별). 대기·말하기 중 4초마다 잠깐 눈 감기(깜빡임) */
+    private fun botFace(): String {
+        val t = (System.nanoTime() - t0) / 1e9
+        val blink = t % 4.2 < 0.14 && (mode == Mode.READY || mode == Mode.SPEAKING) && !(driving && mode == Mode.READY)
+        return when {
+            mood == "alert" || prio == 0 -> "alert"
+            mode == Mode.LISTENING -> "surprised"
+            mode == Mode.THINKING -> "thinking"
+            blink -> "bored"
+            mode == Mode.SPEAKING -> when (mood) { "happy" -> "laugh"; "fun" -> "excited"; "care" -> "worried"; else -> "happy" }
+            driving -> "driving"
+            mood == "happy" -> "happy"; mood == "fun" -> "humming"; mood == "care" -> "worried"
+            brain == false -> "tired"
+            else -> "neutral"
+        }
     }
 
     /** 그림을 상자 안에 비율 유지·아래 맞춤으로 — 숨쉬듯 살짝(주행 중 대기엔 멈춤), 말할 땐 아주 살짝 커짐 */
@@ -1386,6 +1400,8 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     companion object {
+        /** 화면이 실제로 쓰는 로봇 표정(미리 읽어 둠) — 나머지 표정도 assets/chars/bot_*.webp 에 있음 */
+        private val BOT_USED = listOf("neutral", "happy", "laugh", "excited", "humming", "worried", "alert", "surprised", "thinking", "bored", "driving", "tired")
         private const val TEAL = 0xFF4FD1C5.toInt()
         private const val OK = 0xFF3FB950.toInt()
         private const val WARN = 0xFFF0B429.toInt()
