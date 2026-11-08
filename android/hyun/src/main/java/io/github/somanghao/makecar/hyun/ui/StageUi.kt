@@ -134,12 +134,23 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             text(c, k.name, w * 0.72f, h * 0.46f + 48 * U, 26 * U, if (darkUi || !k.light) 0xDDFFFFFF.toInt() else MUTED, medium, Paint.Align.CENTER)
             c.restore()
         } else {
-            val zone = RectF(w * 0.6f, 96 * U, w - 48 * U, h - 48 * U)
             val card = v.card
-            when {
-                card != null && !driving -> { glassCard(c, zone, 28 * U); val lt = v.lightTheme; v.lightTheme = !darkUi; v.listCard(c, card, zone.left + 24 * U, zone.top + 24 * U, zone.right - 24 * U, zone.bottom - 24 * U, h); v.lightTheme = lt }
-                driving -> driveCard(c, zone)
-                else -> messageCard(c, zone)
+            val sheetOn = m.overlay in setOf("brief", "todo", "car", "log")
+            if (driving) driveCard(c, RectF(w * 0.6f, 96 * U, w - 48 * U, h - 48 * U))
+            else {
+                badges(c)
+                val bottom = h - 48 * U - 64 * U - 20 * U
+                val full = RectF(w * 0.6f, 96 * U, w - 48 * U, bottom)
+                when {
+                    sheetOn -> sheet(c, full, m.overlay!!)
+                    card != null -> { glassCard(c, full, 28 * U); val lt = v.lightTheme; v.lightTheme = !darkUi; v.listCard(c, card, full.left + 24 * U, full.top + 24 * U, full.right - 24 * U, full.bottom - 24 * U, h); v.lightTheme = lt }
+                    else -> {
+                        val nh = 170 * U
+                        messageCard(c, RectF(full.left, full.top, full.right, full.bottom - nh - 20 * U))
+                        nextUp(c, RectF(full.left, full.bottom - nh, full.right, full.bottom))
+                    }
+                }
+                dock(c, w, h)
             }
             micButton(c, w, h)
         }
@@ -329,6 +340,119 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         return s.substring(0, i + 1).trim()
     }
     private fun restOf(s: String): String { val f = firstSentence(s); return s.removePrefix(f).trim() }
+
+    // ======================================================================
+    // 다음 이야기 카드 3장 · 아래 독(브리핑 · 할 일 · 내 차 · 테마 · 기록) · 캐릭터 존 배지
+    // ======================================================================
+    private fun nextUp(c: Canvas, r: RectF) {
+        val g = 16 * U; val cw = (r.width() - g * 2) / 3
+        val st = m.status
+        val soc = st?.soc?.v
+        val items = listOf(
+            Triple("news", "관심 뉴스", m.newsList.firstOrNull() ?: "헤드라인을 불러오는 중") to "screen:brief",
+            Triple("bag", "가는 김에", m.todos.firstOrNull() ?: "할 일이 없어요") to "screen:todo",
+            Triple("star", "이번 주 안전운전", "${m.weekPoints} / ${m.weekGoal}점") to "screen:log",
+        ).let { if (m.sit == Sit.PARK || m.sit == Sit.OFF) it.take(2) + (Triple("battery", "내 차", (soc?.let { "배터리 $it% · " } ?: "") + "주행 가능 ${st?.rangeKm?.v ?: "-"}km") to "screen:car") else it }
+        items.forEachIndexed { i, (tr, action) ->
+            val (ic, label, value) = tr
+            val b = RectF(r.left + i * (cw + g), r.top, r.left + i * (cw + g) + cw, r.bottom)
+            spring(c, i + 1) {
+                glassCard(c, b, 22 * U)
+                icon(c, ic, b.left + 30 * U, b.top + 32 * U, 24 * U, if (ic == "star") WARN else ACC)
+                text(c, label, b.left + 52 * U, b.top + 40 * U, 20 * U, MUTED, semi, maxW = cw - 70 * U)
+                if (ic == "star") {   // 진행 바
+                    val pr = (m.weekPoints.toFloat() / m.weekGoal).coerceIn(0f, 1f)
+                    text(c, value, b.left + 22 * U, b.top + 84 * U, 26 * U, FG, bold)
+                    val bar = RectF(b.left + 22 * U, b.bottom - 34 * U, b.right - 22 * U, b.bottom - 24 * U)
+                    p.color = SURF2; c.drawRoundRect(bar, 5 * U, 5 * U, p)
+                    p.color = WARN; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * pr, bar.bottom), 5 * U, 5 * U, p)
+                } else wrap(c, value, b.left + 22 * U, b.top + 80 * U, 22 * U, FG, cw - 44 * U, 2, medium, lh = 1.35f)
+            }
+            hits += b to action
+        }
+    }
+
+    private val DOCK = listOf("brief" to "브리핑", "todo" to "할 일", "car" to "내 차", "deco" to "테마", "log" to "기록")
+    private fun dock(c: Canvas, w: Float, h: Float) {
+        val dh = 64 * U; val iw = 128 * U
+        val r = RectF(w * 0.6f, h - 48 * U - dh, w * 0.6f + iw * DOCK.size, h - 48 * U)
+        glassCard(c, r, dh / 2)
+        DOCK.forEachIndexed { i, (key, lab) ->
+            val b = RectF(r.left + i * iw, r.top, r.left + (i + 1) * iw, r.bottom)
+            val on = m.overlay == key
+            if (on) { p.color = ACC_SOFT; c.drawRoundRect(RectF(b.left + 6 * U, b.top + 6 * U, b.right - 6 * U, b.bottom - 6 * U), dh / 2, dh / 2, p) }
+            val ic = when (key) { "brief" -> "news"; "todo" -> "bag"; "car" -> "battery"; "deco" -> "star"; else -> "chart" }
+            icon(c, ic, b.left + 34 * U, b.centerY(), 22 * U, if (on) ACC else MUTED)
+            text(c, lab, b.left + 54 * U, b.centerY() + 8 * U, 22 * U, if (on) ACC else FG, semi, maxW = iw - 60 * U)
+            hits += b to (if (key == "deco") "deco" else "screen:$key")
+        }
+    }
+
+    /** 캐릭터 존 배지 — 날씨 · 오늘 모은 별(작게) */
+    private fun badges(c: Canvas) {
+        var x = 48 * U; val cy = 48 * U; val bh = 44 * U
+        fun badge(ic: String, s: String, col: Int) {
+            p.textSize = 22 * U; p.typeface = semi
+            val r = RectF(x, cy - bh / 2, x + p.measureText(s) + 64 * U, cy + bh / 2)
+            glassCard(c, r, bh / 2); icon(c, ic, r.left + 24 * U, cy, 22 * U, col); text(c, s, r.left + 44 * U, cy + 8 * U, 22 * U, FG, semi)
+            x = r.right + 10 * U
+        }
+        if (m.weatherShort.isNotBlank()) badge("cloud", m.weatherShort, ACC)
+        badge("star", "오늘 ${if (m.todayPoints >= 0) "+" else ""}${m.todayPoints}", WARN)
+        if (m.skill == "novice") badge("flag", "초보 모드", WARN)
+    }
+
+    /** 다른 화면 — 오른쪽 큰 카드 한 장(목록). 브리핑 · 할 일 · 내 차 · 기록 */
+    private fun sheet(c: Canvas, zone: RectF, which: String) {
+        glassCard(c, zone, 28 * U)
+        val pad = 40 * U; val x0 = zone.left + pad; val x1 = zone.right - pad
+        val (title, sub) = when (which) {
+            "brief" -> "오늘의 브리핑" to (m.weatherLine.ifBlank { "날씨를 불러오는 중" })
+            "todo" -> "할 일 · 가는 김에" to "가는 길에 들를 수 있는 것부터 — 말로 \"가는 김에 들르자\""
+            "car" -> "내 차" to "Pleos 차량 SDK → AAOS 차량 API → 앱 측정 순으로 읽어요"
+            else -> "안전운전 기록" to "이번 주 ${m.weekPoints} / ${m.weekGoal}점 · 모은 별 ${m.points}"
+        }
+        text(c, title, x0, zone.top + pad + 36 * U, 40 * U, FG, bold)
+        text(c, sub, x0, zone.top + pad + 76 * U, 22 * U, MUTED, medium, maxW = x1 - x0 - 120 * U)
+        button(c, "닫기", RectF(x1 - 110 * U, zone.top + pad, x1, zone.top + pad + 52 * U), false, "screen:$which")
+        var y = zone.top + pad + 116 * U
+        val rowH = 64 * U
+        fun row(ic: String, a: String, b: String, col: Int = ACC, bcol: Int = FG) {
+            if (y + rowH > zone.bottom - pad) return
+            p.color = LINE; c.drawRect(x0, y, x1, y + max(1f, U), p)
+            icon(c, ic, x0 + 16 * U, y + rowH / 2, 24 * U, col)
+            text(c, a, x0 + 48 * U, y + rowH / 2 + 9 * U, 24 * U, FG, medium, maxW = (x1 - x0) * (if (b.isBlank()) 0.92f else 0.6f))
+            if (b.isNotBlank()) text(c, b, x1, y + rowH / 2 + 9 * U, 24 * U, bcol, semi, Paint.Align.RIGHT, maxW = (x1 - x0) * 0.36f)
+            y += rowH
+        }
+        when (which) {
+            "brief" -> { if (m.newsList.isEmpty()) row("news", "헤드라인을 불러오는 중이에요", "")
+                m.newsList.forEachIndexed { i, n -> row("news", "${i + 1}. $n", "") }
+                text(c, m.newsSource, x0, zone.bottom - pad + 8 * U, 18 * U, FAINT, medium, maxW = x1 - x0) }
+            "todo" -> { m.todos.forEachIndexed { i, t -> row(if (i == 0) "pin" else "bag", t, if (i == 0) "가는 길" else "", if (i == 0) ACC else MUTED, ACC) }
+                text(c, "예시 할 일 — 폰 짭비서·서버 할 일과 이어질 자리", x0, zone.bottom - pad + 8 * U, 18 * U, FAINT, medium) }
+            "car" -> { val st = m.status
+                fun src(v: io.github.somanghao.makecar.hyun.drive.CarStatus.V<*>?) = when (v?.v) { null -> "예시"; else -> when (v.from) { io.github.somanghao.makecar.hyun.drive.CarStatus.From.PLEOS -> "Pleos"; io.github.somanghao.makecar.hyun.drive.CarStatus.From.AAOS -> "AAOS"; io.github.somanghao.makecar.hyun.drive.CarStatus.From.APP -> "앱"; else -> "모의" } }
+                fun line(ic: String, a: String, v: io.github.somanghao.makecar.hyun.drive.CarStatus.V<*>?, value: String) = row(ic, "$a  ·  ${src(v)}", value, ACC, if (v?.v == null) FAINT else FG)
+                line("battery", st?.energyLabel?.v ?: "배터리", st?.soc, st?.soc?.v?.let { "$it%" } ?: "—")
+                line("road", "주행 가능", st?.rangeKm, st?.rangeKm?.v?.let { "${it}km" } ?: "—")
+                line("clock", "이번 주행", st?.tripKm, st?.tripKm?.v?.let { "%.1fkm · ${st.tripMin.v ?: 0}분".format(it) } ?: "—")
+                line("cruise", "크루즈 · 주행 모드", st?.cruise, "${st?.cruise?.v ?: "—"} · ${st?.mode?.v ?: "—"}")
+                line("temp", "실내 설정 온도", st?.cabinC, st?.cabinC?.v?.let { "%.1f°".format(it) } ?: "—")
+                line("cloud", "와이퍼", st?.wiper, st?.wiper?.v?.let { if (it) "작동" else "꺼짐" } ?: "—")
+                line("chat", "조수석 · 벨트", st?.passenger, "${st?.passenger?.v?.let { if (it) "착석" else "비어 있음" } ?: "—"} · ${st?.belt?.v?.let { if (it) "맴" else "풀림" } ?: "—"}")
+                line("lock", "문", st?.locked, st?.locked?.v?.let { if (it) "잠김" else "열림" } ?: "—") }
+            else -> {
+                val bar = RectF(x0, y + 8 * U, x1, y + 22 * U)
+                p.color = SURF2; c.drawRoundRect(bar, 7 * U, 7 * U, p)
+                p.color = WARN; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * (m.weekPoints.toFloat() / m.weekGoal).coerceIn(0f, 1f), bar.bottom), 7 * U, 7 * U, p)
+                y += 44 * U
+                val list = (m.ledger + m.dayLedger).distinct()
+                if (list.isEmpty()) row("star", "아직 기록이 없어요 — 100m 안전 주행마다 +1", "")
+                list.reversed().forEach { e -> row(e.icon, e.why, if (e.delta >= 0) "+${e.delta}" else "−${-e.delta}", if (e.delta >= 0) GOOD else RED, if (e.delta >= 0) GOOD else RED) }
+            }
+        }
+    }
 
     // ======================================================================
     // 주행 중 — 제목+아이콘만(2초 안에 읽힘). 차 상태가 바뀌면 6초 동안 그 한 줄로
