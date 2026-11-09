@@ -35,6 +35,9 @@ data class Tile(val icon: String, val label: String, val value: String, val sub:
 /** 포인트 내역 한 줄 — 안전 주행(+) · 급정거·과속·깜빡이 없이 회전(−) … */
 data class Entry(val icon: String, val why: String, val delta: Int)
 
+/** 상황별 아이디어 한 개(docs/hyun-content-ideas.md) — moment = 특별한 순간 */
+data class Idea(val id: String, val sit: Sit, val name: String, val moment: Boolean = false)
+
 /** 웹툰(서버 /hyun/feed?cat=webtoon) · 시세(cat=stock) */
 data class Toon(val rank: Int, val title: String, val author: String, val star: Double, val img: String)
 data class Quote(val name: String, val price: String, val ratio: Float)
@@ -88,7 +91,9 @@ class StageModel {
     var weekPoints = 0; val weekGoal = 300
     var newsImgs: Map<String, String> = emptyMap()   // 제목 → 기사 사진(연합뉴스 RSS media:content)
     var wcode = -1; var tempNow: Int? = null
-    val raining get() = status?.wiper?.v == true || wcode in 51..67 || wcode in 80..82
+    val raining get() = forceRain || status?.wiper?.v == true || wcode in 51..67 || wcode in 80..82
+    var forceRain = false                     // 특별한 순간 "비 오는 날" 미리보기
+    var idea: String? = null                  // 상황별 아이디어 미리보기(docs/hyun-content-ideas.md) — 그 상황 화면에 그 레이아웃
     val snowing get() = wcode in 71..77 || wcode in 85..86
     var dayStartAt = 0L; var stopsToday = 0; var dayKmShown = 0.0
     var todayPoints = 0
@@ -181,6 +186,22 @@ class StageModel {
             "stock" to STILL, "weather" to STILL, "local" to STILL + Sit.STOP, "schedule" to STILL)
         fun allowed(cat: String, s: Sit) = ALLOWED[cat]?.contains(s) == true
         fun catName(k: String) = CATS.firstOrNull { it.first == k }?.second ?: k
+        /** 상황별 아이디어 30 + 특별한 순간 7 — `--es idea <id>`(SIM · STAGE) · 디버그 판 · 허브 '아이디어' */
+        val IDEAS = listOf(
+            Idea("air", Sit.IGNITION, "미세먼지 → 내기 순환"), Idea("fortune", Sit.IGNITION, "오늘의 차 운세"), Idea("rival", Sit.IGNITION, "어제의 나와 비교"),
+            Idea("routine", Sit.IGNITION, "출발 전 30초 루틴"), Idea("weekly", Sit.IGNITION, "주간 리포트"), Idea("charge", Sit.IGNITION, "충전 계획"),
+            Idea("habit", Sit.READY, "습관 경로 제안"), Idea("depart", Sit.READY, "출발 시각 코치"), Idea("crew", Sit.READY, "동승자 편성"),
+            Idea("doors", Sit.READY, "창문·문 점검"), Idea("launch", Sit.READY, "초보 출발 카운트"),
+            Idea("combo", Sit.DRIVE, "부드러운 운전 콤보"), Idea("brakecoach", Sit.DRIVE, "브레이크 칭찬"), Idea("drowsy", Sit.DRIVE, "졸음 기척"),
+            Idea("alert", Sit.DRIVE, "기상 특보"), Idea("arrive10", Sit.DRIVE, "도착 10분 전"), Idea("dj", Sit.DRIVE, "라디오 DJ"),
+            Idea("quiz", Sit.STOP, "동네 이름 퀴즈"), Idea("score", Sit.STOP, "경기 점수 한 줄"), Idea("signal", Sit.STOP, "신호 길이 감"), Idea("stretch", Sit.STOP, "스트레칭 한 동작"),
+            Idea("spot", Sit.PARK, "주차 위치 기억"), Idea("highlight", Sit.PARK, "주행 하이라이트 컷"), Idea("wait", Sit.PARK, "기다림 모드"),
+            Idea("nearby", Sit.PARK, "근처 한 곳"), Idea("wash", Sit.PARK, "세차 타이밍"),
+            Idea("stamp", Sit.OFF, "별 도장"), Idea("morning", Sit.OFF, "내일 아침 예약"), Idea("leftbehind", Sit.OFF, "두고 내림 감지"), Idea("progress", Sit.OFF, "꾸미기 진척"),
+            Idea("first", Sit.IGNITION, "오늘 첫 주행", true), Idea("long", Sit.PARK, "장거리 완주", true), Idea("night", Sit.DRIVE, "늦은 밤", true),
+            Idea("rain", Sit.IGNITION, "비·눈 오는 날", true), Idea("birthday", Sit.IGNITION, "생일", true), Idea("hundred", Sit.PARK, "100번째 주행", true),
+            Idea("star1000", Sit.OFF, "별 1,000개", true))
+        fun idea(id: String?) = IDEAS.firstOrNull { it.id == id }
     }
 }
 
@@ -261,7 +282,7 @@ class StageFeature : Feature {
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
-    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
 
     /**
      * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive
@@ -276,6 +297,7 @@ class StageFeature : Feature {
         b.getString("sit")?.let { apply(Intent().putExtra("sit", it)) }
         b.get("nav")?.toString()?.let { setNav(it == "on" || it == "true" || it == "1") }
         b.getString("skin")?.let { setSkin(it) }
+        (b.getString("idea") ?: b.getString("moment"))?.let { setIdea(it) }
         b.getString("screen")?.let { setScreen(it) }
         b.getString("golog")?.let { if (it == "demo") seedGoLog() else if (it == "clear") hub.prefs.edit().remove(GO_LOG).apply() }   // 시연: 자주 가는 곳 기록
         refresh(); hub.render()
@@ -308,6 +330,7 @@ class StageFeature : Feature {
         }
         i.getStringExtra("nav")?.let { setNav(it == "on" || it == "true") }
         if (i.action == ACTION) i.getStringExtra("skin")?.let { setSkin(it) }
+        (i.getStringExtra("idea") ?: i.getStringExtra("moment"))?.let { setIdea(it); refresh(); hub.render(); return }
         i.getStringExtra("screen")?.let { s ->
             if (s == "auto" || Sit.values().any { it.key == s } || StageModel.CATS.any { it.first == s }) { setScreen(s); refresh(); hub.render(); return }
             when (s) { "none", "close" -> m.overlay = null; "onboard" -> startOnboarding(); else -> m.overlay = s }
@@ -452,10 +475,23 @@ class StageFeature : Feature {
         hub.log("stage|screen|$k")
         m.viewAt = SystemClock.elapsedRealtime()
         when {
-            k == "auto" -> { m.view = null; m.viewForced = false; if (m.forced) { m.forced = false; lastKey = "" }; m.overlay = m.overlay.takeIf { it == "onboard" } }
+            k == "auto" -> { m.view = null; m.viewForced = false; if (m.forced) { m.forced = false; lastKey = "" }; m.overlay = m.overlay.takeIf { it == "onboard" }
+                if (m.idea != null) { if (m.idea == "night") m.nightOverride = null; m.idea = null; m.forceRain = false } }
             Sit.values().any { it.key == k } -> { val s = Sit.values().first { it.key == k }; m.view = null; m.viewForced = true; m.overlay = null; m.forced = true; if (s == Sit.DRIVE) startTripIfNeeded(); enter(s, why = "미리보기") }
             StageModel.CATS.any { it.first == k } -> { m.view = k; m.viewForced = true; m.overlay = null }
         }
+    }
+
+    /** 아이디어 미리보기 — 그 아이디어의 상황으로 강제 전환(실제 주행 신호가 와도 아이디어는 남는다). rain · night 는 날씨·밤을 함께 */
+    fun setIdea(id: String) {
+        if (id == "off" || id == "none") { setScreen("auto"); return }
+        val d = StageModel.idea(id) ?: run { hub.log("stage|idea|모름|$id"); return }
+        if (m.idea == "night" && id != "night") m.nightOverride = null
+        m.forceRain = id == "rain"
+        if (id == "night") m.nightOverride = true
+        setScreen(d.sit.key)
+        m.idea = id
+        hub.log("stage|idea|$id|${d.sit.key}")
     }
 
     /** 모의 경로 안내 켜기/끄기 — 켜면 첫 회전(판교역로 우회전 350m)부터 */
@@ -612,6 +648,8 @@ class StageFeature : Feature {
             a == "nav:start" -> { setNav(true); hub.say("안내를 시작할게요. 모의 경로예요.", "happy", false, 2, tag = "내비") }
             a == "nav:toggle" -> setNav(!m.simNav)
             a == "toon:next" -> m.toonPage++
+            a == "idea:next" || a == "idea:prev" -> { val l = StageModel.IDEAS; val i0 = l.indexOfFirst { it.id == m.idea }; val n = if (a.endsWith("next")) (i0 + 1) % l.size else (if (i0 <= 0) l.size - 1 else i0 - 1); setIdea(l[n].id) }
+            a == "idea:off" -> setScreen("auto")
             a == "skintab" -> if (!movingNow()) { m.overlay = "deco"; m.decoTab = "skin" }
             a.startsWith("skin:") -> setSkin(a.substringAfter(":"))
         }
