@@ -24,6 +24,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- 상주 알림(알림창에서 글로 묻기·말하기) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Pleos 홈 창 배치(문서에 없는 내부 방송 — 내비가 덮으면 반반 · 내비 숨김, 11-09 실측). MANAGE_TASK는 normal 등급 -->
+    <uses-permission android:name="ai.umos.homescreen.permission.MANAGE_TASK" />
+    <uses-permission android:name="ai.umos.homescreen.permission.ENFORCE_APP_ORIENTATION" />
     <!-- 차: 내비·음악 화면에서도 상시 귀가 듣게 — 마이크 포그라운드 서비스(EarService) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -32,6 +35,7 @@
     <queries>
         <intent><action android:name="android.speech.RecognitionService" /></intent>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+        <package android:name="ai.umos.homescreen" />
     </queries>
 
     <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
@@ -89,6 +93,9 @@
             android:taskAffinity="io.github.somanghao.makecar.hyun.quick"
             android:excludeFromRecents="true"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- 헤드업 알림 [반반으로] — 내비를 1칸으로 줄여 빈 칸에 현비서 -->
+        <receiver android:name=".drive.SplitReceiver" android:exported="false" />
 
         <receiver android:name=".phone.QuickWidget" android:exported="false" android:label="짭비서">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>

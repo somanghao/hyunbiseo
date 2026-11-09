@@ -31,7 +31,7 @@ python -I -X utf8 tools/hyun_e2e/run.py --rebuild records/hyun-e2e/<폴더>  # �
 - `transcript.json`(전체 기록 — 케이스·대화 시각·판정·서버 답 원문) · `logcat.txt` · `server-log.jsonl` · `server.out` · `shots/*.jpg`
 - `video.mp4`(git에 함께 — 13개 소리 포함 12분 37초 · 19MB) · `slides/*.png`(표지·케이스 슬라이드) · `raw/`(케이스별 원본 영상·에뮬 소리 `app-audio.wav`·운전자 목소리 `voice/*.pcm`·조각 영상 — **git 제외**). 영상 = §시연 영상 형식
 - 기록 목록·판정 → 아래 §기록
-- GitHub 사본: https://github.com/somanghao/hyunbiseo (private) — 앱·서버·시험·이 기록(영상 포함)·현비서 문서(보고서 `dashboard/hyun`·시안 `design_assets/hyun`은 제외). 갱신 = `tools/export_hyunbiseo.py <hyunbiseo 클론>`(git 추적 파일만 · 비밀 문자열 모양이 있으면 멈춤 · settings는 :hyun만) → 커밋·푸시. README 원본 `tools/hyun_export_README.md`(최신 기록·영상을 가리키게 같이 고친다). 클론은 따로 두지 않는다 — `gh repo clone somanghao/hyunbiseo <임시 폴더>` → 내보내기 → 커밋·푸시. 마지막 갱신 11-08 `11c949c`(시연 영상 13/13 기준)
+- GitHub 사본: https://github.com/somanghao/hyunbiseo (private) — 앱·서버·시험·이 기록(영상 포함)·현비서 문서·이미지 에셋 전부 `design_assets/hyun`(사용자 11-09 — README에 §캐릭터 · 이미지 에셋). 보고서·제안서 HTML `dashboard/hyun`은 제외(그 안 `assets/`는 `design_assets/hyun` 사본). 갱신 = `tools/export_hyunbiseo.py <hyunbiseo 클론>`(git 추적 파일만 · 비밀 문자열 모양이 있으면 멈춤 · settings는 :hyun만) → 커밋·푸시. README 원본 `tools/hyun_export_README.md`(최신 기록·영상을 가리키게 같이 고친다) · 사본 루트 `CLAUDE.md` 원본 `tools/hyun_export_CLAUDE.md`(다른 개발자용 화면 구조 요약 — 원본 루트 `CLAUDE.md` 요약과 같이 고친다). 클론은 따로 두지 않는다 — `gh repo clone somanghao/hyunbiseo <임시 폴더>` → 내보내기 → 커밋·푸시. 마지막 갱신 11-09 `dc807f8`(이미지 에셋 추가 · 코드·기록은 시연 영상 13/13 기준)
 - 보기: `python -I dashboard/serve.py` → http://localhost:8765/records/hyun-e2e/<폴더>/report.html (no-store 서버 — 영상·사진 상대 경로)
 
 ## 시연 영상 형식 (사용자 11-08 — 제출·PT 영상은 이 형식)
