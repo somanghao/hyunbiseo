@@ -177,7 +177,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 when {
                     sheetOn -> sheet(c, full, m.overlay!!)
                     card != null -> { glassCard(c, full, 24 * U); val lt = v.lightTheme; v.lightTheme = !darkUi; v.listCard(c, card, full.left + 24 * U, full.top + 24 * U, full.right - 24 * U, full.bottom - 24 * U, h); v.lightTheme = lt }
-                    m.view != null && m.view != "nav" -> category(c, full, m.view!!)
+                    m.view != null && m.view != "nav" -> {   // 모듈 상세 — 왼쪽 위 끝에 닫기
+                        button(c, "닫기", RectF(full.left, full.top, full.left + 110 * U, full.top + 52 * U), false, "view:close")
+                        category(c, RectF(full.left, full.top + 68 * U, full.right, full.bottom), m.view!!)
+                    }
                     !driving -> stateScreen(c, full)
                 }
                 if (!glance()) dock(c, w, h)   // 운전 중엔 독도 숨김(한눈 규칙)
@@ -668,9 +671,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             "car" -> "내 차" to "Pleos 차량 SDK → AAOS 차량 API → 앱 측정 순으로 읽어요"
             else -> "안전운전 기록" to "이번 주 ${m.weekPoints} / ${m.weekGoal}점 · 모은 별 ${m.points}"
         }
-        text(c, title, x0, zone.top + pad + 36 * U, 40 * U, FG, bold)
-        text(c, sub, x0, zone.top + pad + 76 * U, 22 * U, MUTED, medium, maxW = x1 - x0 - 120 * U)
-        button(c, "닫기", RectF(x1 - 110 * U, zone.top + pad, x1, zone.top + pad + 52 * U), false, "screen:$which")
+        // 닫기 — 상세 화면 왼쪽 위 끝
+        button(c, "닫기", RectF(x0, zone.top + pad, x0 + 110 * U, zone.top + pad + 52 * U), false, "screen:$which")
+        text(c, title, x0 + 130 * U, zone.top + pad + 36 * U, 40 * U, FG, bold, maxW = x1 - x0 - 130 * U)
+        text(c, sub, x0, zone.top + pad + 76 * U, 22 * U, MUTED, medium, maxW = x1 - x0)
         var y = zone.top + pad + 116 * U
         val rowH = 64 * U
         fun row(ic: String, a: String, b: String, col: Int = ACC, bcol: Int = FG) {
