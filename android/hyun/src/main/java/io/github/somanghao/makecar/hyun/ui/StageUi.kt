@@ -534,7 +534,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     }
     private fun bubbleFor(label: String): String = when (label) {
         "오늘 날씨" -> if (m.raining) "비가 와요. 천천히 가요" else "오늘 날씨를 정리했어요"
-        "인사" -> if (m.sit == Sit.IGNITION) "어떤 걸 브리핑해 드릴까요? 말해 주세요" else label
+        "인사" -> if (m.sit == Sit.IGNITION) "가는 길에 어떤 이야기를 들려 드릴까요?" else label
         "차 컨디션" -> "차 상태는 괜찮아요"
         "관심 뉴스", "오늘의 헤드라인" -> "오늘 소식 하나 골라 뒀어요"
         "추천 목적지", "오늘 목적지" -> "어디로 갈까요?"
@@ -1256,13 +1256,27 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     }
     /** 시동 화면 맨 위 — 어디로 갈까요? (지금 목적지 · 이 시간 자주 가는 곳 + 지금 출발 시 도착 · 없으면 말로 등록) */
     private fun goRow(c: Canvas, r: RectF) {
-        box(c, r, if (m.goName.isNotBlank() && m.goTag.startsWith("자주")) "say:${m.goName} 가자" else null)   // 자주 가는 곳을 누르면 바로 안내 요청
+        box(c, r, m.goAction.ifBlank { null })   // 즐겨찾기를 누르면 그곳으로 안내 시작
         val x0 = r.left + 32 * U; val iw = r.width() - 64 * U
         icon(c, "pin", x0 + 16 * U, r.top + 34 * U, 24 * U, ACC)
-        lab(c, "어디로 갈까요?" + (if (m.goTag.isNotBlank()) " · ${m.goTag}" else ""), x0 + 44 * U, r.top + 41 * U, iw - 44 * U)
+        lab(c, "어디로 갈까요?" + (if (m.goTag.isNotBlank()) " · ${m.goTag}" else ""), x0 + 44 * U, r.top + 41 * U, iw * 0.5f)
         if (m.goName.isNotBlank()) {
-            text(c, m.goName, x0, r.top + 96 * U, fit(m.goName, 44 * U, iw, bold), FG, bold, maxW = iw)
-            lab(c, m.goSub, x0, r.top + 130 * U, iw, MUTED)
+            // 즐겨찾기 칩(오른쪽 위) — 눌러서 다른 도착지로
+            if (m.favIdx >= 0 && m.favNames.size > 1) {
+                p.textSize = 20 * U; p.typeface = medium
+                var cx = r.right - 28 * U
+                for (i in m.favNames.indices.reversed()) {
+                    val s = m.favNames[i]; val cw = p.measureText(s) + 32 * U
+                    val cr = RectF(cx - cw, r.top + 16 * U, cx, r.top + 56 * U)
+                    val on = i == m.favIdx
+                    p.shader = null; p.color = if (on) ACC else if (darkUi) SURF2 else Glass.a(Color.WHITE, 220); c.drawRoundRect(cr, 20 * U, 20 * U, p)
+                    text(c, s, cr.left + 16 * U, cr.centerY() + 7 * U, 20 * U, if (on) Color.WHITE else FG, medium)
+                    hits += cr to "fav:$i"; cx = cr.left - 10 * U
+                }
+            }
+            text(c, m.goName, x0, r.top + 98 * U, fit(m.goName, 44 * U, iw - 160 * U, bold), FG, bold, maxW = iw - 160 * U)
+            text(c, m.goSub, x0, r.top + 134 * U, 24 * U, MUTED, medium, maxW = iw - 160 * U)
+            if (m.goAction.isNotBlank()) text(c, "안내 시작", r.right - 32 * U, r.top + 108 * U, 26 * U, ACC, semi, Paint.Align.RIGHT)
         } else {
             micGlyph(c, x0 + 16 * U, r.top + 84 * U, 30 * U, ACC)
             text(c, "오늘 가야 할 곳을 말로 등록해 주세요", x0 + 48 * U, r.top + 96 * U, fit("오늘 가야 할 곳을 말로 등록해 주세요", 36 * U, iw - 48 * U, bold), FG, bold, maxW = iw - 48 * U)
