@@ -124,7 +124,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1800 && !m.viewForced)
         val outroX = if (m.sit == Sit.OFF && now - m.sitAt < 1800) (now - m.sitAt) / 1800f else -1f
         // 내비가 주화면(내비 레이아웃 · 주행 중) — 캐릭터는 왼쪽 위 작은 배지, 내비가 화면을 넓게(댄 11-09)
-        val navMain = !intro && v.card == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (driving && m.view == null))
+        val navMain = !intro && v.card == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (m.view == null && (driving || (m.sit == Sit.READY && m.navActive))))   // D 에서 경로가 있으면 저절로 내비 주화면
         if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
         val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
         val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
@@ -147,7 +147,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             else speech(c, 64 * U, feet - chH - 56 * U, zoneL - 128 * U)
         }
         if (showLine && nk < 0.01f) { if (mirror) timeline(c, zoneR + 64 * U, w - 160 * U, h - 100 * U) else timeline(c, 64 * U, zoneL - 64 * U, h - 100 * U) }
-        topRight(c, w)
+        if (!glance()) topRight(c, w)   // 운전 중엔 누르는 것 없음(별 · 테마 · 설정 숨김)
         if (intro) {   // 테마 인트로
             themeIntro(c, w, h, ((now - m.sitAt) / 1800f).coerceIn(0f, 1f), false)
         } else {
@@ -176,7 +176,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 if (!glance()) dock(c, w, h)   // 운전 중엔 독도 숨김(한눈 규칙)
                 c.restore()
             }
-            micButton(c, w, h)
+            if (glance()) micHint(c, w, h) else micButton(c, w, h)
         }
         if (outroX >= 0f) themeIntro(c, w, h, outroX, true)
         if (m.unlockAt > 0 && now - m.unlockAt < 1200) doors(c, w, h, (now - m.unlockAt) / 1200f)
@@ -199,6 +199,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     fun touch(x: Float, y: Float): Boolean {
         val hit = hits.lastOrNull { (r, _) -> RectF(r).apply { inset(-S * 0.6f, -S * 0.6f) }.contains(x, y) } ?: return m.overlay in BLOCKING
         val a = hit.second
+        // 운전 중(출발 준비 D · 주행 · 신호대기)엔 손으로 고르는 것 없음 — 말로만. 개발 도구(디버그 판 · 미리보기 해제)만 예외
+        val dev = a == "sitpill" || a == "debug" || a == "view:auto" || a == "view:close" || a == "nav:toggle" || a.startsWith("force:") || a.startsWith("sim:") || a.startsWith("sit:")
+        if (glance() && !dev && m.overlay != "debug") return true
         pressRect = hit.first; pressAt = SystemClock.elapsedRealtime()
         if (a == "sitpill") {
             val now = SystemClock.elapsedRealtime()
@@ -735,6 +738,13 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (lab.isNotBlank() && false) text(c, lab, mx, my, 20 * U, MUTED, medium)
     }
 
+    /** 운전 중 — 버튼 대신 말로 하라는 옅은 글 한 줄(누를 수 없음) */
+    private fun micHint(c: Canvas, w: Float, h: Float) {
+        val col = if (sceneDark) 0x99FFFFFF.toInt() else FAINT
+        micGlyph(c, w - 48 * U - 290 * U, h - 60 * U, 30 * U, col)
+        text(c, "\"현비서야\" 말로 하세요", w - 48 * U, h - 52 * U, 24 * U, col, medium, Paint.Align.RIGHT)
+    }
+
     /** 해금 연출 — 1.2초 동안 문 두 짝이 열린다 */
     private fun doors(c: Canvas, w: Float, h: Float, x: Float) {
         val e = (if (x < 0.25f) 0f else ((x - 0.25f) / 0.75f)).let { 1f - (1f - it) * (1f - it) }
@@ -999,6 +1009,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     /** 운전 중(출발 준비 D · 주행 · 신호대기) — 한눈 규칙: 초점 하나 + 보조 1~2, 큰 글자, 작은 라벨·목록·그림·차트 없음 */
     private fun glance() = m.sit == Sit.DRIVE || m.sit == Sit.STOP || m.sit == Sit.READY
 
+    /** 조사 로/으로 — 받침(ㄹ 제외) 있으면 으로 */
+    private fun ro(w: String): String { val ch = w.lastOrNull() ?: return "로"; if (ch !in '가'..'힣') return "로"; val jong = (ch - '가') % 28; return if (jong == 0 || jong == 8) "로" else "으로" }
     private fun turnWord() = shortTurn(m.navTurnType, m.navTurn)
     private fun lanes(c: Canvas, r: RectF, size: Float) {
         val ty = m.navTurnType
@@ -1216,8 +1228,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 rows += row(100 * U) { r -> questRow(c, r) }
                 if (m.novice) rows += row(76 * U) { r -> tipRow(c, r, "출발 전에 시트 → 미러 → 벨트 순서로. 빨간 경고등이 없는지도 한 번.") }
             }
-            Sit.READY -> {   // 기어 D — 한눈: 목적지 · 도착 시각 · 큰 버튼 하나 (+ 보조 한 줄)
-                rows += row(360 * U) { r ->
+            Sit.READY -> {   // 기어 D(경로 없을 때) — 한눈: 목적지 · 도착 시각 · 말로 하라는 글 (+ 보조 한 줄). 버튼 없음
+                rows += row(320 * U) { r ->
                     box(c, r); val x0 = r.left + 48 * U
                     val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
                     val (name, sub) = when {
@@ -1228,9 +1240,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                     }
                     text(c, name, x0, r.top + 120 * U, fit(name, 72 * U, r.width() - 96 * U, bold), FG, bold, maxW = r.width() - 96 * U)
                     text(c, sub, x0, r.top + 180 * U, 36 * U, MUTED, medium, maxW = r.width() - 96 * U)
-                    val by = r.bottom - 48 * U - 88 * U
-                    if (m.navActive) button(c, "내비 크게 보기", RectF(x0, by, x0 + 360 * U, by + 88 * U), true, "view:nav", 36 * U)
-                    else button(c, "안내 시작", RectF(x0, by, x0 + 300 * U, by + 88 * U), true, "nav:start", 36 * U)
+                    // 버튼 없음 — 경로가 생기면 저절로 내비 화면, 안내는 말로
+                    micGlyph(c, x0 + 18 * U, r.bottom - 74 * U, 34 * U, MUTED)
+                    text(c, "\"${name}${ro(name)} 안내해 줘\" 하고 말하세요", x0 + 48 * U, r.bottom - 62 * U, 32 * U, MUTED, medium, maxW = r.width() - 140 * U)
                 }
                 val low = soc != null && soc < 30
                 if (low) rows += row(100 * U) { r -> box(c, r, "screen:car"); text(c, "배터리 $soc% — 가는 길에 충전해요", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, WARN, medium, maxW = r.width() - 96 * U) }
