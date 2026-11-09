@@ -902,6 +902,24 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         c.restore()
     }
 
+    /** 사진을 자르지 않고 통째로(contain) — 남는 칸은 같은 사진을 흐리게 깔아 채운다 */
+    private val blurCache = HashMap<String, Bitmap>()
+    private fun photoFit(c: Canvas, url: String?, r: RectF, rad: Float, clip: RectF? = null) {
+        val bm = url?.let { v.urlBmp(it) }
+        if (bm == null) { cover(c, null, r, rad, clip); return }
+        c.save(); c.clipPath(Path().apply { addRoundRect(clip ?: r, rad, rad, Path.Direction.CW) }); c.clipRect(r)
+        val ar = bm.width.toFloat() / bm.height; val rr = r.width() / r.height()
+        if (kotlin.math.abs(ar - rr) / rr > 0.04f) {   // 비율이 다르면 흐린 바탕
+            val small = blurCache.getOrPut(url!!) { Bitmap.createScaledBitmap(bm, max(4, bm.width / 24), max(4, bm.height / 24), true) }
+            val sc = max(r.width() / bm.width, r.height() / bm.height); val bw = bm.width * sc; val bh = bm.height * sc
+            c.drawBitmap(small, null, RectF(r.centerX() - bw / 2, r.centerY() - bh / 2, r.centerX() + bw / 2, r.centerY() + bh / 2), bp)
+            p.shader = null; p.color = 0x33000000; c.drawRect(r, p)
+        }
+        val sc = min(r.width() / bm.width, r.height() / bm.height); val bw = bm.width * sc; val bh = bm.height * sc
+        c.drawBitmap(bm, null, RectF(r.centerX() - bw / 2, r.centerY() - bh / 2, r.centerX() + bw / 2, r.centerY() + bh / 2), bp)
+        c.restore()
+    }
+
     private fun stat(c: Canvas, x: Float, y: Float, big: String, sub: String, col: Int, maxW: Float, size: Float = 56 * U) {
         text(c, big, x, y, fit(big, size, maxW, bold), col, bold, maxW = maxW)
         lab(c, sub, x, y + 36 * U, maxW)
@@ -938,7 +956,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     }
 
     /** 리드 기사 — 사진이 있는 관심 뉴스 먼저(연합뉴스 RSS 사진) */
-    private fun leadNews(): String? = m.newsList.firstOrNull { m.newsImgs[it] != null } ?: m.newsImgs.keys.firstOrNull() ?: m.newsList.firstOrNull()
+    private fun leadNews(): String? {
+        fun ok(t: String) = m.newsImgs[t]?.let { v.urlBmp(it) } != null   // 사진을 실제로 받은 기사(깨진 주소는 건너뜀)
+        return m.newsList.firstOrNull { ok(it) } ?: m.newsImgs.keys.firstOrNull { ok(it) } ?: m.newsList.firstOrNull { m.newsImgs[it] != null } ?: m.newsList.firstOrNull()
+    }
     private fun navLine(): String = "${v.dist(m.navTurnM)} 앞에서 ${shortTurn(m.navTurnType, m.navTurn)}이에요"
     private fun outfitLine(): String {
         val t = m.tempNow ?: return "날씨를 살펴보는 중이에요"
@@ -1096,7 +1117,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         box(c, r, "view:news")
         val n = leadNews()
         val th = RectF(r.left + 16 * U, r.top + 16 * U, r.left + 16 * U + (r.height() - 32 * U) * 1.5f, r.bottom - 16 * U)
-        cover(c, n?.let { m.newsImgs[it] }, th, 14 * U)
+        photoFit(c, n?.let { m.newsImgs[it] }, th, 14 * U)
         val x0 = th.right + 24 * U
         lab(c, "관심 뉴스 · 연합뉴스" + (n?.let { m.newsTimes[it] }?.let { " $it" } ?: ""), x0, r.top + 40 * U)
         text(c, n ?: "헤드라인을 불러오는 중이에요", x0, r.top + 80 * U, 28 * U, FG, medium, maxW = r.right - x0 - 120 * U)
@@ -1214,8 +1235,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                     val cw = (r.width() - 64 * U) / 4
                     items.forEachIndexed { i, tn ->
                         val ix = x0 + i * cw
-                        val th = RectF(ix, r.top + 62 * U, ix + 90 * U, r.bottom - 22 * U)
-                        cover(c, tn.img, th, 10 * U)
+                        val th = RectF(ix, r.top + 62 * U, ix + (r.bottom - 22 * U - r.top - 62 * U) / 1.3f, r.bottom - 22 * U)
+                        photoFit(c, tn.img, th, 10 * U)
                         text(c, tn.title, th.right + 16 * U, th.top + 34 * U, 24 * U, FG, medium, maxW = cw - 130 * U)
                         lab(c, "이어보기", th.right + 16 * U, th.top + 66 * U)
                     }
@@ -1270,7 +1291,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 val L = cs[0]
                 box(c, L, "say:뉴스 들려줘")
                 val ir = RectF(L.left, L.top, L.right, L.bottom - 150 * U)
-                cover(c, lead?.let { m.newsImgs[it] }, ir, 24 * U, L)
+                photoFit(c, lead?.let { m.newsImgs[it] }, ir, 24 * U, L)
                 lab(c, "관심 뉴스 · 연합뉴스" + (lead?.let { m.newsTimes[it] }?.let { " $it" } ?: ""), L.left + 32 * U, ir.bottom + 40 * U)
                 wrap(c, lead ?: "헤드라인을 불러오는 중이에요", L.left + 32 * U, ir.bottom + 84 * U, 30 * U, FG, L.width() - 64 * U, 2, medium, lh = 1.3f)
                 val R = cs[1]; box(c, R); val x0 = R.left + 32 * U; val x1 = R.right - 32 * U
@@ -1291,23 +1312,32 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 val shelf = RectF(z.left, z.top, z.right, z.bottom - 112 * U)
                 box(c, shelf)
                 lab(c, "오늘의 인기 · 네이버 웹툰 ${m.toonSource.substringAfter(" ")}", shelf.left + 32 * U, shelf.top + 40 * U)
+                // 표지(네이버 썸네일 480×623 ≈ 1:1.3)를 자르지 않게 — 비율 그대로 한 줄 4권, 넘기기
                 val g = RectF(shelf.left + 32 * U, shelf.top + 62 * U, shelf.right - 32 * U, shelf.bottom - 20 * U)
-                val per = 5; val cw = (g.width() - G * (per - 1)) / per; val ch = (g.height() - G) / 2; val coverH = ch - 52 * U
+                val per = 4; val ratio = 623f / 480f
+                val coverW = min((g.width() - G * 1.5f * (per - 1)) / per, (g.height() - 60 * U) / ratio); val coverH = coverW * ratio
+                val gapX = (g.width() - coverW * per) / (per - 1)
+                val pages = max(1, (m.toons.size + per - 1) / per); val pg = m.toonPage % pages
                 if (m.toons.isEmpty()) text(c, "웹툰을 불러오는 중이에요", g.left, g.top + 60 * U, 26 * U, MUTED, medium)
-                m.toons.take(per * 2).forEachIndexed { i, tn ->
-                    val gx = g.left + (i % per) * (cw + G); val gy = g.top + (i / per) * (ch + G)
-                    val cr = RectF(gx, gy, gx + cw, gy + coverH)
-                    cover(c, tn.img, cr, 12 * U)
-                    val br = RectF(cr.left + 8 * U, cr.top + 8 * U, cr.left + 40 * U, cr.top + 40 * U)
+                if (pages > 1) { val lab2 = "${pg * per + 1}–${min(m.toons.size, pg * per + per)} / ${m.toons.size}   다음 ›"
+                    text(c, lab2, shelf.right - 32 * U, shelf.top + 40 * U, 20 * U, ACC, semi, Paint.Align.RIGHT)
+                    p.textSize = 20 * U; p.typeface = semi; hits += RectF(shelf.right - 48 * U - p.measureText(lab2), shelf.top + 8 * U, shelf.right - 16 * U, shelf.top + 60 * U) to "toon:next" }
+                val gy = g.top + (g.height() - coverH - 52 * U) / 2
+                m.toons.drop(pg * per).take(per).forEachIndexed { i, tn ->
+                    val gx = g.left + i * (coverW + gapX)
+                    val cr = RectF(gx, gy, gx + coverW, gy + coverH)
+                    photoFit(c, tn.img, cr, 14 * U)
+                    val br = RectF(cr.left + 10 * U, cr.top + 10 * U, cr.left + 46 * U, cr.top + 46 * U)
                     p.color = 0xCC111827.toInt(); c.drawRoundRect(br, 8 * U, 8 * U, p)
-                    text(c, "${tn.rank}", br.centerX(), br.centerY() + 7 * U, 20 * U, Color.WHITE, semi, Paint.Align.CENTER)
-                    text(c, tn.title, cr.left, cr.bottom + 26 * U, 20 * U, FG, medium, maxW = cw)
-                    text(c, "★ %.2f".format(tn.star), cr.left, cr.bottom + 46 * U, 16 * U, FAINT, medium)
+                    text(c, "${tn.rank}", br.centerX(), br.centerY() + 8 * U, 22 * U, Color.WHITE, semi, Paint.Align.CENTER)
+                    text(c, tn.title, cr.left, cr.bottom + 30 * U, 24 * U, FG, medium, maxW = coverW)
+                    text(c, "★ %.2f · ${tn.author}".format(tn.star), cr.left, cr.bottom + 54 * U, 18 * U, FAINT, medium, maxW = coverW)
+                    hits += cr to "noop"
                 }
                 val rr = RectF(z.left, z.bottom - 96 * U, z.right, z.bottom)
                 box(c, rr)
                 val t0 = m.toons.firstOrNull()
-                cover(c, t0?.img, RectF(rr.left + 16 * U, rr.top + 12 * U, rr.left + 76 * U, rr.bottom - 12 * U), 8 * U)
+                photoFit(c, t0?.img, RectF(rr.left + 16 * U, rr.top + 12 * U, rr.left + 16 * U + 72 * U / 1.3f, rr.bottom - 12 * U), 8 * U)
                 lab(c, "이어보기 · 예시", rr.left + 96 * U, rr.top + 36 * U)
                 text(c, "${t0?.title ?: "웹툰"} · 128화", rr.left + 96 * U, rr.top + 72 * U, 28 * U, FG, bold)
                 button(c, "이어서 보기", RectF(rr.right - 24 * U - 200 * U, rr.top + 18 * U, rr.right - 24 * U, rr.bottom - 18 * U), true, "noop")

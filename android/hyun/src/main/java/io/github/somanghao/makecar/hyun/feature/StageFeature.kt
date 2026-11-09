@@ -110,7 +110,7 @@ class StageModel {
     var story: Tile? = null                   // 2분 안에 생긴 신호 반응 이야기(상황 화면 맨 위 한 줄)
     // 취미 데이터 — 서버 정보 통로(/hyun/feed) · Open-Meteo · 연합뉴스 RSS
     var newsTimes: Map<String, String> = emptyMap()
-    var toons: List<Toon> = emptyList(); var toonSource = ""
+    var toons: List<Toon> = emptyList(); var toonSource = ""; var toonPage = 0
     var indices: List<Quote> = emptyList(); var stocks: List<Quote> = emptyList(); var stockAsof = ""
     var hourly: List<Triple<String, Int, Int>> = emptyList()   // (시각, 기온, 비 확률)
     var todayMin: Int? = null; var todayMax: Int? = null; var rainMax = 0; var tomorrowLine = ""
@@ -588,6 +588,7 @@ class StageFeature : Feature {
             a.startsWith("force:") -> setScreen(a.substringAfter(":"))
             a == "nav:start" -> { setNav(true); hub.say("안내를 시작할게요. 모의 경로예요.", "happy", false, 2, tag = "내비") }
             a == "nav:toggle" -> setNav(!m.simNav)
+            a == "toon:next" -> m.toonPage++
         }
         refresh(); hub.render()
     }
