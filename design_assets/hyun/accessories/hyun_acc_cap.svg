@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="capDome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2B3E5E"/>
+      <stop offset="100%" stop-color="#162238"/>
+    </linearGradient>
+    <linearGradient id="capVisor" x1="0" y1="0" x2="1" y2="0.4">
+      <stop offset="0%" stop-color="#1E2D47"/>
+      <stop offset="100%" stop-color="#0F1829"/>
+    </linearGradient>
+  </defs>
+  <!-- Navy Baseball Cap (No Logo, positioned on orb top y=192) -->
+  <ellipse cx="512" cy="245" rx="225" ry="42" fill="#0B1320" opacity="0.45"/>
+  <path d="M312 238 C312 115, 712 115, 712 238 Z" fill="url(#capDome)" stroke="#0E1726" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M512 142 C445 148, 395 188, 382 236" fill="none" stroke="#3E567E" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M512 142 C579 148, 629 188, 642 236" fill="none" stroke="#3E567E" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+  <circle cx="512" cy="138" r="14" fill="#D9B36C" stroke="#0E1726" stroke-width="5"/>
+  <path d="M300 232 C390 212, 650 212, 765 248 C780 264, 715 282, 610 272 C480 258, 345 256, 300 232 Z" fill="url(#capVisor)" stroke="#0E1726" stroke-width="8" stroke-linejoin="round"/>
+</svg>

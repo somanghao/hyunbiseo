@@ -31,7 +31,7 @@ python -I -X utf8 tools/hyun_e2e/run.py --rebuild records/hyun-e2e/<폴더>  # �
 - `transcript.json`(전체 기록 — 케이스·대화 시각·판정·서버 답 원문) · `logcat.txt` · `server-log.jsonl` · `server.out` · `shots/*.jpg`
 - `video.mp4`(git에 함께 — 13개 소리 포함 12분 37초 · 19MB) · `slides/*.png`(표지·케이스 슬라이드) · `raw/`(케이스별 원본 영상·에뮬 소리 `app-audio.wav`·운전자 목소리 `voice/*.pcm`·조각 영상 — **git 제외**). 영상 = §시연 영상 형식
 - 기록 목록·판정 → 아래 §기록
-- GitHub 사본: https://github.com/somanghao/hyunbiseo (private) — 앱·서버·시험·이 기록(영상 포함)·현비서 문서(보고서 `dashboard/hyun`·시안 `design_assets/hyun`은 제외). 갱신 = `tools/export_hyunbiseo.py <hyunbiseo 클론>`(git 추적 파일만 · 비밀 문자열 모양이 있으면 멈춤 · settings는 :hyun만) → 커밋·푸시. README 원본 `tools/hyun_export_README.md`
+- **GitHub = 정본**(A안, 사용자 11-09): https://github.com/somanghao/hyunbiseo (private) — 앱·서버·시험·이 기록(영상 포함)·이미지 에셋 `design_assets/hyun`·모듈 명세 `docs/specs/`(정본)·팀 규칙 `CLAUDE.md`(명령·모듈 6 표·브랜치·충돌 규칙·완료 기준)·`.claude/`(rules ui·feature·skins · skills new-feature·run-hyun · agents hyun-harness · settings.json)·README. `docs/*.md`(specs 빼고)는 이쪽 위키 사본. 작업 클론 = `C:\Users\soman\AntiProject\hyunbiseo`(android/local.properties는 각자 · git 제외) — **코드는 거기서 브랜치·PR**. 이쪽으로 받기 = `python -I -X utf8 tools/hyunbiseo_sync.py pull`(클론 HEAD의 git 개체를 받음 — 작업 폴더 CRLF를 복사하면 gradlew가 깨진다 · 이쪽 같은 폴더의 추적 파일 중 저쪽에 없는 것은 지움 · settings.gradle.kts 제외 · 비밀 문자열이면 멈춤) · 위키 보내기 = `… docs`(클론 docs/에 11개 → 클론에서 커밋·푸시). 옛 `export_hyunbiseo.py`(저쪽을 비우고 다시 채움)는 팀원 커밋을 지워서 없앰. 보고서·제안서 HTML `dashboard/hyun`은 안 올림. 마지막 hyunbiseo `c2fb939`(협업 시작 — 시연 영상·E2E 기록은 11-08 13/13 그대로, 새 화면으로 다시 찍기 전)
 - 보기: `python -I dashboard/serve.py` → http://localhost:8765/records/hyun-e2e/<폴더>/report.html (no-store 서버 — 영상·사진 상대 경로)
 
 ## 시연 영상 형식 (사용자 11-08 — 제출·PT 영상은 이 형식)

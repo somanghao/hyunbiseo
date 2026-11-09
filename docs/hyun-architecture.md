@@ -26,7 +26,7 @@
 | | `Feature.kt` | 기능 훅(아래 표) — 전부 기본 구현, 필요한 것만 override |
 | | `Fmt.kt` | `km`·`dur`("3시간 52분")·`hhmm`·`whenLabel` |
 | `feature/` | `Registry.kt` | **기능 목록 — 순서 = 훅 순서** |
-| | `CommandFeatures.kt` | `QuietFeature`("조용히") · `ListenModeFeature`(상시/버튼, 차) · `CharacterFeature`(캐릭터 3종, 차) |
+| | `CommandFeatures.kt` | `QuietFeature`("조용히") · `UiModeFeature`(화면 대화형 ↔ 정보형, 차 — 11-09, 옛 `ListenModeFeature` 자리) · `SkinFeature`(스킨 고르기, 차) · `CharacterFeature`(캐릭터 3종, 차) |
 | | `GleoFeature.kt` | 글레오 3액션 ASK_HYUN·HYUN_STATUS·HYUN_QUIET(차) |
 | | `TurnFeature.kt` | 회전 안내(TBT) 화면 값 → 내비 판·반반 회전 줄(차) |
 | | `ArriveFeature.kt` | 도착 추천 — 서버가 준 한 줄(`arrive_line`) · 시연 시계 `--es clock` · 맥락 현재 좌표(차) — 판정·검색·카드는 서버 `places` |
@@ -38,8 +38,23 @@
 | | `Scout.kt` · `Trip.kt` · `Sense.kt` | 정찰 판정(시작 90초 조용 `calmUntil`) · 남은 거리·연속 주행 · 차/폰 눈(속도·기어·DO) |
 | `voice/` | `Voice.kt` · `Ear.kt` · `EarService.kt` · `Speaker.kt` | 귀·입 인터페이스 · 상시 귀 · 마이크 포그라운드 서비스 · 말하기 스케줄러(`eventPrio`) → [[hyun-app]] §귀·§말하기 |
 | `brain/` | `Link.kt` | 서버 HTTP |
-| `ui/` | `HyunView.kt` | 차·폰 화면 · 카드(목록·표지 격자·소개) · 캐릭터 |
+| `ui/` | `ScreenData.kt` · `HyunView.kt` · `skin/` | 화면 4층(사용자 11-09 — 아래 §화면 층) — 데이터 `ScreenData`(HyunView가 `by model`로 내보냄) · 배치 `HyunView.draw*` · UI `skin/Kit` · 스킨 정의 `skin/Skin`(JSON) |
 | `phone/` | `Desk.kt` · `QuickActivity.kt` · `PhoneMode.kt` | 폰 전용 부품 |
+
+### 화면 층 — 데이터 · 배치 · UI · 글꼴 (사용자 11-09 "칼리·댄이 각자 스킨을 만들 수 있게")
+
+| 층 | 정본 | 누가 바꾸나 |
+|---|---|---|
+| 데이터 | `ui/ScreenData.kt`(`interface ScreenData` + `ScreenModel`) — 목적지·회전·말·표·기분·말풍선 기록 | 코어·기능(`view.dest = …` 그대로 — HyunView가 `ScreenData by model`). **화면은 읽기만** — 누르기(카드 닫기 `onCardClose` · 다시 열기 `onRecentCard` · 모드 · 스킨 · 캐릭터)는 `on*` 콜백 → 코어·기능이 바꾼다 · 화면에 보일 글(물어볼 거리 `hints` 등)도 데이터 |
+| 배치 | `ui/HyunView.kt` `drawCar`(정보형) · `drawChat`(대화형) · `drawCarNarrow`(반반) · `drawPhone` — 위치는 스킨 layout 값 `L.charRight`·`infoCharW`·`chatCharW` | 코드 |
+| UI | `ui/skin/Kit.kt` — `text`·`wrap`·`panel`(그림자→채우기→테두리)·`bubble`(꼬리)·`circle`·`background`(망점·모눈)·`burst`(별 터짐)·`sticker`(효과음)·`title`(이름표 기울기) | 스킨 colors·style |
+| 글꼴 | 스킨 fonts(`asset:skins/fonts/…ttf` · 시스템 이름) | 스킨 |
+
+- **스킨 = `android/hyun/src/main/assets/skins/<id>.json` 한 파일**(코드 없이) — 넣으면 목록에 뜬다(`Skins.all`, 기본이 맨 앞) · 빈칸은 기본 스킨 값 · 깨지면 그 스킨만 빠지고 `skin|bad|…` · 만드는 법·칸 설명 정본 = `assets/skins/README.md`
+- 말풍선·정보형 배치도 스킨 칸: `style.bubbleShape` round | comic(`Kit.balloon` · HyunView `balloonText`·`comicTalk`) · `layout.answerAt` main | character(정보형 답을 캐릭터 칸 말풍선으로, 정보 칸은 `infoBoard`)
+- 지금 스킨: `basic`(11-08까지의 어두운 화면 그대로) · `nash`(내쉬 웹툰 — 크림 망점 바탕 · 잉크 테두리 + 딱딱한 그림자 · 꼬리 말풍선 · 캐릭터 뒤 별 터짐 · 효과음 스티커 · 캐릭터 오른쪽 · 글꼴 검은고딕·주아 OFL)
+- 고르기 = `SkinFeature` — 왼쪽 아래 팔레트 버튼(다음 스킨) · 말 "내쉬 스킨으로" · `--es skin nash` · 앱 설정 `skin` · 로그 `skin|nash|tap`. 폰(짭비서 흰 화면)은 스킨과 별개(`Skins.phone`)
+- 새 모양이 필요하면 `SkinStyle`에 칸 + `Kit`에서 읽기(배치 코드 그대로) · 주행 중 별 터짐·스티커는 배치(`charDeco`)가 끈다 — 안전 규칙은 스킨이 못 바꾼다
 
 ### 앱 기능 훅 (`core/Feature.kt`)
 

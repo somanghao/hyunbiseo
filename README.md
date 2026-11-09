@@ -2,7 +2,7 @@
 
 현대자동차그룹 차량용 앱 개발 공모전(2026) 출품작 「현비서」의 앱·서버·시험 코드입니다. Pleos Connect(AAOS 기반 인포테인먼트)에서 돌고, 운전자와 말로 대화하며 취향을 배우고, 내비 교통을 정찰해 먼저 알려 줍니다.
 
-> 이 저장소는 작업 저장소에서 `tools/export_hyunbiseo.py`로 떼어 낸 **사본**입니다(private). 고칠 땐 원본에서 고치고 다시 내보냅니다.
+> **이 저장소가 앱·서버·시험 코드의 정본입니다**(private, 2026-11-09~). 팀은 브랜치(`feat/<모듈>`)·PR로 작업합니다 — 규칙·명령·담당은 [`CLAUDE.md`](CLAUDE.md). `docs/*.md`(`docs/specs/` 빼고)는 작업 저장소(makecar-hy) 설계 문서의 사본입니다.
 
 ![휴게소 소개 — 왼쪽 사진 · 오른쪽 표](records/hyun-e2e/20261108-1740/shots/e03_1.jpg)
 
@@ -40,8 +40,31 @@
 - **취향** — 칸 10 누적(좋아함·싫어함·횟수) · 오래 안 나온 취향은 약하게 · 서버 정리 봇이 중간중간 대화를 다시 읽어 다듬음
 - **브리핑 · 정보 통로** — 시동 브리핑 순서 저장 · 날씨 · 뉴스 · 주식 · 환율 · 영화 · 웹툰 · 웹소설(키 없음)
 - **도착 추천** — 식사 시간에 곧 도착하면 취향 맞춤 식당 하나를 먼저 제안("응"이면 그리로 길 바꿈), 내리면 근처 3~5곳 카드(카카오 로컬 실시간 · 서버에 저장 안 함)
+- **화면 두 가지 · 스킨** — 대화형(큰 캐릭터 + 만화 말풍선) ↔ 정보형(정보가 메인 + 캐릭터 칸 말풍선) · 스킨 = 데이터 그대로 두고 배치·모양·글꼴만 바꾸는 JSON 한 파일(기본 · 내쉬 웹툰, 만드는 법 `android/hyun/src/main/assets/skins/README.md`) · 반반은 늘 [내비 | 현비서](내비가 덮거나 가려진 채 말하면 자동) · 구조 요약 `CLAUDE.md`
 - **화면** — 차 가로 2단 · 내비 판(캐릭터 오른쪽 정보창에 다음 회전 · 남은 거리) · 현비서 화면 지키기(내비 명령 뒤 내비 앱이 덮어도 다시 앞으로) · 반반 화면(내비와 나란히 = 네비 모드) · 목록 카드 · 표지 격자 · 소개 카드(왼쪽 사진 · 오른쪽 표, 사진 = 위키미디어 공용) · 캐릭터 3종
 - **Gleo Interface** — `ASK_HYUN` · `HYUN_STATUS` · `HYUN_QUIET` · 폰판 「짭비서」(대중교통·산책·업무중)
+
+## 캐릭터 · 이미지 에셋
+
+![현비서 대표 이미지](design_assets/hyun/hyun_hero_1920x1080.jpg)
+
+| 사람 비서(기본) | 빛 구슬 — 표정 | SD 비서 · 앱 아이콘 |
+|---|---|---|
+| <img src="design_assets/hyun/human/sec_a_main_portrait.png" height="220"> | <img src="design_assets/hyun/faces_dark/hyun_face_sheet_3d_ai.png" height="220"> | <img src="design_assets/hyun/human/sec_a_sd_expressions_sheet_6.png" height="150"><br><img src="design_assets/hyun/hyun_kakao_app_icon_secretary_128.png" height="64"> <img src="design_assets/hyun/hyun_kakao_app_icon_sd_128.png" height="64"> <img src="design_assets/hyun/hyun_kakao_app_icon_orb_128.png" height="64"> |
+
+[`design_assets/hyun/`](design_assets/hyun/) — 파일별 규격·용도는 [`README.md`](design_assets/hyun/README.md)
+
+| 폴더 | 내용 |
+|---|---|
+| `human/` | 사람 비서 — 포트레이트 · 전신 시안 2안 · 턴어라운드 4뷰 · 포즈 6 · SD 표정 6 · 위젯 |
+| `faces_dark/` · `faces_light/` | 빛 구슬 표정 12(어두운 유리 · 파스텔) |
+| `drive/` | 주행용 간소판(256 · 128) |
+| `layers/` | 레이어 분리(몸 · 오로라 · 하이라이트 · 눈 · 입 — 코드 애니메이션용) |
+| `accessories/` · `shop/` · `svg/` | 꾸미기 액세서리 6(3D · 착용 예시 · 벡터) · 상점 썸네일 |
+| `icons/` · 맨 위 | 앱 아이콘(적응형 · 통짜 · 카카오 128) · 스플래시 · 위젯 · 히어로 1920×1080 |
+| `sheets/` | 원본 마스터 시트(잘라 내기 전 — 히어로 · 구슬 · 사람 비서) |
+
+앱에 실제로 들어가는 캐릭터는 `android/hyun/src/main/assets/chars/`(구슬 8 · 사람 비서 12)입니다.
 
 ## 구조
 
@@ -50,14 +73,18 @@ android/hyun/…/hyun/ 앱(Kotlin) — 코어 + 기능 플러그인
   HyunActivity         껍데기(화면 · 생명주기)
   core/                Hyun(대화 엔진 — 듣기 · 말하기 · 두뇌 · 1초 루프) · Feature(기능 훅) · Fmt
   feature/             Registry(기능 목록) · Route(목적지 · 경유지) · Scout(경로 정찰 · 휴게소) · Gleo · Car(날씨 · 배터리 · 장시간) · Command(조용히 · 듣기 모드 · 캐릭터) · Phone(짭비서)
-  voice/ drive/ brain/ ui/ phone/   귀 · 입 · 말하기 스케줄러 / 내비 · 정찰 판정 · 남은 거리 · 눈 / 서버 HTTP / 화면 · 카드 · 캐릭터 / 폰 전용
+  voice/ drive/ brain/ ui/ phone/   귀 · 입 · 말하기 스케줄러 / 내비 · 정찰 판정 · 남은 거리 · 눈 · 홈 창 배치(HomeWindow) / 서버 HTTP / 화면 / 폰 전용
+  ui/                  ScreenData(데이터 — 화면은 읽기만) · HyunView(배치 — 대화형·정보형·반반) · skin/(Skin = JSON 스킨 · Kit = 판·말풍선·배경)
 server/hyun/         중계 서버(8790) — hyun_server.py(진입) · persona.md(캐릭터 · 말하기 규칙) · stt_server(Whisper, 8791)
   core/                설정(HYUN_DATA) · 저장 · inbox(말 ↔ 답) · HTTP · 자동 두뇌 워커
   brain/               prompt(규칙 · 답 형식 · 질문을 기능에서 모음) · cli(내 Claude 계정) · api(API 키)
   features/            route · traffic · cards · memory · taste · history · briefing · feeds(정보 통로 7) · search · restarea · phone · taste_refine(정리 봇) · login · testaudio
 tools/hyun_e2e/      E2E 시험(시나리오 → 에뮬 · 녹화 · 판정 · 보고서)  ·  tools/hyun_harness/ 질문 하네스
 records/hyun-e2e/    시험 기록
+design_assets/hyun/  이미지 에셋 전부(아래 §캐릭터 · 이미지 에셋)
 docs/                설계·실측 문서(작업 저장소 위키 사본 — [[이름]] 링크는 원본 위키 기준)
+docs/specs/          모듈 6 기능 명세 + 화면 구성도(정본 — 새 기능은 여기부터)
+.claude/             팀 공유 Claude Code 설정 — rules(경로별 규칙) · skills(new-feature · run-hyun) · agents(hyun-harness) · settings.json
 ```
 
 ## 실행(Windows · Pleos Connect Emulator v2.1)

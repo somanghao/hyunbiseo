@@ -1,0 +1,98 @@
+{
+  "id": "nash",
+  "name": "내쉬 웹툰",
+  "author": "내쉬",
+  "colors": {
+    "bg": "#FFF3D6",
+    "card": "#FFFFFF",
+    "card2": "#FFE9A8",
+    "fg": "#16120E",
+    "sub": "#3A322A",
+    "muted": "#7A6C58",
+    "faint": "#A89A84",
+    "line": "#16120E",
+    "accent": "#FF4F79",
+    "onAccent": "#FFFFFF",
+    "ok": "#139447",
+    "warn": "#E8590C",
+    "track": "#EADBB8",
+    "divider": "#2216120E",
+    "tbtBg": "#16120E",
+    "tbtFg": "#FFFFFF",
+    "tbtSub": "#EDE5D6",
+    "tbtMuted": "#B8AD9A",
+    "near": "#FFD23F",
+    "bubbleMe": "#FFE14D",
+    "bubbleMeText": "#16120E",
+    "bubbleHyun": "#FFFFFF",
+    "moods": {
+      "calm": [
+        "#14B8C8",
+        "#4D7CFE"
+      ],
+      "happy": [
+        "#FFB800",
+        "#FF7A3D"
+      ],
+      "fun": [
+        "#A86CFF",
+        "#FF5FB0"
+      ],
+      "care": [
+        "#FF8A3D",
+        "#FF4F79"
+      ],
+      "alert": [
+        "#FF3030",
+        "#FF8A00"
+      ]
+    },
+    "prio": [
+      "#FF3030",
+      "#FF8A00",
+      "#2F6BFF",
+      "#8B4DFF"
+    ]
+  },
+  "fonts": {
+    "title": "asset:skins/fonts/BlackHanSans-Regular.ttf",
+    "body": "asset:skins/fonts/Jua-Regular.ttf",
+    "bold": "asset:skins/fonts/Jua-Regular.ttf",
+    "medium": "asset:skins/fonts/Jua-Regular.ttf",
+    "light": "asset:skins/fonts/Jua-Regular.ttf"
+  },
+  "layout": {
+    "charSide": "right",
+    "infoCharW": 0.26,
+    "chatCharW": 0.4,
+    "bubbleMaxW": 0.86,
+    "answerAt": "character"
+  },
+  "style": {
+    "radius": 0.7,
+    "border": 0.0045,
+    "borderColor": "#16120E",
+    "shadow": [
+      0.006,
+      0.007
+    ],
+    "shadowColor": "#16120E",
+    "pattern": "halftone",
+    "patternColor": "#F2D9A0",
+    "bubbleTail": true,
+    "burst": true,
+    "burstColor": "#FFE14D",
+    "stickers": {
+      "listening": "쫑긋!",
+      "thinking": "골똘…",
+      "speaking": "재잘재잘!",
+      "happy": "헤헤!",
+      "fun": "우히히!",
+      "care": "토닥토닥"
+    },
+    "stickerColor": "#FF4F79",
+    "stickerText": "#FFFFFF",
+    "titleTilt": -3,
+    "bubbleShape": "comic"
+  }
+}

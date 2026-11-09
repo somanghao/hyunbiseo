@@ -48,12 +48,15 @@ class Navi(ctx: Context, private val main: Handler, private val log: (String) ->
      *  코어가 이 시각 직후 가려지면 현비서를 다시 앞으로 → [io.github.somanghao.makecar.hyun.core.Hyun.onStop] */
     @Volatile var lastCommandAt = 0L
         private set
+    /** 마지막 명령 이름(COMMANDS) — 안내 끝(cancelRoute)과 새 경로 전 onRouteCancelled를 가른다 */
+    @Volatile var lastCommand = ""
+        private set
     /** 명령 직전에 부른다(main) — 코어가 '보이지 않는 한순간 화면'으로 10초 유예를 만든다 */
     var beforeCommand: (String) -> Unit = {}
 
     /** 내비 요청 — 예외는 로그만(`navi|<what>|FAIL|…`). 명령 이름은 [COMMANDS] — 새 명령을 부르면 거기에도 */
     fun call(what: String, f: NaviHelper.() -> Unit) {
-        if (what in COMMANDS) { runCatching { beforeCommand(what) }; lastCommandAt = SystemClock.elapsedRealtime() }
+        if (what in COMMANDS) { runCatching { beforeCommand(what) }; lastCommandAt = SystemClock.elapsedRealtime(); lastCommand = what }
         runCatching { helper.f() }.onFailure { log("navi|$what|FAIL|${it.javaClass.simpleName} ${it.message}") }
     }
 
