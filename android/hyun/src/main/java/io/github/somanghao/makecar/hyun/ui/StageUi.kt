@@ -45,22 +45,28 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private fun font(w: String): Typeface = fonts.getOrPut(w) {
         runCatching { Typeface.createFromAsset(v.context.assets, "fonts/Pretendard-$w.otf") }.getOrElse { Typeface.create("sans-serif", if (w == "Bold" || w == "SemiBold") Typeface.BOLD else Typeface.NORMAL) }
     }
-    private val bold get() = if (k.id == "pleos") font("Medium") else themeHead()   // unslop: 굵기 400~500 · 테마는 테마 글꼴
-    private val semi get() = font("SemiBold")
-    private val medium get() = if (k.id == "arcade" || k.id == "hanok") themeBody() else font("Medium")
-    private val body get() = themeBody()
+    private val bold get() = if (skinned) sk.fonts.title else if (k.id == "pleos") font("Medium") else themeHead()   // unslop: 굵기 400~500 · 테마는 테마 글꼴 · 스킨은 스킨 글꼴
+    private val semi get() = if (skinned) sk.fonts.bold else font("SemiBold")
+    private val medium get() = if (skinned) sk.fonts.medium else if (k.id == "arcade" || k.id == "hanok") themeBody() else font("Medium")
+    private val body get() = if (skinned) sk.fonts.body else themeBody()
+
+    // ---------- 스킨(업스트림 ui/skin — assets/skins/<id>.json) = 그림체 한 벌. basic 이면 지금 모습(Pleos + 테마 9) 그대로 ----------
+    //  스킨이 basic 이 아니면: 색·글꼴·카드 모양(잉크 테두리·딱딱한 그림자)·배경 무늬·말풍선 꼬리·스티커·캐릭터 쪽을 스킨이 정하고, 테마는 강조색만 얹는다(기본 테마면 스킨 강조색)
+    private val sk get() = v.skin
+    private val skinned get() = v.skin.id != "basic"
+    private fun lum(c0: Int) = (0.299 * ((c0 shr 16) and 0xFF) + 0.587 * ((c0 shr 8) and 0xFF) + 0.114 * (c0 and 0xFF)) / 255.0
 
     // ---------- 색 토큰(스펙) — 밝은 카드 / 어두운 카드 ----------
     private var k: Concept = Concept.ALL[0]
     private var darkUi = false
-    private val BG get() = if (darkUi) 0xFF0E1116.toInt() else 0xFFF4F6F9.toInt()
-    private val SURF get() = if (darkUi) 0xFF171B22.toInt() else 0xFFFFFFFF.toInt()
-    private val SURF2 get() = if (darkUi) 0xFF1F2530.toInt() else 0xFFEEF1F5.toInt()
-    private val FG get() = if (darkUi) 0xFFF2F4F7.toInt() else 0xFF111827.toInt()
-    private val MUTED get() = if (darkUi) 0xFF9AA3B2.toInt() else 0xFF5B6472.toInt()
-    private val FAINT get() = if (darkUi) 0xFF6B7482.toInt() else 0xFF8C95A3.toInt()
-    private val LINE get() = if (darkUi) 0xFF2A313C.toInt() else 0xFFE3E7ED.toInt()
-    private val ACC get() = if (k.id == "pleos") (if (darkUi) 0xFF4C8DFF.toInt() else 0xFF1E6BFF.toInt()) else k.accent
+    private val BG get() = if (skinned) sk.colors.bg else if (darkUi) 0xFF0E1116.toInt() else 0xFFF4F6F9.toInt()
+    private val SURF get() = if (skinned) sk.colors.card else if (darkUi) 0xFF171B22.toInt() else 0xFFFFFFFF.toInt()
+    private val SURF2 get() = if (skinned) sk.colors.card2 else if (darkUi) 0xFF1F2530.toInt() else 0xFFEEF1F5.toInt()
+    private val FG get() = if (skinned) sk.colors.fg else if (darkUi) 0xFFF2F4F7.toInt() else 0xFF111827.toInt()
+    private val MUTED get() = if (skinned) sk.colors.muted else if (darkUi) 0xFF9AA3B2.toInt() else 0xFF5B6472.toInt()
+    private val FAINT get() = if (skinned) sk.colors.faint else if (darkUi) 0xFF6B7482.toInt() else 0xFF8C95A3.toInt()
+    private val LINE get() = if (skinned) sk.colors.line else if (darkUi) 0xFF2A313C.toInt() else 0xFFE3E7ED.toInt()
+    private val ACC get() = if (skinned) (if (k.id == "pleos") sk.colors.accent else k.accent) else if (k.id == "pleos") (if (darkUi) 0xFF4C8DFF.toInt() else 0xFF1E6BFF.toInt()) else k.accent
     private val ACC_SOFT get() = if (darkUi) Glass.a(ACC, 46) else Glass.a(ACC, 28)
     private val GOOD = 0xFF12B886.toInt()
     private val WARN = 0xFFF59F00.toInt()
@@ -110,10 +116,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         m.night = (v.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         k = m.look()
         val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        darkUi = if (k.id == "pleos") (m.nightOverride ?: (m.night || hr >= 20 || hr < 6)) else cardDark()   // 야간 주행이 기본 — 밤 시간엔 어두운 램프
+        darkUi = if (skinned) lum(sk.colors.bg) < 0.45 else if (k.id == "pleos") (m.nightOverride ?: (m.night || hr >= 20 || hr < 6)) else cardDark()   // 야간 주행이 기본 — 밤 시간엔 어두운 램프
         loadArt(k)
         val a = art
-        if (a != null && artKey.startsWith("room_${k.room}")) drawArt(c, w, h, a) else if (m.overlay == "deco") ambient(c, RectF(0f, 0f, w, h), k, darkUi) else { scene(c, w, h, t, m.sit == Sit.DRIVE); if (m.overlay != "deco") motif(c, w, h, t, m.sit == Sit.DRIVE) }
+        if (skinned) skinBg(c, w, h) else if (a != null && artKey.startsWith("room_${k.room}")) drawArt(c, w, h, a) else if (m.overlay == "deco") ambient(c, RectF(0f, 0f, w, h), k, darkUi) else { scene(c, w, h, t, m.sit == Sit.DRIVE); if (m.overlay != "deco") motif(c, w, h, t, m.sit == Sit.DRIVE) }
         when (m.overlay) {
             "onboard" -> { scrim(c, w, h, 0.55f); onboard(c, w, h, t); return true }
             "deco" -> { shop(c, w, h, t); return true }
@@ -143,13 +149,14 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         character(c, cx, feet, chH, t, face, alive = !driving && nk < 0.5f, small = nk > 0.5f)
         if (!intro) {
             if (nk > 0.5f) speech(c, cx + chH * 0.6f, 16 * U + chH * 0.42f, w * 0.5f, navLine())
-            else if (mirror) speech(c, zoneR + 64 * U, feet - chH - 56 * U, w - zoneR - 128 * U)
-            else speech(c, 64 * U, feet - chH - 56 * U, zoneL - 128 * U)
+            else if (mirror) speech(c, zoneR + 64 * U, feet - chH - 56 * U, w - zoneR - 128 * U, tailX = cx)
+            else speech(c, 64 * U, feet - chH - 56 * U, zoneL - 128 * U, tailX = cx)
+            if (skinned && !glance() && nk < 0.5f) sticker(c, cx, feet, chH, face)
         }
         if (showLine && nk < 0.01f) { if (mirror) timeline(c, zoneR + 64 * U, w - 160 * U, h - 100 * U) else timeline(c, 64 * U, zoneL - 64 * U, h - 100 * U) }
         if (!glance()) topRight(c, w)   // 운전 중엔 누르는 것 없음(별 · 테마 · 설정 숨김)
         if (intro) {   // 테마 인트로
-            themeIntro(c, w, h, ((now - m.sitAt) / 1800f).coerceIn(0f, 1f), false)
+            if (!skinned) themeIntro(c, w, h, ((now - m.sitAt) / 1800f).coerceIn(0f, 1f), false)
         } else {
             if (nk > 0.01f) {   // 내비 주화면 — 아래에서 올라오며 나타남
                 if (nk < 1f) c.saveLayerAlpha(0f, 0f, w, h, (nk * 255).toInt()) else c.save()
@@ -178,9 +185,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             }
             if (glance()) micHint(c, w, h) else micButton(c, w, h)
         }
-        if (outroX >= 0f) themeIntro(c, w, h, outroX, true)
+        if (outroX >= 0f && !skinned) themeIntro(c, w, h, outroX, true)
         if (m.unlockAt > 0 && now - m.unlockAt < 1200) doors(c, w, h, (now - m.unlockAt) / 1200f)
-        crt(c, w, h)
+        if (!skinned) crt(c, w, h)
         when (m.overlay) { "settings" -> settings(c, w, h); "debug" -> debug(c, w, h) }
         toast(c, w, h)
         return true
@@ -217,6 +224,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     /** 카드 — 그림 위면 뒤를 흐리게 비친 흰 72%(어두운 컨셉은 면 82%) · 라이트 그림자 0 8 24 · 1px 선 */
     private fun glassCard(c: Canvas, r: RectF, rad: Float, tint: Int? = null) {
         p.shader = null; p.style = Paint.Style.FILL
+        if (skinned) { inkCard(c, r, rad, tint); return }
         if (r.height() > 70 * U && themeCard(c, r, rad, tint)) return
         val sp = Path().apply { addRoundRect(r, rad, rad, Path.Direction.CW) }
         if (!darkUi) { p.color = SURF; p.setShadowLayer(24 * U, 0f, 8 * U, 0x14111827); c.drawPath(sp, p); p.clearShadowLayer() }
@@ -271,7 +279,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
         if (ga > 0) { p.shader = RadialGradient(cx, cy, s * 0.62f, Glass.a(gc, ga), Glass.a(gc, 0), Shader.TileMode.CLAMP); c.drawCircle(cx, cy, s * 0.62f, p); p.shader = null }
         val bot = v.asset("bot_$face.webp")
-        if (m.overlay != "deco" && !small) aroundCharacter(c, cx, cy, s, t, alive, bot)
+        if (m.overlay != "deco" && !small && !skinned) aroundCharacter(c, cx, cy, s, t, alive, bot)
         accParts(c, cx, cy, s, face, back = true)   // 헬멧 뒤로 가는 조각(머리띠 · 반대쪽 헤드폰 · 넥타이)
         bot?.let { bm -> p.isFilterBitmap = true; p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p) }
         accParts(c, cx, cy, s, face, back = false)
@@ -320,7 +328,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     // ======================================================================
     private fun topRight(c: Canvas, w: Float) {
         val h = 48 * U; val cy = 48 * U
-        if (k.id == "arcade") {   // 8비트 점수판
+        if (k.id == "arcade" && !skinned) {   // 8비트 점수판
             val g = tf("Galmuri11.ttf")
             text(c, "SCORE %06d".format(m.points), w - 48 * U, cy + 6 * U, 26 * U, 0xFFFFE14D.toInt(), g, Paint.Align.RIGHT)
             text(c, "HI %06d".format(max(m.points, 1200)), w - 48 * U, cy + 36 * U, 18 * U, 0xFF00F0FF.toInt(), g, Paint.Align.RIGHT)
@@ -478,7 +486,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     // ---------- 캐릭터 말풍선(짧게, 타자 치듯) ----------
     private var bubbleText = ""; private var bubbleAt = 0L
-    private fun speech(c: Canvas, cx: Float, headTop: Float, maxW: Float, over: String? = null) {
+    private fun speech(c: Canvas, cx: Float, headTop: Float, maxW: Float, over: String? = null, tailX: Float? = null) {
         val full = when {
             over != null && v.mode == HyunView.Mode.READY -> over
             m.view != null && v.mode == HyunView.Mode.READY -> viewLine(m.view!!)
@@ -497,6 +505,22 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         p.textSize = fs; p.typeface = medium
         val lines = splitLines(adult(full), maxW).take(2)
         var y = headTop
+        if (skinned && sk.style.bubbleTail) {   // 스킨 말풍선 — 잉크 테두리 + 캐릭터 쪽 꼬리
+            p.textSize = fs; p.typeface = medium
+            val tw = lines.maxOfOrNull { p.measureText(it) } ?: 0f
+            val br = RectF(cx, y - fs * 1.25f, cx + tw + 36 * U, y + (lines.size - 1) * fs * 1.4f + fs * 0.6f)
+            val tx = (tailX ?: br.centerX()).coerceIn(br.left + 28 * U, br.right - 28 * U)
+            val bw = sk.style.border * S * 100
+            path.reset(); path.addRoundRect(br, 22 * U, 22 * U, Path.Direction.CW)
+            val tail = Path().apply { moveTo(tx - 14 * U, br.bottom - 2 * U); lineTo(tx + 12 * U, br.bottom - 2 * U); lineTo(tx - 4 * U, br.bottom + 30 * U); close() }
+            path.op(tail, Path.Op.UNION)
+            if (sk.style.shadowX > 0f) { c.save(); c.translate(sk.style.shadowX * S * 60, sk.style.shadowY * S * 60); p.color = sk.style.shadowColor; c.drawPath(path, p); c.restore() }
+            p.color = sk.colors.bubbleHyun; c.drawPath(path, p)
+            if (bw > 0f) { p.style = Paint.Style.STROKE; p.strokeWidth = bw; p.color = sk.style.borderColor; c.drawPath(path, p); p.style = Paint.Style.FILL }
+            var left2 = n
+            for (ln in lines) { val part = ln.take(left2.coerceAtLeast(0)); left2 -= ln.length; text(c, part, cx + 18 * U, y, fs, sk.colors.fg, medium); y += fs * 1.4f }
+            return
+        }
         p.color = ACC; c.drawRect(cx, y - fs * 0.9f, cx + 3 * U, y + (lines.size - 1) * fs * 1.4f + fs * 0.25f, p)
         var left = n
         for (ln in lines) { val part = ln.take(left.coerceAtLeast(0)); left -= ln.length
@@ -610,7 +634,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
     }
 
-    private val DOCK = listOf("brief" to "브리핑", "todo" to "할 일", "car" to "내 차", "deco" to "테마", "log" to "기록")
+    private val DOCK = listOf("brief" to "브리핑", "todo" to "할 일", "car" to "내 차", "deco" to "테마", "skin" to "스킨", "log" to "기록")
     private fun dock(c: Canvas, w: Float, h: Float) {
         val dh = 64 * U; val iw = 128 * U
         val r = RectF(zoneL, h - 48 * U - dh, zoneL + iw * DOCK.size, h - 48 * U)
@@ -619,10 +643,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             val b = RectF(r.left + i * iw, r.top, r.left + (i + 1) * iw, r.bottom)
             val on = m.overlay == key
             if (on) { p.color = SURF2; c.drawRoundRect(RectF(b.left + 6 * U, b.top + 6 * U, b.right - 6 * U, b.bottom - 6 * U), 12 * U, 12 * U, p) }
-            val ic = when (key) { "brief" -> "news"; "todo" -> "bag"; "car" -> "battery"; "deco" -> "star"; else -> "chart" }
+            val ic = when (key) { "brief" -> "news"; "todo" -> "bag"; "car" -> "battery"; "deco" -> "star"; "skin" -> "palette"; else -> "chart" }
             icon(c, ic, b.left + 34 * U, b.centerY(), 22 * U, if (on) FG else MUTED)
             text(c, lab, b.left + 54 * U, b.centerY() + 8 * U, 22 * U, if (on) FG else MUTED, medium, maxW = iw - 60 * U)
-            hits += b to (if (key == "deco") "deco" else "screen:$key")
+            hits += b to (when (key) { "deco" -> "deco"; "skin" -> "skintab"; else -> "screen:$key" })
         }
     }
 
@@ -778,7 +802,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val pr2 = RectF(x1 - 132 * U - pw, panel.top + 28 * U, x1 - 132 * U, panel.top + 84 * U)
         p.color = Glass.a(WARN, 36); c.drawRoundRect(pr2, 28 * U, 28 * U, p); icon(c, "star", pr2.left + 26 * U, pr2.centerY(), 24 * U, WARN); text(c, "${m.points}", pr2.left + 46 * U, pr2.centerY() + 9 * U, 24 * U, FG, bold)
         var tx = x0; val ty = panel.top + 160 * U
-        for ((key, lab) in listOf("concept" to "테마", "decor" to "꾸미기 소품", "face" to "표정")) {
+        for ((key, lab) in listOf("skin" to "스킨", "concept" to "테마", "decor" to "꾸미기 소품", "face" to "표정")) {
             val on = m.decoTab == key
             p.textSize = 24 * U; p.typeface = semi
             val r = RectF(tx, ty - 26 * U, tx + p.measureText(lab) + 48 * U, ty + 26 * U)
@@ -787,7 +811,31 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             hits += r to "tab:$key"; tx = r.right + 12 * U
         }
         val gy = ty + 48 * U; val g = 16 * U
-        if (m.decoTab == "concept") {
+        if (m.decoTab == "skin") {   // 스킨 = 그림체 한 벌(assets/skins/*.json) — 무료, 누르면 바로 바뀜
+            val all = io.github.somanghao.makecar.hyun.ui.skin.Skins.all(v.context)
+            val cols = 2; val cw = (x1 - x0 - g) / cols; val ch = min(300 * U, panel.bottom - 40 * U - gy)
+            all.forEachIndexed { i, sn ->
+                val r = RectF(x0 + (i % cols) * (cw + g), gy + (i / cols) * (ch + g), 0f, 0f).also { it.right = it.left + cw; it.bottom = it.top + ch }
+                val using = sn.id == sk.id
+                val th = RectF(r.left, r.top, r.right, r.bottom - 56 * U)
+                c.save(); c.clipPath(Path().apply { addRoundRect(th, 18 * U, 18 * U, Path.Direction.CW) })
+                p.color = sn.colors.bg; c.drawRect(th, p)
+                if (sn.style.pattern == "halftone") { p.color = sn.style.patternColor; var yy = th.top + 8 * U; var row2 = 0; while (yy < th.bottom) { var xx = th.left + (if (row2 % 2 == 0) 8 * U else 18 * U); while (xx < th.right) { c.drawCircle(xx, yy, 3 * U, p); xx += 20 * U }; yy += 18 * U; row2++ } }
+                val cr = RectF(th.left + 28 * U, th.top + 28 * U, th.right - 28 * U, th.bottom - 28 * U)
+                val bw = sn.style.border * S * 100
+                if (sn.style.shadowX > 0f) { p.color = sn.style.shadowColor; c.drawRoundRect(RectF(cr).apply { offset(sn.style.shadowX * S * 60, sn.style.shadowY * S * 60) }, 16 * U, 16 * U, p) }
+                p.color = sn.colors.card; c.drawRoundRect(cr, 16 * U, 16 * U, p)
+                if (bw > 0f) { p.style = Paint.Style.STROKE; p.strokeWidth = bw; p.color = sn.style.borderColor; c.drawRoundRect(cr, 16 * U, 16 * U, p); p.style = Paint.Style.FILL }
+                text(c, "안녕하세요", cr.left + 24 * U, cr.top + 60 * U, 40 * U, sn.colors.fg, sn.fonts.title)
+                p.color = sn.colors.accent; c.drawRoundRect(RectF(cr.left + 24 * U, cr.bottom - 64 * U, cr.left + 184 * U, cr.bottom - 20 * U), 12 * U, 12 * U, p)
+                text(c, "현비서", cr.left + 104 * U, cr.bottom - 34 * U, 22 * U, sn.colors.onAccent, sn.fonts.bold, Paint.Align.CENTER)
+                c.restore()
+                p.style = Paint.Style.STROKE; p.strokeWidth = if (using) 4 * U else max(1f, U); p.color = if (using) ACC else LINE; c.drawRoundRect(th, 18 * U, 18 * U, p); p.style = Paint.Style.FILL
+                text(c, sn.name + (if (sn.author.isNotBlank()) " · ${sn.author}" else ""), r.left + 4 * U, r.bottom - 16 * U, 24 * U, FG, semi, maxW = cw * 0.7f)
+                text(c, if (using) "사용 중" else "무료 · 누르면 바뀜", r.right - 4 * U, r.bottom - 16 * U, 20 * U, if (using) ACC else MUTED, semi, Paint.Align.RIGHT)
+                hits += r to "skin:${sn.id}"
+            }
+        } else if (m.decoTab == "concept") {
             val cols = 3; val rows = (Concept.ALL.size + cols - 1) / cols
             val cw = (x1 - x0 - g * (cols - 1)) / cols; val ch = (panel.bottom - 40 * U - gy - g * (rows - 1)) / rows
             Concept.ALL.forEachIndexed { i, cc ->
@@ -1511,6 +1559,43 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
     }
 
+    // ---------- 스킨 그리기 ----------
+    /** 스킨 바탕 — 단색 + 무늬(halftone 점 · grid 선). 주행 중에도 정지된 무늬라 그대로 */
+    private fun skinBg(c: Canvas, w: Float, h: Float) {
+        p.shader = null; p.style = Paint.Style.FILL; p.color = sk.colors.bg; c.drawRect(0f, 0f, w, h, p)
+        sceneDark = darkUi
+        when (sk.style.pattern) {
+            "halftone" -> { p.color = sk.style.patternColor; var y = 10 * U; var row = 0
+                while (y < h) { val r = 1.4f * U + 3.2f * U * (y / h); var x = if (row % 2 == 0) 10 * U else 24 * U; while (x < w) { c.drawCircle(x, y, r, p); x += 28 * U }; y += 24 * U; row++ } }
+            "grid" -> { p.color = sk.style.patternColor; var x = 0f; while (x < w) { c.drawRect(x, 0f, x + U, h, p); x += 48 * U }; var y = 0f; while (y < h) { c.drawRect(0f, y, w, y + U, p); y += 48 * U } }
+        }
+    }
+    /** 스킨 카드 — 딱딱한 그림자 + 면 + 잉크 테두리(스킨 style) */
+    private fun inkCard(c: Canvas, r: RectF, rad0: Float, tint: Int?) {
+        val st = sk.style; val rad = rad0 * st.radius; val bw = st.border * S * 100
+        p.shader = null; p.style = Paint.Style.FILL
+        if (st.shadowX > 0f || st.shadowY > 0f) { p.color = st.shadowColor; c.drawRoundRect(RectF(r).apply { offset(st.shadowX * S * 100, st.shadowY * S * 100) }, rad, rad, p) }
+        p.color = SURF; c.drawRoundRect(r, rad, rad, p)
+        tint?.let { p.color = Glass.a(it, 40); c.drawRoundRect(r, rad, rad, p) }
+        if (bw > 0f) { p.style = Paint.Style.STROKE; p.strokeWidth = bw; p.color = st.borderColor; c.drawRoundRect(r, rad, rad, p); p.style = Paint.Style.FILL }
+    }
+    /** 스킨 스티커(효과음 글) + 별 터짐 — 듣기·생각·말하기·기쁨일 때만, 운전 중엔 그리지 않는다(부르는 쪽에서 막음) */
+    private fun sticker(c: Canvas, cx: Float, feet: Float, chH: Float, face: String) {
+        val key = when (v.mode) { HyunView.Mode.LISTENING -> "listening"; HyunView.Mode.THINKING -> "thinking"; HyunView.Mode.SPEAKING -> "speaking"; else -> if (face == "happy" || face == "cheer") "happy" else null } ?: return
+        val txt = sk.style.stickers[key] ?: return
+        val sx = cx + chH * (if (mirror) -0.55f else 0.55f); val sy = feet - chH * 0.92f
+        if (sk.style.burst) { p.color = sk.style.burstColor; path.reset()
+            for (i in 0 until 16) { val a2 = Math.toRadians(i * 22.5); val rr = if (i % 2 == 0) 64 * U else 40 * U; val x = sx + (rr * Math.cos(a2)).toFloat(); val y = sy + (rr * Math.sin(a2)).toFloat(); if (i == 0) path.moveTo(x, y) else path.lineTo(x, y) }
+            path.close(); c.drawPath(path, p) }
+        c.save(); c.rotate(-8f, sx, sy)
+        p.textSize = 26 * U; p.typeface = sk.fonts.title; val tw = p.measureText(txt)
+        val r = RectF(sx - tw / 2 - 16 * U, sy - 24 * U, sx + tw / 2 + 16 * U, sy + 22 * U)
+        p.color = sk.style.stickerColor; c.drawRoundRect(r, 12 * U, 12 * U, p)
+        val bw = sk.style.border * S * 100; if (bw > 0f) { p.style = Paint.Style.STROKE; p.strokeWidth = bw; p.color = sk.style.borderColor; c.drawRoundRect(r, 12 * U, 12 * U, p); p.style = Paint.Style.FILL }
+        text(c, txt, sx, sy + 9 * U, 26 * U, sk.style.stickerText, sk.fonts.title, Paint.Align.CENTER)
+        c.restore()
+    }
+
     // 예전 코드(온보딩·설정) 호환
     private fun gpill(c: Canvas, s: String, x: Float, cy: Float, h: Float, tint: Int?, size: Float, action: String?): Float {
         p.textSize = size; p.typeface = medium
@@ -1684,8 +1769,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     /** 테마 본문 글꼴 — 아케이드·한옥만 본문까지 바꾼다(가독성) */
     private fun themeBody(): Typeface = when (k.id) { "arcade" -> tf("Galmuri11.ttf"); "hanok" -> tf("GowunBatang-Regular.ttf"); else -> font("Regular") }
     /** 테마 제목 크기 배율 — 손글씨·픽셀은 크기감이 달라 보정 */
-    private fun headScale() = when (k.id) { "cafe" -> 1.25f; "arcade" -> 0.78f; "neon" -> 0.95f; "space" -> 1.05f; else -> 1f }
-    private val mirror get() = k.id == "cafe"   // 카페: 메뉴판(카드)이 왼쪽, 바리스타(캐릭터)가 오른쪽
+    private fun headScale() = if (skinned) 1f else when (k.id) { "cafe" -> 1.25f; "arcade" -> 0.78f; "neon" -> 0.95f; "space" -> 1.05f; else -> 1f }
+    private val mirror get() = if (skinned) sk.layout.charRight else k.id == "cafe"   // 카페: 메뉴판(카드)이 왼쪽, 바리스타(캐릭터)가 오른쪽
 
     // 테마 카드 위 글자색(카드 면이 어두운지)
     private fun cardDark() = when (k.id) { "pleos" -> darkUi; "hanok", "ocean" -> false; else -> true }
@@ -2019,7 +2104,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         p.shader = null; p.style = Paint.Style.FILL
         val fs = min(fsMax, r.height() * 0.42f)
         var tc = FG; var face = medium; var size = fs
-        when (k.id) {
+        when (if (skinned) "skin" else k.id) {
             "arcade" -> { if (primary) { p.color = 0xFFFF4FD8.toInt(); c.drawRect(r.left + 5 * U, r.top + 5 * U, r.right + 5 * U, r.bottom + 5 * U, p); p.color = 0xFF00F0FF.toInt(); c.drawRect(r, p); tc = 0xFF0D0918.toInt() }
                 else { p.style = Paint.Style.STROKE; p.strokeWidth = 2 * U; p.color = 0xFF00F0FF.toInt(); c.drawRect(r, p); p.style = Paint.Style.FILL; tc = 0xFF00F0FF.toInt() }; face = tf("Galmuri11.ttf"); size = fs * 0.85f }
             "cafe" -> { p.style = Paint.Style.STROKE; p.strokeWidth = 2.4f * U; p.color = 0xFFEFEDE4.toInt(); c.drawRoundRect(r, 8 * U, 8 * U, p); p.style = Paint.Style.FILL
@@ -2032,6 +2117,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 tc = if (primary) Color.WHITE else 0xFF0E5C86.toInt(); face = tf("Jua-Regular.ttf") }
             "space" -> { p.style = Paint.Style.STROKE; p.strokeWidth = 1.6f * U; p.color = 0xFF7DF9FF.toInt(); c.drawRoundRect(r, 4 * U, 4 * U, p); p.style = Paint.Style.FILL; if (primary) { p.color = 0x227DF9FF; c.drawRoundRect(r, 4 * U, 4 * U, p) }; tc = 0xFF7DF9FF.toInt(); face = tf("DoHyeon-Regular.ttf"); size = fs * 1.05f }
             "glass" -> { p.color = if (primary) 0x55FFFFFF else 0x22FFFFFF; c.drawRoundRect(r, r.height() / 2, r.height() / 2, p); p.style = Paint.Style.STROKE; p.strokeWidth = 1.2f * U; p.color = 0x88FFFFFF.toInt(); c.drawRoundRect(r, r.height() / 2, r.height() / 2, p); p.style = Paint.Style.FILL; tc = Color.WHITE }
+            "skin" -> { val rad = min(12 * U * sk.style.radius + 2 * U, r.height() / 2); val bw = sk.style.border * S * 100
+                if (sk.style.shadowX > 0f) { p.color = sk.style.shadowColor; c.drawRoundRect(RectF(r).apply { offset(sk.style.shadowX * S * 60, sk.style.shadowY * S * 60) }, rad, rad, p) }
+                p.color = if (primary) ACC else SURF2; c.drawRoundRect(r, rad, rad, p); tc = if (primary) sk.colors.onAccent else FG
+                if (bw > 0f) { p.style = Paint.Style.STROKE; p.strokeWidth = bw; p.color = sk.style.borderColor; c.drawRoundRect(r, rad, rad, p); p.style = Paint.Style.FILL } }
             else -> { val rad = min(12 * U, r.height() / 2)
                 if (primary) { p.color = if (darkUi) 0xFFEDEDED.toInt() else ACC; c.drawRoundRect(r, rad, rad, p); tc = if (darkUi) 0xFF141415.toInt() else Color.WHITE }
                 else { p.color = SURF2; c.drawRoundRect(r, rad, rad, p) } }
@@ -2086,6 +2175,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             "gear" -> { c.drawCircle(cx, cy, h * 0.32f, q); for (i in 0 until 8) { val a2 = Math.toRadians(i * 45.0); c.drawLine(cx + (h * 0.55f * Math.cos(a2)).toFloat(), cy + (h * 0.55f * Math.sin(a2)).toFloat(), cx + (h * 0.82f * Math.cos(a2)).toFloat(), cy + (h * 0.82f * Math.sin(a2)).toFloat(), q) } }
             "lock" -> { c.drawRoundRect(RectF(cx - h * 0.6f, cy - h * 0.1f, cx + h * 0.6f, cy + h * 0.8f), h * 0.15f, h * 0.15f, q); c.drawArc(RectF(cx - h * 0.38f, cy - h * 0.75f, cx + h * 0.38f, cy + h * 0.1f), 180f, 180f, false, q) }
             "mic" -> micGlyph(c, cx, cy, s, col)
+            "palette" -> { c.drawCircle(cx, cy, h * 0.82f, q); q.style = Paint.Style.FILL; c.drawCircle(cx - h * 0.35f, cy - h * 0.25f, h * 0.15f, q); c.drawCircle(cx + h * 0.15f, cy - h * 0.42f, h * 0.15f, q); c.drawCircle(cx + h * 0.42f, cy + h * 0.05f, h * 0.15f, q) }
             else -> {}
         }
     }
