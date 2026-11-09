@@ -7,7 +7,9 @@
   server/hyun/ — 중계 서버 · 두뇌(내 Claude 계정·API) · 정보 통로 · 취향 · 받아 적기 서버
   tools/ — E2E 시험(hyun_e2e) · 하네스(hyun_harness) · 시험 목소리(hyun_testaudio.py) · 차 상태 주입(vconsole.py)
   records/hyun-e2e/ — 시험 기록(보고서 · 영상 · 대화 · 스크린샷)
+  design_assets/hyun/ — 이미지 에셋 전부(캐릭터 3종 · 표정 · 레이어 · 액세서리 · 상점 · 아이콘 · 히어로 · 사람 비서 — 사용자 11-09)
   docs/ — 현비서 문서(.claude/docs/wiki/hyun-*.md 등 사본)
+빼는 것: 보고서·제안서·명세 HTML(dashboard/hyun — 에셋은 design_assets/hyun과 같은 사본)
 내보내기 전에 비밀 문자열(API 키·토큰 모양)을 훑어 하나라도 있으면 멈춘다.
 """
 import os
@@ -17,7 +19,8 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TRACKED_DIRS = ["android/hyun", "android/gradle", "server/hyun", "tools/hyun_e2e", "tools/hyun_harness", "records/hyun-e2e"]
+TRACKED_DIRS = ["android/hyun", "android/gradle", "server/hyun", "tools/hyun_e2e", "tools/hyun_harness", "records/hyun-e2e",
+                "design_assets/hyun"]
 FILES = ["android/build.gradle.kts", "android/gradle.properties", "android/gradlew", "android/gradlew.bat",
          "tools/hyun_testaudio.py", "tools/vconsole.py", "tools/export_hyunbiseo.py"]
 DOCS = ["hyun-architecture.md", "hyun-app.md", "hyun-brain.md", "hyun-e2e.md", "hyun-harness.md", "hyun-modules.md", "hyun-phone.md",
