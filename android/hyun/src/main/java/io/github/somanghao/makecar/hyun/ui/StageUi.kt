@@ -284,9 +284,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             else -> GLOW to 0
         }
         if (ga > 0) { p.shader = RadialGradient(cx, cy, s * 0.62f, Glass.a(gc, ga), Glass.a(gc, 0), Shader.TileMode.CLAMP); c.drawCircle(cx, cy, s * 0.62f, p); p.shader = null }
-        if (m.avatar == "puff") {   // 몽글 — 코드로 그리는 하늘색 솜뭉치 + 빛나는 하트(그림 파일·소품 없음)
+        if (m.avatar == "robo") {   // 3D풍 로봇 — 코드로 그리는 흰 유광 몸 · 파란 유리 눈 · 빛나는 귀 링 · 이마 H(그림 파일 없음)
             val md = when (v.mode) { HyunView.Mode.LISTENING -> 1; HyunView.Mode.THINKING -> 2; HyunView.Mode.SPEAKING -> 3; else -> 0 }
-            Puff.draw(c, cx, cy, s, t, face, md, alive, darkUi)
+            Robo.draw(c, cx, cy, s, t, face, md, alive, darkUi)
             return
         }
         val bot = v.asset("bot_$face.webp")

@@ -71,7 +71,7 @@ class StageModel {
     var points = 0
     var tripPoints = 0
     var concept = "pleos"; var face = "neutral"; var acc = ""
-    var avatar = "puff"                       // puff(몽글 — 코드로 그린 솜뭉치) · bot(예전 헬멧 그림)
+    var avatar = "robo"                       // robo(코드로 그린 3D풍 로봇) · bot(예전 헬멧 그림)
     var decor: Set<String> = emptySet()       // 방에 놓은 소품(꾸미기)
     val equipped = linkedMapOf<String, String>()   // 칸 → 소품 id(머리 · 눈 · 얼굴 · 목 · 머리핀 · 효과)
     var heroIdx = 0                           // 지금 크게 보이는 이야기
@@ -245,7 +245,7 @@ class StageFeature : Feature {
         m.concept = pr.getString("stage.concept", "pleos")!!; m.face = pr.getString("stage.face", "neutral")!!; m.acc = pr.getString("stage.acc", "")!!
         m.owned = pr.getStringSet("stage.owned", m.owned)!!.toSet() + m.owned
         m.decor = pr.getStringSet("stage.decor", emptySet())!!.toSet()
-        m.avatar = pr.getString("stage.avatar", "puff")!!
+        m.avatar = pr.getString("stage.avatar", "robo")!!.let { if (it == "bot") it else "robo" }
         pr.getString("stage.equip", "")!!.split(',').filter { ':' in it }.forEach { m.equipped[it.substringBefore(':')] = it.substringAfter(':') }
         if (pr.getInt("stage.weekNo", -1) == Calendar.getInstance().get(Calendar.WEEK_OF_YEAR)) m.weekPoints = pr.getInt("stage.week", 0)
         status = CarStatus(hub.act).also { runCatching { it.start() }; m.status = it }
@@ -294,7 +294,7 @@ class StageFeature : Feature {
         i.getStringExtra("night")?.let { m.nightOverride = when (it) { "on" -> true; "off" -> false; else -> null } }
         i.getStringExtra("sim")?.let { sp -> val done = m.status?.sim(sp).orEmpty(); hub.log("stage|sim|$done") }
         i.getStringExtra("preview")?.let { m.preview = it.takeIf { p -> Concept.ALL.any { c -> c.id == p } }; m.previewAt = SystemClock.elapsedRealtime() }
-        i.getStringExtra("avatar")?.let { a -> if (a == "puff" || a == "bot") { m.avatar = a; hub.prefs.edit().putString("stage.avatar", a).apply() } }   // 시연: --es avatar puff|bot
+        i.getStringExtra("avatar")?.let { a -> if (a == "robo" || a == "bot") { m.avatar = a; hub.prefs.edit().putString("stage.avatar", a).apply() } }   // 시연: --es avatar robo|bot
         i.getStringExtra("tab")?.let { m.decoTab = it }   // 시연: 상점 탭(concept · decor · face)
         i.getStringExtra("equip")?.let { spec ->   // 시연: --es equip "cat_ears,sunglasses" (보유+착용) · "none" 이면 모두 벗기
             if (spec == "none") m.equipped.clear()
