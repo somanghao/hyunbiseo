@@ -131,7 +131,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         zoneL = if (mirror) 48 * U else w * 0.4f; zoneR = if (mirror) w * 0.6f else w - 48 * U
         if (m.sit == Sit.OFF) scrim(c, w, h, ((now - m.sitAt) / 1500f).coerceIn(0f, 0.35f))
         // 캐릭터 — 보통: 화면 높이 33% · 내비 주화면: 14% 배지(왼쪽 위)
-        val showLine = !driving && m.sit != Sit.STOP && !intro && m.view == null
+        val showLine = !glance() && !intro && m.view == null
         val bigH = h * 0.33f; val bigCx = if (mirror) w * 0.8f else w * 0.2f; val bigFeet = h * 0.7f
         val smH = h * 0.14f; val smCx = 40 * U + smH / 2; val smFeet = 16 * U + smH
         val chH = bigH + (smH - bigH) * nk; val cx = bigCx + (smCx - bigCx) * nk; val feet = bigFeet + (smFeet - bigFeet) * nk
@@ -173,7 +173,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                     m.view != null && m.view != "nav" -> category(c, full, m.view!!)
                     !driving -> stateScreen(c, full)
                 }
-                if (!driving) dock(c, w, h)
+                if (!glance()) dock(c, w, h)   // 운전 중엔 독도 숨김(한눈 규칙)
                 c.restore()
             }
             micButton(c, w, h)
@@ -988,14 +988,68 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val d = v.dist(m.navTurnM)
         text(c, d, tile.right + 20 * U, r.centerY() + 14 * U, 40 * U, FG, bold)
         p.textSize = 40 * U; p.typeface = bold; val sx = tile.right + 20 * U + p.measureText(d) + 20 * U
-        val right = "${m.navEta} · ${m.navRemain}" + (if (m.navMin > 0) " · ${m.navMin}분" else "") + (if (m.mockRoute) " · 모의 경로" else "")
-        p.textSize = 22 * U; p.typeface = medium; val rw = p.measureText(right)
-        text(c, m.navTurn, sx, r.centerY() + 10 * U, 26 * U, FG, medium, maxW = r.right - 24 * U - rw - 24 * U - sx)
-        text(c, right, r.right - 24 * U, r.centerY() + 8 * U, 22 * U, MUTED, medium, Paint.Align.RIGHT)
+        // 한눈에 — 거리 · 길 이름 · 도착 시각 셋만(남은 거리·모의 경로 같은 작은 글은 뺌)
+        val right = m.navEta
+        p.textSize = 30 * U; p.typeface = medium; val rw = p.measureText(right)
+        text(c, m.navTurn, sx, r.centerY() + 11 * U, 30 * U, FG, medium, maxW = r.right - 28 * U - rw - 32 * U - sx)
+        text(c, right, r.right - 28 * U, r.centerY() + 11 * U, 30 * U, FG, medium, Paint.Align.RIGHT)
     }
 
     // ---------- 내비 주화면 — 왼쪽: 다음 회전 · 차로 · 도착 / 오른쪽: 경로 지도 ----------
+    /** 운전 중(출발 준비 D · 주행 · 신호대기) — 한눈 규칙: 초점 하나 + 보조 1~2, 큰 글자, 작은 라벨·목록·그림·차트 없음 */
+    private fun glance() = m.sit == Sit.DRIVE || m.sit == Sit.STOP || m.sit == Sit.READY
+
+    private fun turnWord() = shortTurn(m.navTurnType, m.navTurn)
+    private fun lanes(c: Canvas, r: RectF, size: Float) {
+        val ty = m.navTurnType
+        val rt = ty.contains("RIGHT") || ty == "TURN_KEEP_R" || ty == "TURN_EXIT_IC"; val lt = ty.contains("LEFT") || ty == "TURN_KEEP_L" || ty == "TURN_UTURN"
+        val lw = r.width() / 4
+        for (i in 0 until 4) {
+            val on = (rt && i >= 2) || (lt && i < 2) || (!rt && !lt)
+            val lty = if (rt && i >= 2) "TURN_RIGHT" else if (lt && i < 2) "TURN_LEFT" else "TURN_STRAIGHT"
+            v.turnIcon(c, lty, r.left + lw * (i + 0.5f), r.centerY(), size, if (on) ACC else Glass.a(MUTED, 90)); p.style = Paint.Style.FILL; p.strokeWidth = 0f
+        }
+    }
+
+    /** 운전 중 내비 — 지도 없이: 왼쪽 큰 회전(화살표 · 거리 · 길 이름) / 오른쪽 차로 한 줄 · 도착 시각 */
+    private fun navGlance(c: Canvas, r: RectF) {
+        val cs = cols(r, 1.35f, 1f)
+        val L = cs[0]; box(c, L)
+        val ts = min(300 * U, L.height() * 0.46f)
+        val blockTop = L.centerY() - (ts + 130 * U) / 2   // 화살표 + 길 이름 묶음을 카드 가운데로
+        val tile = RectF(L.left + 48 * U, blockTop, L.left + 48 * U + ts, blockTop + ts)
+        p.shader = null; p.color = ACC; c.drawRoundRect(tile, 44 * U, 44 * U, p)
+        v.turnIcon(c, m.navTurnType.ifBlank { "TURN_STRAIGHT" }, tile.centerX(), tile.centerY() - ts * 0.03f, ts * 0.72f, Color.WHITE); p.style = Paint.Style.FILL; p.strokeWidth = 0f
+        val dist = v.dist(m.navTurnM); val num = dist.takeWhile { it.isDigit() || it == '.' }; val unit = dist.drop(num.length)
+        val nx = tile.right + 48 * U; val ns = fit(num, 190 * U, L.right - nx - 110 * U, bold)
+        text(c, num, nx, tile.top + ts * 0.62f, ns, FG, bold)
+        p.textSize = ns; p.typeface = bold; text(c, unit, nx + p.measureText(num) + 10 * U, tile.top + ts * 0.62f, 64 * U, FG, bold)
+        text(c, turnWord(), nx, tile.top + ts * 0.62f + 72 * U, 48 * U, MUTED, medium, maxW = L.right - nx - 40 * U)
+        text(c, m.navTurn, L.left + 48 * U, tile.bottom + 110 * U, fit(m.navTurn, 60 * U, L.width() - 96 * U, medium), FG, medium, maxW = L.width() - 96 * U)
+        // 바로 이어지는 회전(200m 안)만 한 줄
+        if (m.navNext.isNotBlank() && m.navNextM in 1..200 && m.navTurnM <= 300)
+            text(c, "이어서 ${v.dist(m.navNextM)} 뒤 ${shortTurn(m.navNextType, m.navNext)}", L.left + 48 * U, L.bottom - 48 * U, 36 * U, ACC, medium, maxW = L.width() - 96 * U)
+        val R = cs[1]
+        val top = RectF(R.left, R.top, R.right, R.top + R.height() * 0.46f)
+        val ev = m.carEvent
+        if (m.sit == Sit.DRIVE && ev != null && SystemClock.elapsedRealtime() - m.carEventAt < 6000) {   // 차 상태가 바뀌면 6초 동안 그 한 줄
+            val col = when (ev.first) { "warn" -> RED; "signal" -> WARN; "cruise", "road", "flag" -> GOOD; else -> ACC }
+            glassCard(c, top, 24 * U, col)
+            if (ev.first != "signal" || (SystemClock.elapsedRealtime() / 500) % 2 == 0L) icon(c, ev.first, top.left + 80 * U, top.centerY(), 64 * U, col)
+            val n2 = min(2, lineCount(ev.second, top.width() - 190 * U, 44 * U, bold))
+            wrap(c, ev.second, top.left + 150 * U, top.centerY() + 16 * U - (n2 - 1) * 26 * U, 44 * U, FG, top.width() - 190 * U, 2, bold, lh = 1.2f)
+        } else { box(c, top); lanes(c, RectF(top.left + 32 * U, top.top, top.right - 32 * U, top.bottom), min(130 * U, top.height() * 0.6f)) }
+        val bot = RectF(R.left, top.bottom + G, R.right, R.bottom)
+        box(c, bot)
+        val eta = m.navEta.removePrefix("도착 ")
+        text(c, eta, bot.left + 48 * U, bot.centerY() + 20 * U, fit(eta, 110 * U, bot.width() * 0.6f, bold), FG, bold)
+        p.textSize = fit(eta, 110 * U, bot.width() * 0.6f, bold); p.typeface = bold; val ex = bot.left + 48 * U + p.measureText(eta) + 24 * U
+        text(c, "도착", ex, bot.centerY() + 18 * U, 40 * U, MUTED, medium)
+        if (m.navMin > 0) text(c, "${m.navMin}분", bot.left + 48 * U, bot.centerY() + 84 * U, 40 * U, MUTED, medium)
+    }
+
     private fun navMainScreen(c: Canvas, r: RectF, w: Float, h: Float) {
+        if (glance()) { navGlance(c, r); return }
         val leftW = min(600 * U, r.width() * 0.36f)
         val L = RectF(r.left, r.top, r.left + leftW, r.bottom)
         val M = RectF(L.right + G, r.top, r.right, r.bottom)
@@ -1137,7 +1191,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     private fun stateScreen(c: Canvas, z: RectF) {
         val rows = mutableListOf<Pair<Float, (RectF) -> Unit>>()
-        m.story?.let { st -> rows += row(108 * U) { r -> storyRow(c, r, st) } }
+        if (!glance()) m.story?.let { st -> rows += row(108 * U) { r -> storyRow(c, r, st) } }
         val st = m.status
         val soc = st?.soc?.v; val rng = st?.rangeKm?.v
         when (m.sit) {
@@ -1162,60 +1216,34 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 rows += row(100 * U) { r -> questRow(c, r) }
                 if (m.novice) rows += row(76 * U) { r -> tipRow(c, r, "출발 전에 시트 → 미러 → 벨트 순서로. 빨간 경고등이 없는지도 한 번.") }
             }
-            Sit.READY -> {
-                rows += row(300 * U) { r ->
-                    box(c, r); val x0 = r.left + 32 * U
+            Sit.READY -> {   // 기어 D — 한눈: 목적지 · 도착 시각 · 큰 버튼 하나 (+ 보조 한 줄)
+                rows += row(360 * U) { r ->
+                    box(c, r); val x0 = r.left + 48 * U
                     val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
                     val (name, sub) = when {
-                        m.navActive -> "${m.navDest}" to "${m.navRemain} · ${m.navMin}분 · ${m.navEta}" + if (m.mockRoute) " · 모의 경로" else ""
-                        hr in 6..10 -> "회사 · 판교 사옥" to "12.4km · 23분 · ${etaIn(23)} 도착 · 정체 없음 · 예시"
-                        hr in 17..21 -> "집" to "14.0km · 30분 · ${etaIn(30)} 도착 · 퇴근길 · 예시"
-                        else -> "자주 가는 카페" to "3.2km · 9분 · ${etaIn(9)} 도착 · 지난주 두 번 · 예시"
+                        m.navActive -> m.navDest to "${m.navEta} · ${m.navMin}분"
+                        hr in 6..10 -> "회사" to "도착 ${etaIn(23)} · 23분"
+                        hr in 17..21 -> "집" to "도착 ${etaIn(30)} · 30분"
+                        else -> "자주 가는 카페" to "도착 ${etaIn(9)} · 9분"
                     }
-                    lab(c, if (m.navActive) "안내 중인 목적지" else "추천 목적지", x0, r.top + 40 * U)
-                    text(c, name, x0, r.top + 94 * U, 44 * U, FG, bold, maxW = r.width() * 0.5f)
-                    lab(c, sub, x0, r.top + 132 * U, r.width() - 64 * U)
-                    // 경로 미리보기 — 출발 · 가는 김에 · 도착
-                    val a = RectF(x0 + r.width() * 0.48f, r.top + 40 * U, r.right - 40 * U, r.top + 150 * U)
-                    path.reset(); path.moveTo(a.left, a.bottom - 10 * U); path.cubicTo(a.left + a.width() * 0.35f, a.bottom - 10 * U, a.left + a.width() * 0.4f, a.top + 30 * U, a.centerX(), a.centerY())
-                    path.cubicTo(a.left + a.width() * 0.65f, a.bottom - 30 * U, a.left + a.width() * 0.8f, a.top + 10 * U, a.right, a.top + 10 * U)
-                    p.style = Paint.Style.STROKE; p.strokeCap = Paint.Cap.ROUND; p.strokeWidth = 6 * U; p.color = ACC; c.drawPath(path, p); p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT
-                    p.color = ACC; c.drawCircle(a.left, a.bottom - 10 * U, 10 * U, p); p.color = WARN; c.drawCircle(a.centerX(), a.centerY(), 9 * U, p); p.color = RED; c.drawCircle(a.right, a.top + 10 * U, 10 * U, p)
-                    val by = r.bottom - 32 * U - 64 * U
-                    if (m.navActive) button(c, "내비 크게 보기", RectF(x0, by, x0 + 240 * U, by + 64 * U), true, "view:nav")
-                    else button(c, "안내 시작", RectF(x0, by, x0 + 220 * U, by + 64 * U), true, "nav:start")
-                    button(c, "다른 곳", RectF(x0 + 240 * U, by, x0 + 400 * U, by + 64 * U), false, "mic")
+                    text(c, name, x0, r.top + 120 * U, fit(name, 72 * U, r.width() - 96 * U, bold), FG, bold, maxW = r.width() - 96 * U)
+                    text(c, sub, x0, r.top + 180 * U, 36 * U, MUTED, medium, maxW = r.width() - 96 * U)
+                    val by = r.bottom - 48 * U - 88 * U
+                    if (m.navActive) button(c, "내비 크게 보기", RectF(x0, by, x0 + 360 * U, by + 88 * U), true, "view:nav", 36 * U)
+                    else button(c, "안내 시작", RectF(x0, by, x0 + 300 * U, by + 88 * U), true, "nav:start", 36 * U)
                 }
-                rows += row(140 * U) { r ->
-                    val cs = cols(r, 1f, 1f, 1f)
-                    mini(c, cs[0], "가는 김에 · 예시", "세탁물 찾기", "경로 위 0.4km · +5분", "view:schedule")
-                    mini(c, cs[1], "출발 편성", "뉴스 5분 → 음악", "도착 시간에 맞춰 편성", "view:music")
-                    mini(c, cs[2], "배터리", soc?.let { "$it% · ${rng ?: "-"}km" } ?: "—", if (soc != null && soc < 30) "가는 길 충전소에 들러요" else "오늘 길엔 넉넉해요", "screen:car", if (soc != null && soc < 30) WARN else FG)
-                }
-                if (m.novice) rows += row(76 * U) { r -> tipRow(c, r, "브레이크 꾹 → D → 주변 확인 → 천천히. 출발할 땐 깜빡이부터.") }
+                val low = soc != null && soc < 30
+                if (low) rows += row(100 * U) { r -> box(c, r, "screen:car"); text(c, "배터리 $soc% — 가는 길에 충전해요", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, WARN, medium, maxW = r.width() - 96 * U) }
+                else if (m.novice) rows += row(100 * U) { r -> box(c, r); text(c, "브레이크 꾹 → 주변 확인 → 깜빡이", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, FG, medium, maxW = r.width() - 96 * U) }
             }
-            Sit.STOP -> {
-                if (!m.navActive) rows += row(90 * U) { r ->
-                    box(c, r, "view:nav")
-                    p.shader = null; p.color = ACC; c.drawCircle(r.left + 60 * U, r.centerY(), 28 * U, p)
-                    v.turnIcon(c, m.navTurnType.ifBlank { "TURN_STRAIGHT" }, r.left + 60 * U, r.centerY(), 46 * U, Color.WHITE); p.style = Paint.Style.FILL; p.strokeWidth = 0f
-                    text(c, "${v.dist(m.navTurnM)} 앞 ${shortTurn(m.navTurnType, m.navTurn)}", r.left + 110 * U, r.centerY() + 11 * U, 32 * U, FG, bold)
-                    text(c, m.navEta + if (m.mockRoute) " · 모의 경로" else "", r.right - 32 * U, r.centerY() + 8 * U, 22 * U, MUTED, medium, Paint.Align.RIGHT)
+            Sit.STOP -> {   // 신호대기 — 짧은 이야기 한 장(목록 · 점수 · 라벨 없음)
+                val g = m.tiles.firstOrNull { it.icon == "chat" }?.value ?: LOCAL[0].first
+                val gl = min(4, lineCount(g, z.width() - 96 * U, 46 * U))
+                rows += row(min(z.height(), 96 * U + gl * 61 * U + 40 * U)) { r ->
+                    box(c, r, "view:local"); val x0 = r.left + 48 * U
+                    wrap(c, g, x0, r.top + 100 * U, 46 * U, FG, r.width() - 96 * U, 4, medium, lh = 1.32f)
                 }
-                rows += row(250 * U) { r ->
-                    box(c, r, "view:local"); val x0 = r.left + 32 * U
-                    lab(c, "동네 이야기 · 오른쪽 180m · 예시", x0, r.top + 40 * U)
-                    val g = m.tiles.firstOrNull { it.icon == "chat" }?.value ?: LOCAL[0].first
-                    wrap(c, g, x0, r.top + 100 * U, 36 * U, FG, r.width() - 64 * U, 3, medium, lh = 1.3f)
-                    lab(c, "말로 들려줘요 · 출발하면 바로 접어요", x0, r.bottom - 28 * U)
-                }
-                rows += row(86 * U) { r ->
-                    box(c, r); val x0 = r.left + 32 * U
-                    lab(c, "야구 · 예시", x0, r.centerY() + 7 * U)
-                    text(c, "서울 4 : 2 울산", x0 + 130 * U, r.centerY() + 11 * U, 30 * U, FG, bold)
-                    text(c, "8회말 · 2사 1,2루", r.right - 32 * U, r.centerY() + 8 * U, 22 * U, MUTED, medium, Paint.Align.RIGHT)
-                }
-                if (m.novice) rows += row(76 * U) { r -> tipRow(c, r, "정차 중엔 브레이크를 계속 꾹. 앞차가 출발하면 한 박자 쉬고 천천히.") }
+                if (m.novice) rows += row(100 * U) { r -> box(c, r); text(c, "브레이크를 계속 꾹", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, FG, medium) }
             }
             Sit.PARK -> {
                 rows += row(170 * U) { r ->
@@ -1973,11 +2001,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         solidPill(c, s, x - wd, cy, h, bg, fg, size); return x - wd
     }
 
-    private fun button(c: Canvas, s: String, r0: RectF, primary: Boolean, action: String) {
+    private fun button(c: Canvas, s: String, r0: RectF, primary: Boolean, action: String, fsMax: Float = 26 * U) {
         val pressed = pressRect?.let { it.left == r0.left && it.top == r0.top } == true && SystemClock.elapsedRealtime() - pressAt < 180
         val r = if (pressed) RectF(r0).apply { inset(r0.width() * 0.015f, r0.height() * 0.015f) } else r0   // 눌림 0.97
         p.shader = null; p.style = Paint.Style.FILL
-        val fs = min(26 * U, r.height() * 0.42f)
+        val fs = min(fsMax, r.height() * 0.42f)
         var tc = FG; var face = medium; var size = fs
         when (k.id) {
             "arcade" -> { if (primary) { p.color = 0xFFFF4FD8.toInt(); c.drawRect(r.left + 5 * U, r.top + 5 * U, r.right + 5 * U, r.bottom + 5 * U, p); p.color = 0xFF00F0FF.toInt(); c.drawRect(r, p); tc = 0xFF0D0918.toInt() }
