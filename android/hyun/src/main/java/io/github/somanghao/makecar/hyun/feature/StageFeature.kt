@@ -39,6 +39,9 @@ data class Entry(val icon: String, val why: String, val delta: Int)
 data class Toon(val rank: Int, val title: String, val author: String, val star: Double, val img: String)
 data class Quote(val name: String, val price: String, val ratio: Float)
 
+/** 즐겨찾기 도착지 — demoMin: 예시일 때 보이는 걸리는 분(위치·기록이 없을 때만) */
+data class Fav(val name: String, val lat: Double, val lng: Double, val demoMin: Int = 0)
+
 /** 꾸미기 상품 — kind theme(배경 조명 색) · face(기본 표정) · acc(소품 스티커) */
 data class Deco(val kind: String, val id: String, val name: String, val price: Int, val color: Int = 0, val glyph: String = "")
 
@@ -109,7 +112,8 @@ class StageModel {
     var viewAt = 0L
     var story: Tile? = null                   // 2분 안에 생긴 신호 반응 이야기(상황 화면 맨 위 한 줄)
     // 시동 화면 맨 위 '어디로 갈까요?' — 지금 목적지(내비) · 이 시간에 자주 가는 곳(지난 주행 기록) · 없으면 말로 등록하라는 안내
-    var goName = ""; var goSub = ""; var goTag = ""
+    var goName = ""; var goSub = ""; var goTag = ""; var goAction = ""
+    var favNames: List<String> = emptyList(); var favIdx = -1   // 즐겨찾기 도착지(고른 것 = favIdx)
     // 취미 데이터 — 서버 정보 통로(/hyun/feed) · Open-Meteo · 연합뉴스 RSS
     var newsTimes: Map<String, String> = emptyMap()
     var toons: List<Toon> = emptyList(); var toonSource = ""; var toonPage = 0
@@ -594,6 +598,8 @@ class StageFeature : Feature {
             a.startsWith("place:") -> a.substringAfter(":").let { id -> m.decor = if (id in m.decor) m.decor - id else m.decor + id; save() }
             a.startsWith("listen:") -> hub.view.onListenMode(a.endsWith("always"))
             a == "card:close" -> hub.view.card = null
+            a.startsWith("fav:") -> favs().getOrNull(a.substringAfter(":").toIntOrNull() ?: -1)?.let { favSel = it.name }   // 즐겨찾기 고르기
+            a.startsWith("go:") -> goFav(a.substringAfter(":").toIntOrNull() ?: -1)                                       // 고른 곳으로 안내
             a.startsWith("view:") -> a.substringAfter(":").let { k -> when {
                 k == "close" -> { m.view = null; m.viewForced = false }
                 k == "auto" -> setScreen("auto")
@@ -664,6 +670,7 @@ class StageFeature : Feature {
             Regex("꾸미기|꾸며").containsMatchIn(t) -> { act("deco"); if (m.overlay == "deco") hub.say("꾸미기를 열었어요. 포인트는 ${m.points}점이에요.", "happy", false, 1, reply = true, tag = "꾸미기"); return true }
             Regex("포인트(몇|얼마|알려)|내포인트").containsMatchIn(t) -> { hub.say("안전운전 포인트는 ${m.points}점이에요.", "happy", false, 1, reply = true, tag = "포인트"); return true }
             Regex("차량점검|차점검|점검해").containsMatchIn(t) -> { act("recheck"); return true }
+            Regex("즐겨찾기(에|로)?(추가|등록|넣어|저장|해)").containsMatchIn(t) -> { hub.say(addFav(), "happy", false, 1, reply = true, tag = "즐겨찾기"); return true }
         }
         // 시동 화면 브리핑 영역 고르기 — "차 컨디션" · "증시/코스피" · "뉴스" · "퀘스트"
         if (m.sit == Sit.IGNITION && t.length <= 20) briefPick(t)?.let { return it }
@@ -953,21 +960,76 @@ class StageFeature : Feature {
 
     private fun hm(min: Int) = "%02d:%02d".format((min / 60) % 24, min % 60)
 
+    // ---------- 즐겨찾기 도착지 — "이름|위도|경도|예시 분" 줄. 비어 있으면 예시 둘(집·회사) ----------
+    private fun favs(): List<Fav> {
+        val raw = hub.prefs.getString(FAVS, null)
+        if (raw == null) return DEMO_FAVS
+        return raw.lines().mapNotNull { l -> l.split('|').takeIf { it.size >= 3 }?.let { p ->
+            runCatching { Fav(p[0], p[1].toDouble(), p[2].toDouble(), p.getOrNull(3)?.toIntOrNull() ?: 0) }.getOrNull() } }
+    }
+    private fun saveFavs(l: List<Fav>) = hub.prefs.edit().putString(FAVS, l.take(6).joinToString("\n") { "${it.name}|${it.lat}|${it.lng}|${it.demoMin}" }).apply()
+
+    /** 지금 출발하면 걸리는 분 — 지난 주행 평균 → 현재 위치 직선거리 어림(×1.3 · 시내 30km/h) → 예시 값. (분, 근거) */
+    private fun favMin(f: Fav): Pair<Int, String>? {
+        goLog().filter { it.name == f.name }.takeIf { it.isNotEmpty() }?.let { l -> return l.map { it.travelMin }.average().roundToInt() to "지난 ${l.size}번 평균" }
+        val la = hub.lat; val lo = hub.lng
+        if (la != null && lo != null) {
+            val km = io.github.somanghao.makecar.hyun.drive.Trip.meters(la, lo, f.lat, f.lng) * 1.3 / 1000
+            if (km < 300) return max(1, (km / 30.0 * 60).roundToInt()) to "거리 %.1fkm 어림".format(km)
+        }
+        return if (f.demoMin > 0) f.demoMin to "예시 시간" else null
+    }
+
+    /** 고른 즐겨찾기 — 직접 고른 것 → 이 시간에 자주 가는 곳 → 시간대(아침 회사 · 저녁 집) → 첫째 */
+    private fun favPick(list: List<Fav>): Int {
+        favSel?.let { s -> list.indexOfFirst { it.name == s }.takeIf { it >= 0 }?.let { return it } }
+        habitGo()?.let { (g, _, _) -> list.indexOfFirst { it.name == g.name }.takeIf { it >= 0 }?.let { return it } }
+        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val want = if (h in 5..13) "회사" else "집"
+        return list.indexOfFirst { it.name.startsWith(want) }.coerceAtLeast(0)
+    }
+    private var favSel: String? = null
+
     private fun goBox() {
         val v = hub.view
         val dest = v.dest
-        val h = habitGo()
         val nowMin = Calendar.getInstance().let { it.get(Calendar.HOUR_OF_DAY) * 60 + it.get(Calendar.MINUTE) }
+        val list = favs()
+        m.favNames = list.map { it.name }
+        m.favIdx = -1
         when {
-            dest != null -> { m.goName = dest; m.goSub = listOf(v.remain, v.eta).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "길을 찾는 중이에요" }; m.goTag = "오늘 목적지" }
-            h != null -> {
-                val (g, days, n) = h
-                m.goName = g.name
-                m.goSub = "평소 ${hm(g.startMin)} 출발 · 지금 출발하면 ${hm(nowMin + g.travelMin)} 도착 · 약 ${g.travelMin}분"
-                m.goTag = "자주 가는 곳 · 최근 ${days}일 · ${n}번 평균"
+            dest != null -> { m.goName = dest; m.goSub = listOf(v.remain, v.eta).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "길을 찾는 중이에요" }; m.goTag = "안내 중"; m.goAction = "" }
+            list.isNotEmpty() -> {
+                val i = favPick(list); val f = list[i]
+                m.favIdx = i
+                m.goName = f.name
+                m.goSub = favMin(f)?.let { (mn, why) -> "지금 출발하면 약 ${if (mn >= 60) "${mn / 60}시간 ${mn % 60}분" else "${mn}분"} · ${hm(nowMin + mn)} 도착 · $why" }
+                    ?: "지금 위치를 읽으면 걸리는 시간을 알려 드려요"
+                m.goTag = "즐겨찾기" + if (list === DEMO_FAVS) " · 예시" else ""
+                m.goAction = "go:$i"
             }
-            else -> { m.goName = ""; m.goSub = "\"회사 가자\"처럼 말하면 길 안내를 시작해요"; m.goTag = "" }
+            else -> { m.goName = ""; m.goSub = "\"회사 가자\"처럼 말하면 길 안내를 시작해요"; m.goTag = ""; m.goAction = "" }
         }
+    }
+
+    /** 즐겨찾기로 안내 시작 */
+    private fun goFav(i: Int) {
+        val f = favs().getOrNull(i) ?: return
+        val r = hub.feature<RouteFeature>()
+        if (r == null) { hub.heard("${f.name} 가자"); return }
+        r.goTo(f.name, f.lat, f.lng)
+        hub.say("${f.name}까지 안내할게요.", "happy", false, 1, reply = true, tag = "즐겨찾기")
+    }
+
+    /** 지금 안내 중인 목적지를 즐겨찾기에 */
+    private fun addFav(): String {
+        val r = hub.feature<RouteFeature>()
+        val name = hub.view.dest; val la = r?.destLat; val lo = r?.destLng
+        if (name == null || la == null || lo == null) return "지금 안내 중인 목적지를 즐겨찾기에 넣을 수 있어요. 먼저 어디로 갈지 말해 주세요."
+        val cur = favs().let { if (it === DEMO_FAVS) emptyList() else it }.filter { it.name != name }
+        saveFavs(listOf(Fav(name, la, lo, 0)) + cur)
+        favSel = name; refresh()
+        return "${name}을 즐겨찾기에 넣었어요."
     }
 
     /** 시연용 — 지난 5일 이 시간쯤 '회사'에 간 기록 */
@@ -995,10 +1057,10 @@ class StageFeature : Feature {
     private fun ignitionLine(): String {
         val t = tempC
         val base = look().greet + "${greet()}. " + (t?.let { "밖이 ${it}도라 " + (if (t <= 8) "목도리 둘렀어요. " else "") } ?: "") + "${drink().first} 한 잔 어때요?"
-        // 어디로 갈지 → 브리핑 영역 고르기(말로)
-        val go = habitGo()?.let { (g, _, _) -> val nowMin = Calendar.getInstance().let { it.get(Calendar.HOUR_OF_DAY) * 60 + it.get(Calendar.MINUTE) }
-            " 이 시간엔 보통 ${g.name}에 가시죠? 지금 출발하면 ${hm(nowMin + g.travelMin)}쯤 도착해요." } ?: ""
-        val ask = " 차 컨디션, 증시, 뉴스, 운전 퀘스트 중에 어떤 걸 브리핑해 드릴까요? 말해 주시면 자세하게 알려 드릴게요."
+        // 즐겨찾기 도착지 → 가는 길 이야기 주제 고르기(말로)
+        goBox()
+        val go = if (m.favIdx >= 0 && m.goSub.startsWith("지금 출발하면")) " ${m.goName}까지 ${m.goSub.substringBefore(" · ").removePrefix("지금 출발하면 ")} 걸려요." else ""
+        val ask = " 가는 길에 어떤 이야기를 들려 드릴까요? 주제를 골라 주세요. 뉴스, 증시, 차 컨디션이 있어요."
         return (if (m.novice) "$base 출발 전에 시트랑 미러부터 맞춰요." else base) + go + ask
     }
 
@@ -1145,6 +1207,9 @@ class StageFeature : Feature {
     companion object {
         const val ACTION = "io.github.somanghao.makecar.hyun.STAGE"
         private const val GO_LOG = "stage.goLog"   // 지난 주행: "목적지|출발 분(하루 중)|걸린 분|yyyyMMdd" 줄 목록
+        private const val FAVS = "stage.favs"      // 즐겨찾기 도착지
+        /** 즐겨찾기를 아직 안 넣었을 때 보이는 예시(강남역 근처 집 · 삼성역 근처 회사) — 화면에 '예시' 표시 */
+        private val DEMO_FAVS = listOf(Fav("회사", 37.5089, 127.0631, 23), Fav("집", 37.4979, 127.0276, 28))
         const val SIM_ACTION = "io.github.somanghao.makecar.hyun.SIM"
         private val SIM_KEYS = listOf("wiper", "door", "window", "passenger", "kid", "belt", "lights", "lock", "cruise", "turn", "cabin", "soc", "range", "mode", "steer")
         private const val HARSH_MS = 3.5f          // 1초에 이만큼(약 12.6km/h) 넘게 줄면 급정거
