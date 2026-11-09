@@ -266,6 +266,7 @@ class StageFeature : Feature {
         if (parts.isNotEmpty()) hub.log("stage|SIM|${m.status?.sim(parts.joinToString(","))}")
         b.getString("sit")?.let { apply(Intent().putExtra("sit", it)) }
         b.get("nav")?.toString()?.let { setNav(it == "on" || it == "true" || it == "1") }
+        b.getString("skin")?.let { setSkin(it) }
         b.getString("screen")?.let { setScreen(it) }
         refresh(); hub.render()
     }
@@ -296,6 +297,7 @@ class StageFeature : Feature {
             else Sit.of(k)?.let { s -> m.forced = true; if (s == Sit.DRIVE) startTripIfNeeded(); enter(s, why = "강제") }
         }
         i.getStringExtra("nav")?.let { setNav(it == "on" || it == "true") }
+        if (i.action == ACTION) i.getStringExtra("skin")?.let { setSkin(it) }
         i.getStringExtra("screen")?.let { s ->
             if (s == "auto" || Sit.values().any { it.key == s } || StageModel.CATS.any { it.first == s }) { setScreen(s); refresh(); hub.render(); return }
             when (s) { "none", "close" -> m.overlay = null; "onboard" -> startOnboarding(); else -> m.overlay = s }
@@ -428,6 +430,12 @@ class StageFeature : Feature {
     }
 
     private fun startTripIfNeeded() { if (!inTrip) { inTrip = true } }
+
+    /** 스킨(업스트림 SkinFeature) — next 면 다음 스킨, 아니면 그 id */
+    private fun setSkin(id: String) {
+        if (id == "next") hub.view.onSkin() else hub.feature<SkinFeature>()?.onIntent(Intent().putExtra("skin", id), false)
+        hub.log("stage|skin|$id→${hub.view.skin.id}")
+    }
 
     /** 화면 강제(허브·SIM 미리보기) — 상황 6 · 취미 9 · auto(자동 흐름으로) */
     fun setScreen(k: String) {
@@ -589,6 +597,8 @@ class StageFeature : Feature {
             a == "nav:start" -> { setNav(true); hub.say("안내를 시작할게요. 모의 경로예요.", "happy", false, 2, tag = "내비") }
             a == "nav:toggle" -> setNav(!m.simNav)
             a == "toon:next" -> m.toonPage++
+            a == "skintab" -> if (!movingNow()) { m.overlay = "deco"; m.decoTab = "skin" }
+            a.startsWith("skin:") -> setSkin(a.substringAfter(":"))
         }
         refresh(); hub.render()
     }
