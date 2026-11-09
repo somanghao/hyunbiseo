@@ -2,7 +2,7 @@
 
 현대자동차그룹 차량용 앱 개발 공모전(2026) 출품작 「현비서」의 앱·서버·시험 코드입니다. Pleos Connect(AAOS 기반 인포테인먼트)에서 돌고, 운전자와 말로 대화하며 취향을 배우고, 내비 교통을 정찰해 먼저 알려 줍니다.
 
-> 이 저장소는 작업 저장소에서 `tools/export_hyunbiseo.py`로 떼어 낸 **사본**입니다(private). 고칠 땐 원본에서 고치고 다시 내보냅니다.
+> **이 저장소가 앱·서버·시험 코드의 정본입니다**(private, 2026-11-09~). 팀은 브랜치(`feat/<모듈>`)·PR로 작업합니다 — 규칙·명령·담당은 [`CLAUDE.md`](CLAUDE.md). `docs/*.md`(`docs/specs/` 빼고)는 작업 저장소(makecar-hy) 설계 문서의 사본입니다.
 
 ![휴게소 소개 — 왼쪽 사진 · 오른쪽 표](records/hyun-e2e/20261108-1740/shots/e03_1.jpg)
 
@@ -83,6 +83,8 @@ tools/hyun_e2e/      E2E 시험(시나리오 → 에뮬 · 녹화 · 판정 · �
 records/hyun-e2e/    시험 기록
 design_assets/hyun/  이미지 에셋 전부(아래 §캐릭터 · 이미지 에셋)
 docs/                설계·실측 문서(작업 저장소 위키 사본 — [[이름]] 링크는 원본 위키 기준)
+docs/specs/          모듈 6 기능 명세 + 화면 구성도(정본 — 새 기능은 여기부터)
+.claude/             팀 공유 Claude Code 설정 — rules(경로별 규칙) · skills(new-feature · run-hyun) · agents(hyun-harness) · settings.json
 ```
 
 ## 실행(Windows · Pleos Connect Emulator v2.1)

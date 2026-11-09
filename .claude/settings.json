@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew :hyun:*)",
+      "Bash(adb *)",
+      "Bash(python -I -X utf8 tools/hyun_e2e/run.py *)",
+      "Bash(python -I -X utf8 tools/hyun_harness/harness.py *)",
+      "Bash(curl -s 127.0.0.1:8790/*)"
+    ],
+    "deny": [
+      "Read(./server/hyun/data/keys.json)",
+      "Read(./**/.env)"
+    ]
+  }
+}
