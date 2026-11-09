@@ -100,13 +100,13 @@
 
 ## 새 기능 붙이는 법 (예: 엔터 "끝말잇기")
 
-0. **기능 명세 + 화면 구성도 쌍을 먼저**(사용자 11-08 — 앞으로의 모든 추가 기능) — 둘 다 만들고 사용자 확인을 받은 뒤 아래 1~7로 구현. 명세 `dashboard/hyun/specs/<id>.md` = 목적·심사 4축 · 언제 켜지나(트리거·이벤트·말) · 현비서가 하는 말(예시·우선순위 P0~P3) · 쓰는 신호·SDK(실측/미시험) · 두뇌 답 필드·서버 훅 · 주행 규칙(주행 중 보이는 것·숨기는 것) · E2E 케이스. 화면 구성도 `dashboard/hyun/specs/<id>.html`(목록 `dashboard/hyun/specs/index.html` · 모듈 6 초안 11-08) = 1칸·반반 × 정차·주행 4장(실제 비율 — 1칸 1706×1210 · 반반 841×1210 앱 영역), 기존 요소(캐릭터·내비 판·마이크 줄)와 새 요소의 자리 · 시연 영상의 케이스 설명 슬라이드에도 씀
+0. **기능 명세 + 화면 구성도 쌍을 먼저**(사용자 11-08 — 앞으로의 모든 추가 기능) — 둘 다 만들고 사용자 확인을 받은 뒤 아래 1~7로 구현. **명세 정본 = hyunbiseo `docs/specs/<id>.md`**(11-09 A안 — 이쪽 `dashboard/hyun/specs/`는 받아 온 사본, 팀 절차 = hyunbiseo `CLAUDE.md`·`/new-feature`) = 목적·심사 4축 · 언제 켜지나(트리거·이벤트·말) · 현비서가 하는 말(예시·우선순위 P0~P3) · 쓰는 신호·SDK(실측/미시험) · 두뇌 답 필드·서버 훅 · 주행 규칙(주행 중 보이는 것·숨기는 것) · E2E 케이스. 화면 구성도 `dashboard/hyun/specs/<id>.html`(목록 `dashboard/hyun/specs/index.html` · 모듈 6 초안 11-08) = 1칸·반반 × 정차·주행 4장(실제 비율 — 1칸 1706×1210 · 반반 841×1210 앱 영역), 기존 요소(캐릭터·내비 판·마이크 줄)와 새 요소의 자리 · 시연 영상의 케이스 설명 슬라이드에도 씀
 1. **앱** `feature/WordChainFeature.kt` — `class WordChainFeature : Feature { override val id = "wordchain"; override fun enabled(car: Boolean) = car … }`. 앱이 바로 할 말은 `onHeard`(true로 가로챔), 두뇌 답의 새 필드는 `onReply`, 상태 표시는 `render`
 2. `feature/Registry.kt`에 한 줄 — **가로채는 기능은 명령들 뒤·길 앞**처럼 순서를 생각해서
 3. **서버** `server/hyun/features/wordchain.py`(예시 · 예정) — 필요한 것만: `RULES`(두뇌에게 놀이 규칙) · `SCHEMA`(새 답 필드, **빈 값을 꼭 정의** — 구조화 출력이 전부 required) · `block`(진행 상태) · `post`(저장·`rep`에 필드)
 4. `features/__init__.py` `ALL`에 한 줄
 5. 새 이벤트를 쓰면 `voice/Speaker.eventPrio`에 단계부터(주행 필수면 P1 — [QUICKMAP-hyun](../QUICKMAP-hyun.md) §3 #17)
-6. **화면**: 기능 한 줄은 `render(v)`에서 `v.lines += HyunView.Line(아이콘, 글)`(1칸 = 내비 판 바로 아래 · 반반 = 길 카드 아래 · 코어가 render마다 비움 — 11-08 도착 추천이 첫 사용). 그 밖엔 기능은 `render(v)`로 `HyunView` 값만 채운다 — 그리기 훅은 없어서 새 화면 요소(판·게임판·점수판)는 `ui/HyunView.kt`에 그리는 코드를 직접 넣는다(예: `TurnFeature` 값 → `HyunView.naviPanel`·`naviStrip`, 11-08)
+6. **화면**: 기능 한 줄은 `render(v)`에서 `v.lines += HyunView.Line(아이콘, 글)`(1칸 = 내비 판 바로 아래 · 반반 = 길 카드 아래 · 코어가 render마다 비움 — 11-08 도착 추천이 첫 사용). 그 밖엔 기능은 `render(v)`로 화면 데이터(`ScreenData`) 값만 채운다 — **새 화면 요소(판·게임판·점수판)는 `ui/parts/<Module>Part.kt`**(`object XPart { fun draw(c, kit, d: ScreenData, box, u) }`)에 만들고 `HyunView`엔 부르는 한 줄만(11-09 규칙 — 여럿이 `HyunView.kt`를 동시에 고치면 충돌, hyunbiseo `.claude/rules/ui.md`). 예전 예: `TurnFeature` 값 → `HyunView.naviPanel`·`naviStrip`(11-08, 직접 그림)
 7. 시험: `tools/hyun_e2e/cases.json`에 케이스 → `python -I -X utf8 tools/hyun_e2e/run.py --servers --ids <id>` → 전체 `--servers --video`
 
 ## 함정
