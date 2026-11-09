@@ -19,20 +19,22 @@ python -I -X utf8 tools/hyun_e2e/run.py --servers --ids e20
 - 에뮬·서버·시연 절차 = 스킬 `/run-hyun` · 새 기능 절차 = 스킬 `/new-feature`
 - Python은 `-I -X utf8`(격리 + 한글 출력). 사용자 site-packages가 필요하면 그 모듈 안에서 `site.getusersitepackages()`를 붙인다
 
-## 6개 기능(모듈) — 담당 · 브랜치 · 시험 번호
+## 6개 기능(모듈) — 브랜치 · 시험 번호
 
-| 모듈 | id | 명세 · 화면 구성도 | 앱 파일(예정) | E2E | 담당 |
-|---|---|---|---|---|---|
-| 쉼표 | rest | `docs/specs/rest.md` · `.html` | `feature/RestFeature.kt` | e20~29 | (정하기) |
-| 튜토리얼 | tutor | `docs/specs/tutor.md` · `tutor-tips.md` | `feature/TutorFeature.kt` · `assets/tips.json` | e30~39 | (정하기) |
-| 온기(+캐릭터 꾸미기) | ongi | `docs/specs/ongi.md` | `feature/OngiFeature.kt` | e40~49 | (정하기) |
-| 오늘 할 일 | today | `docs/specs/today.md` | `feature/TodayFeature.kt` | e50~59 | (정하기) |
-| 엔터(끝말잇기·퀴즈) | play | `docs/specs/play.md` | `feature/PlayFeature.kt` | e60~69 | (정하기) |
-| 브리핑(개인화 뉴스) | brief | `docs/specs/brief.md` | `feature/BriefFeature.kt` · `server/hyun/features/briefing.py` | e70~79 | (정하기) |
+| 모듈 | id | 명세 · 화면 구성도 | 앱 파일(예정) | E2E |
+|---|---|---|---|---|
+| 쉼표 | rest | `docs/specs/rest.md` · `.html` | `feature/RestFeature.kt` | e20~29 |
+| 튜토리얼 | tutor | `docs/specs/tutor.md` · `tutor-tips.md` | `feature/TutorFeature.kt` · `assets/tips.json` | e30~39 |
+| 온기(+캐릭터 꾸미기) | ongi | `docs/specs/ongi.md` | `feature/OngiFeature.kt` | e40~49 |
+| 오늘 할 일 | today | `docs/specs/today.md` | `feature/TodayFeature.kt` | e50~59 |
+| 엔터(끝말잇기·퀴즈) | play | `docs/specs/play.md` | `feature/PlayFeature.kt` | e60~69 |
+| 브리핑(개인화 뉴스) | brief | `docs/specs/brief.md` | `feature/BriefFeature.kt` · `server/hyun/features/briefing.py` | e70~79 |
 
-- 브랜치 `feat/<id>` ← `main` · PR은 작게 · 머지 전 `main`을 받아 빌드가 되는지 확인
+- **담당은 따로 없다 — 누구나 어느 모듈이든 맡는다.** 대신 **시작하자마자** `feat/<id>` 브랜치를 푸시하고 **Draft PR**(제목 `[<id>] 모듈 이름`)을 연다 = "내가 하는 중" 표시. 시작 전에 `gh pr list --state open`(또는 GitHub PR 목록)으로 같은 모듈 Draft PR이 있는지 보고, 있으면 그 사람과 나눠 한다
+- 협업자: `somanghao`(내쉬, 관리) · `yoush28`(쓰기) — 새 팀원은 내쉬가 Collaborator로 초대
+- 브랜치 `feat/<id>` ← `main` · PR은 작게 · 머지 전 `main`을 받아 빌드가 되는지 확인 · 다 되면 Draft를 Ready로
 - 충돌 나는 곳: `feature/Registry.kt`·`server/hyun/features/__init__.py`(`ALL`)는 **한 줄씩, 둘 다 남기고 순서만 정한다**(순서가 뜻 — 말 가로채기·규칙 답은 앞 기능 먼저) · `cases.json`은 자기 번호 대역만 · 화면은 `ui/parts/<Module>Part.kt`로 빼고 `HyunView`엔 호출 한 줄
-- **완료 기준**: 명세·화면 구성도 확인(내쉬) → 구현 → 자기 E2E 케이스 통과 → 1칸·반반 × 정차·주행 × 기본·내쉬 스킨 캡처 → PR
+- **완료 기준**: 명세·화면 구성도 확인(내쉬) → 구현 → 자기 E2E 케이스 통과 → 1칸·반반 × 정차·주행 × 기본·내쉬 스킨 캡처 → Draft PR을 Ready로(캡처·E2E 결과 첨부)
 
 ## 절대 규칙
 
