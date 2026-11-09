@@ -237,12 +237,20 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             c.drawBitmap(blur, null, artRect, bp)
             p.color = if (darkUi) Glass.a(SURF, 210) else Glass.a(Color.WHITE, 184); c.drawRect(r, p)
         } else {   // 바탕과 살짝 다른 면 — 위가 조금 밝은 은은한 그라데이션(칼리 11-09 "배경이랑 동일")
-            val top = if (darkUi) 0xFF222A36.toInt() else 0xFFFFFFFF.toInt(); val bot = if (darkUi) 0xFF1B212B.toInt() else 0xFFF9FAFC.toInt()
-            p.shader = LinearGradient(r.left, r.top, r.left, r.bottom, top, bot, Shader.TileMode.CLAMP); c.drawRect(r, p); p.shader = null
+            // 밤: 반투명 유리(뒤 풍경이 은은히 비침) + 위쪽 광택 · 낮: 흰 면
+            val top = if (darkUi) Glass.a(0xFF2A3A55.toInt(), 170) else 0xFFFFFFFF.toInt(); val bot = if (darkUi) Glass.a(0xFF0F1726.toInt(), 196) else 0xFFF9FAFC.toInt()
+            p.color = Color.WHITE
+            p.shader = LinearGradient(r.left, r.top, r.left, r.bottom, top, bot, Shader.TileMode.CLAMP); c.drawRect(r, p)
+            if (darkUi) {
+                p.shader = LinearGradient(r.left, r.top, r.left, r.top + min(r.height() * 0.35f, 90 * U), Glass.a(Color.WHITE, 20), Glass.a(Color.WHITE, 0), Shader.TileMode.CLAMP); c.drawRect(r, p)
+                p.shader = LinearGradient(r.left, 0f, r.right, 0f, intArrayOf(Glass.a(0xFFB8D4FF.toInt(), 0), Glass.a(0xFFB8D4FF.toInt(), 90), Glass.a(0xFFB8D4FF.toInt(), 0)), floatArrayOf(0.05f, 0.4f, 0.95f), Shader.TileMode.CLAMP)
+                c.drawRect(r.left, r.top, r.right, r.top + max(1f, U), p)   // 위 모서리 빛
+            }
+            p.shader = null
         }
         tint?.let { p.color = Glass.a(it, if (darkUi) 30 else 18); c.drawRect(r, p) }
         c.restore()
-        p.style = Paint.Style.STROKE; p.strokeWidth = max(1f, U); p.color = if (blur != null && !darkUi) 0x99FFFFFF.toInt() else if (darkUi) 0xFF333C4A.toInt() else 0xFFDCE1E8.toInt(); c.drawPath(sp, p); p.style = Paint.Style.FILL
+        p.style = Paint.Style.STROKE; p.strokeWidth = max(1f, U); p.color = if (blur != null && !darkUi) 0x99FFFFFF.toInt() else if (darkUi) Glass.a(0xFF9CC2FF.toInt(), 44) else 0xFFDCE1E8.toInt(); c.drawPath(sp, p); p.style = Paint.Style.FILL
     }
 
     /** 바탕 — 그림 없이 절제된 그라데이션 + 큰 부드러운 빛 둘(무늬·도형 없음). 기본은 Pleos 밝은 회색(밤엔 깊은 회청) */
@@ -456,6 +464,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
      * 위는 푸른 회색 벽, 아래 26%는 바닥(경계선 없이 명도로만 꺾임) · 캐릭터 뒤 은은한 역광 · 발밑 하늘색·분홍 빛 웅덩이 · 가장자리 비네트
      */
     private fun studio(c: Canvas, w: Float, h: Float, night: Boolean) {
+        if (night) { cinema(c, w, h); return }
         val hz = h * 0.74f                                   // 벽과 바닥이 만나는 곳
         val wallTop = if (night) 0xFF0D1420.toInt() else 0xFFAEBDCC.toInt()
         val wallBot = if (night) 0xFF1C2A3E.toInt() else 0xFFD9E3EC.toInt()
@@ -478,6 +487,63 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         c.restore()
         // 비네트 — 가장자리를 살짝 어둡게
         p.shader = RadialGradient(w * 0.5f, h * 0.45f, w * 0.75f, intArrayOf(0, 0, Glass.a(Color.BLACK, if (night) 120 else 46)), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, p); p.shader = null
+    }
+
+    /**
+     * 밤(어두운 화면) 바탕 — 차 화면 같은 시네마틱 풍경(칼리 11-09 참고 이미지: 짙은 남색 · 지평선 안개 · 먼 산 · 푸른 빛줄기).
+     * 지평선 62% · 먼 산 두 겹(낮은 대비) · 바닥에서 캐릭터 발밑으로 흘러오는 빛줄기 · 위쪽 얇은 빛 곡선 · 비네트
+     */
+    private val cinemaPath = Path()
+    private fun cinema(c: Canvas, w: Float, h: Float) {
+        val hz = h * 0.62f
+        val ccx = if (mirror) w * 0.8f else w * 0.2f
+        p.color = Color.WHITE
+        // 하늘 → 지평선
+        p.shader = LinearGradient(0f, 0f, 0f, hz, intArrayOf(0xFF060A13.toInt(), 0xFF0E1726.toInt(), 0xFF22324B.toInt()), floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP); c.drawRect(0f, 0f, w, hz, p)
+        // 땅
+        p.shader = LinearGradient(0f, hz, 0f, h, 0xFF141E2E.toInt(), 0xFF070B13.toInt(), Shader.TileMode.CLAMP); c.drawRect(0f, hz, w, h, p)
+        // 먼 산 두 겹 — 부드러운 능선(낮은 대비)
+        for (layer in 0..1) {
+            val base = hz + h * 0.004f; val amp = h * (if (layer == 0) 0.07f else 0.11f)
+            cinemaPath.reset(); cinemaPath.moveTo(0f, base)
+            var x = 0f
+            while (x <= w) {
+                val u = x / w
+                val y = base - amp * (0.55f + 0.45f * sin(u * (if (layer == 0) 9.0f else 5.2f) + layer * 1.3f)) * (0.5f + 0.5f * sin(u * 2.3f + 0.6f + layer))
+                cinemaPath.lineTo(x, y); x += w / 64
+            }
+            cinemaPath.lineTo(w, base); cinemaPath.close()
+            p.shader = LinearGradient(0f, base - amp, 0f, base, if (layer == 0) 0xFF27364E.toInt() else 0xFF1A2639.toInt(), 0xFF152031.toInt(), Shader.TileMode.CLAMP)
+            c.drawPath(cinemaPath, p)
+        }
+        // 지평선 안개(빛 띠)
+        p.shader = LinearGradient(0f, hz - h * 0.1f, 0f, hz + h * 0.05f, intArrayOf(Glass.a(0xFF8FB4E8.toInt(), 0), Glass.a(0xFF8FB4E8.toInt(), 46), Glass.a(0xFF8FB4E8.toInt(), 0)), floatArrayOf(0f, 0.7f, 1f), Shader.TileMode.CLAMP)
+        c.drawRect(0f, hz - h * 0.1f, w, hz + h * 0.05f, p)
+        // 위쪽 얇은 빛 곡선(대시보드 곡면 느낌)
+        p.shader = null; p.style = Paint.Style.STROKE; p.strokeCap = Paint.Cap.ROUND
+        cinemaPath.reset(); cinemaPath.moveTo(-w * 0.05f, h * 0.2f); cinemaPath.cubicTo(w * 0.3f, h * 0.05f, w * 0.7f, h * 0.02f, w * 1.05f, h * 0.16f)
+        p.strokeWidth = 10 * U; p.color = Glass.a(0xFF6FA8FF.toInt(), 10); c.drawPath(cinemaPath, p)
+        p.strokeWidth = 1.5f * U; p.color = Glass.a(0xFFB8D4FF.toInt(), 46); c.drawPath(cinemaPath, p)
+        // 빛줄기 — 지평선 저편에서 캐릭터 발밑으로 흘러옴(넓은 번짐 → 가는 심)
+        val fy = h * 0.71f
+        cinemaPath.reset(); cinemaPath.moveTo(w * (if (mirror) 0.35f else 0.62f), hz + h * 0.01f)
+        cinemaPath.cubicTo(w * 0.5f, hz + h * 0.06f, ccx + w * (if (mirror) -0.25f else 0.25f), fy - h * 0.02f, ccx, fy + h * 0.02f)
+        cinemaPath.cubicTo(ccx - w * (if (mirror) -0.12f else 0.12f), fy + h * 0.06f, ccx - w * (if (mirror) -0.05f else 0.05f), h * 0.92f, ccx - w * (if (mirror) -0.2f else 0.2f), h * 1.02f)
+        for ((sw, al, col) in listOf(Triple(46f, 14, 0xFF2F7BFF.toInt()), Triple(22f, 30, 0xFF3D8BFF.toInt()), Triple(9f, 70, 0xFF5AB0FF.toInt()), Triple(3f, 200, 0xFFBFE4FF.toInt()))) {
+            p.strokeWidth = sw * U; p.color = Glass.a(col, al); c.drawPath(cinemaPath, p)
+        }
+        p.style = Paint.Style.FILL; p.color = Color.WHITE   // 그라데이션이 앞 선의 반투명을 물려받지 않게
+        // 캐릭터 뒤 푸른 역광 · 발밑 빛 웅덩이
+        p.shader = RadialGradient(ccx, h * 0.48f, h * 0.55f, Glass.a(0xFF4C8DFF.toInt(), 60), Glass.a(0xFF4C8DFF.toInt(), 0), Shader.TileMode.CLAMP); c.drawCircle(ccx, h * 0.48f, h * 0.55f, p)
+        c.save(); c.scale(1f, 0.22f, ccx, fy)
+        p.shader = RadialGradient(ccx, fy, h * 0.4f, Glass.a(0xFF5AB0FF.toInt(), 110), 0x005AB0FF, Shader.TileMode.CLAMP); c.drawCircle(ccx, fy, h * 0.4f, p)
+        c.restore()
+        // 아래 가장자리 네온 선(화면 밑 빛 띠)
+        p.shader = LinearGradient(0f, 0f, w, 0f, intArrayOf(Glass.a(0xFF3D8BFF.toInt(), 0), Glass.a(0xFF3D8BFF.toInt(), 120), Glass.a(0xFF3D8BFF.toInt(), 0)), floatArrayOf(0.1f, 0.5f, 0.9f), Shader.TileMode.CLAMP)
+        c.drawRect(0f, h - 3 * U, w, h - 1 * U, p)
+        // 비네트
+        p.shader = RadialGradient(w * 0.5f, h * 0.5f, w * 0.75f, intArrayOf(0, 0, Glass.a(Color.BLACK, 130)), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
         c.drawRect(0f, 0f, w, h, p); p.shader = null
     }
 
