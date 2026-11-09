@@ -1116,6 +1116,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
         hits += RectF(x - 8 * U, 28 * U, end + 8 * U, 76 * U) to "sitpill"
         viewChips(c, x, 112 * U)
+        if (m.view == null && !(m.viewForced && m.forced)) {   // 레벨 · 기분(2차) — 실제 주행으로 오르내림
+            val face = when { m.mood >= 75 -> "♪"; m.mood < 40 -> "!"; else -> "·" }
+            chip(c, "Lv.${m.level} ${m.levelTitle}  $face ${m.moodLabel}", x, 112 * U, "noop", false)
+        } else if (m.view == null) { p.textSize = 20 * U; p.typeface = medium; chip(c, "Lv.${m.level} · ${m.moodLabel}", x + p.measureText("미리보기 · 자동으로") + 48 * U, 112 * U, "noop", false) }
     }
     private fun viewChips(c: Canvas, x: Float, cy: Float) {
         var xx = x
@@ -1719,7 +1723,13 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         "wait" -> "기다리는 동안 쉬어요"; "nearby" -> "3분 거리에 괜찮은 곳 있어요"; "wash" -> "세차하기 좋은 날이에요"; "stamp" -> "오늘도 참 잘했어요"
         "morning" -> "내일 아침 히터 켜 둘까요?"; "leftbehind" -> "뒷좌석 다시 볼까요?"; "progress" -> "다음 소품까지 조금 남았어요"
         "first" -> "오늘 첫 주행이에요"; "long" -> "장거리 완주, 메달 드려요"; "night" -> "늦은 밤이에요. 천천히 가요"; "rain" -> "비 오는 날 특별 퀘스트예요"
-        "birthday" -> "생일 축하해요"; "hundred" -> "100번째 주행이에요"; else -> "별 1,000개 모았어요"
+        "birthday" -> "생일 축하해요"; "hundred" -> "100번째 주행이에요"; "star1000" -> "별 1,000개 모았어요"
+        "kidquiz" -> "뒷자리 친구, 사자는 어떻게 울까?"; "date" -> "오늘은 조용히 분위기만 챙길게요"; "parent" -> "어머님, 편하게 모실게요"; "childlock" -> "뒷문 잠금 확인했어요"
+        "holiday" -> "새벽에 출발하면 덜 막혀요"; "firstsnow" -> "첫눈이에요! 천천히 가요"; "blossom" -> "꽃길로 돌아갈까요?"; "heat" -> "먼저 창문부터 내려요"; "suneung" -> "수험생들 응원해요"
+        "level" -> "${m.levelTitle}, 레벨 ${m.level}이에요"; "mood" -> "지금 기분은 ${m.moodLabel}"; "anniv" -> "우리 만난 지 100일이에요"; "memory" -> "그때 기억나요?"
+        "cost" -> "이번 주 4천 원 아꼈어요"; "service" -> "엔진오일 갈 때가 됐어요"; "tireseason" -> "다음 주 영하예요"; "ubi" -> "이 점수면 보험 할인 구간이에요"
+        "sharecard" -> "이번 주 카드 만들었어요"; "league" -> "엄마가 1등이에요, 따라잡아요"; "commute" -> "출근길 편성 끝"; "parkhunt" -> "공영주차장이 더 가까워요"
+        "schoolzone" -> "스쿨존이에요, 30 이하로"; "voicegame" -> "스무고개 할까요?"; "senior" -> "글씨 크게 바꿨어요"; else -> "글레오가 저를 부를 수 있어요"
     }
 
     /** 정차 화면 카드 높이와 그리기 */
@@ -1896,6 +1906,170 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 text(c, "100", r.left + 40 * U, r.top + 170 * U, 140 * U, ACC, bold)
                 text(c, "번째 주행", r.left + 330 * U, r.top + 120 * U, 44 * U, FG, bold)
                 text(c, "처음 만난 날부터 1,284km · 기념 카드가 기록에 남아요", r.left + 330 * U, r.top + 166 * U, 26 * U, MUTED, medium, maxW = r.right - r.left - 370 * U) }
+            // ================= 2차 추천 25 =================
+            // ---- 동승자 ----
+            "date" -> row(240 * U) { r -> glassCard(c, r, 24 * U)
+                c.save(); c.clipPath(Path().apply { addRoundRect(r, 24 * U, 24 * U, Path.Direction.CW) })
+                p.shader = LinearGradient(r.left, r.top, r.right, r.bottom, 0xFF2A1638.toInt(), 0xFF5A2346.toInt(), Shader.TileMode.CLAMP); c.drawRect(r, p); p.shader = null
+                p.shader = RadialGradient(r.right - 120 * U, r.top + 60 * U, 180 * U, 0x66FF7AA2, 0x00FF7AA2, Shader.TileMode.CLAMP); c.drawRect(r, p); p.shader = null; c.restore()
+                val pas = st?.passenger?.v == true
+                text(c, "데이트 모드", r.left + 40 * U, r.top + 96 * U, 52 * U, 0xFFFFE8F0.toInt(), bold)
+                text(c, "무드등 · 혼잣말 끔 · 오늘 같이 들은 노래를 남겨요", r.left + 40 * U, r.top + 146 * U, 28 * U, 0xCCFFE8F0.toInt(), medium, maxW = r.width() - 80 * U)
+                text(c, if (pas) "조수석 착석 감지 · 저녁 ${java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)}시" else "예시 · 조수석 착석 + 저녁에 켜져요", r.left + 40 * U, r.bottom - 36 * U, 22 * U, 0x99FFE8F0.toInt(), medium) }
+            "parent", "childlock", "memory" -> row(min(360 * U, z.height())) { r -> box(c, r); val x0 = r.left + 48 * U
+                when (id) {
+                    "parent" -> { exTag(c, r); text(c, "부모님 모드", x0, r.top + 130 * U, 80 * U, FG, bold); text(c, "글자 크게 · 말은 천천히 · 급정거 경고 일찍", x0, r.top + 196 * U, 36 * U, MUTED, medium)
+                        text(c, "어머니 모시는 날 · 별 2배", x0, r.bottom - 52 * U, 36 * U, ACC, semi) }
+                    "childlock" -> { val kid = st?.rearKid?.v == true; if (!kid) exTag(c, r)
+                        text(c, "뒷문 잠금 됐어요", x0, r.top + 130 * U, 76 * U, GOOD, bold); text(c, "뒷좌석에 아이 · 창문 잠금도 켤까요?", x0, r.top + 196 * U, 36 * U, MUTED, medium)
+                        micGlyph(c, x0 + 16 * U, r.bottom - 64 * U, 34 * U, ACC); text(c, "\"응\" 하면 창문 잠금", x0 + 48 * U, r.bottom - 52 * U, 34 * U, ACC, medium) }
+                    else -> { exTag(c, r); text(c, "그때 기억나요?", x0, r.top + 120 * U, 72 * U, FG, bold); text(c, "지난번 여기 올 땐 비가 왔죠 · 10월 3일", x0, r.top + 186 * U, 36 * U, MUTED, medium)
+                        text(c, "♪ 그날 들은 노래 다시 틀까요", x0, r.bottom - 52 * U, 36 * U, ACC, medium) }
+                } }
+            // ---- 계절 ----
+            "holiday" -> row(260 * U) { r -> box(c, r); exTag(c, r)
+                lab(c, "추석 귀성길 플래너 · 3일 전", r.left + 32 * U, r.top + 40 * U)
+                val slots = listOf("새벽 5시" to 4.2f, "오전 9시" to 6.5f, "오후 2시" to 5.8f, "밤 10시" to 4.6f)
+                val bw = (r.width() - 64 * U) / 4
+                slots.forEachIndexed { i, (t2, hr) -> val x = r.left + 32 * U + i * bw; val best = i == 0
+                    val bh = 110 * U * hr / 6.5f; p.color = if (best) ACC else Glass.a(ACC, 70); c.drawRoundRect(RectF(x + 12 * U, r.top + 190 * U - bh, x + bw - 12 * U, r.top + 190 * U), 8 * U, 8 * U, p)
+                    text(c, "${hr}시간", x + bw / 2, r.top + 190 * U - bh - 10 * U, 22 * U, if (best) ACC else MUTED, semi, Paint.Align.CENTER); text(c, t2, x + bw / 2, r.top + 222 * U, 22 * U, FG, medium, Paint.Align.CENTER) }
+                text(c, "새벽 5시 출발이 2시간 덜 막혀요 · 휴게소 간식: 안성 호두과자", r.left + 32 * U, r.bottom - 10 * U, 0f.let { 20 * U }, FAINT, medium) }
+            "firstsnow" -> row(260 * U) { r -> box(c, r)
+                val cx = r.left + 110 * U; val by = r.bottom - 40 * U
+                p.color = Color.WHITE; c.drawCircle(cx, by - 56 * U, 56 * U, p); c.drawCircle(cx, by - 140 * U, 40 * U, p)
+                p.style = Paint.Style.STROKE; p.strokeWidth = 2 * U; p.color = LINE; c.drawCircle(cx, by - 56 * U, 56 * U, p); c.drawCircle(cx, by - 140 * U, 40 * U, p); p.style = Paint.Style.FILL
+                p.color = 0xFF111827.toInt(); c.drawCircle(cx - 12 * U, by - 146 * U, 4 * U, p); c.drawCircle(cx + 12 * U, by - 146 * U, 4 * U, p); p.color = 0xFFFF8A3D.toInt(); c.drawCircle(cx, by - 136 * U, 5 * U, p)
+                p.color = RED; c.drawRoundRect(RectF(cx - 44 * U, by - 108 * U, cx + 44 * U, by - 94 * U), 7 * U, 7 * U, p)
+                text(c, "올해 첫눈이에요", r.left + 240 * U, r.top + 92 * U, 52 * U, FG, bold)
+                text(c, "첫눈 운전 5km 급정거 없이 → 한정 소품 '눈사람'", r.left + 240 * U, r.top + 142 * U, 28 * U, ACC, semi, maxW = r.width() - 280 * U)
+                text(c, "앞차 간격 두 배 · 브레이크는 미리, 살살", r.left + 240 * U, r.top + 186 * U, 26 * U, MUTED, medium) }
+            "blossom" -> row(240 * U) { r -> box(c, r); exTag(c, r)
+                val rr = java.util.Random(4); for (i in 0 until 26) { p.color = Glass.a(0xFFFF9EC0.toInt(), 120 + rr.nextInt(100)); c.drawCircle(r.right - 260 * U + rr.nextFloat() * 240 * U, r.top + 20 * U + rr.nextFloat() * (r.height() - 40 * U), (5 + rr.nextInt(7)) * U, p) }
+                text(c, "벚꽃 드라이브 코스", r.left + 32 * U, r.top + 92 * U, 48 * U, FG, bold)
+                text(c, "윤중로보다 덜 붐비는 탄천길 · 20분 돌아가요", r.left + 32 * U, r.top + 140 * U, 28 * U, MUTED, medium)
+                text(c, "\"꽃길로 가자\" 하면 경로를 바꿔요", r.left + 32 * U, r.bottom - 36 * U, 26 * U, ACC, semi) }
+            "heat" -> row(240 * U) { r -> box(c, r)
+                val t2 = m.tempNow ?: 34
+                text(c, "${max(t2, 33)}°", r.left + 32 * U, r.top + 150 * U, 110 * U, RED, bold)
+                text(c, "폭염 출발 루틴", r.left + 280 * U, r.top + 80 * U, 40 * U, FG, bold)
+                listOf("창문 내리고 30초 환기", "에어컨 내기 순환", "핸들이 뜨거우면 잠깐 기다려요").forEachIndexed { i, s2 -> text(c, "${i + 1}. $s2", r.left + 280 * U, r.top + 124 * U + i * 36 * U, 26 * U, if (i == 0) ACC else MUTED, medium) }
+                if (m.tempNow == null || m.tempNow!! < 33) lab(c, "기온 예시(33° 이상일 때 켜져요)", r.left + 32 * U, r.bottom - 20 * U, col = FAINT) }
+            "suneung" -> row(260 * U) { r -> box(c, r)
+                c.save(); c.rotate(-8f, r.left + 120 * U, r.centerY())
+                path.reset(); path.moveTo(r.left + 50 * U, r.centerY() - 60 * U); path.lineTo(r.left + 200 * U, r.centerY()); path.lineTo(r.left + 50 * U, r.centerY() + 60 * U); path.close()
+                p.color = RED; c.drawPath(path, p); text(c, "합격", r.left + 96 * U, r.centerY() + 12 * U, 34 * U, Color.WHITE, bold, Paint.Align.CENTER); c.restore()
+                text(c, "수능 응원 모드", r.left + 250 * U, r.top + 92 * U, 52 * U, FG, bold)
+                text(c, "시험장 근처는 경적 금지 · 8:10까지 입실 · 우회 안내", r.left + 250 * U, r.top + 142 * U, 28 * U, MUTED, medium, maxW = r.width() - 290 * U)
+                text(c, "오늘 시험 보는 모든 수험생, 응원해요", r.left + 250 * U, r.top + 192 * U, 28 * U, ACC, semi)
+                lab(c, "11월 셋째 목요일 · 시험장 위치는 공공데이터 연동 예정", r.left + 250 * U, r.bottom - 18 * U, col = FAINT) }
+            // ---- 캐릭터 ----
+            "level" -> row(330 * U) { r -> box(c, r)
+                val lv = m.level; val lo = m.xpFor(lv); val hi = m.xpFor(lv + 1); val pr = if (lv >= 10) 1f else ((m.xp - lo).toFloat() / (hi - lo)).coerceIn(0f, 1f)
+                val cx = r.left + 130 * U; val cy = r.centerY()
+                p.style = Paint.Style.STROKE; p.strokeWidth = 14 * U; p.strokeCap = Paint.Cap.ROUND; p.color = SURF2; c.drawCircle(cx, cy, 92 * U, p)
+                p.color = ACC; c.drawArc(RectF(cx - 92 * U, cy - 92 * U, cx + 92 * U, cy + 92 * U), -90f, 360f * pr, false, p); p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT
+                text(c, "Lv.$lv", cx, cy + 22 * U, 60 * U, FG, bold, Paint.Align.CENTER)
+                val x0 = r.left + 270 * U
+                text(c, m.levelTitle, x0, r.top + 96 * U, 48 * U, FG, bold)
+                text(c, if (lv >= 10) "최고 레벨이에요" else "다음 레벨 '${StageModel.LEVELS[lv]}'까지 ★ ${hi - m.xp}", x0, r.top + 142 * U, 28 * U, MUTED, medium)
+                lab(c, "레벨마다 열리는 것", x0, r.top + 196 * U)
+                listOf(2 to "웃는 말버릇", 4 to "콧노래 표정", 6 to "운전 칭찬 노래", 8 to "한정 테마").forEachIndexed { i, (l2, n2) -> val on = lv >= l2
+                    text(c, "Lv.$l2 $n2", x0 + i * 170 * U, r.top + 236 * U, 22 * U, if (on) ACC else FAINT, if (on) semi else medium) }
+                lab(c, "모은 별 ${m.xp} = 경험치 · 실제 주행으로 오름", x0, r.bottom - 26 * U, col = FAINT) }
+            "mood" -> row(300 * U) { r -> box(c, r)
+                val face = when { m.mood >= 75 -> "humming"; m.mood < 40 -> "worried"; else -> "neutral" }
+                v.asset("bot_$face.webp")?.let { b -> c.drawBitmap(b, null, RectF(r.left + 30 * U, r.top + 40 * U, r.left + 250 * U, r.top + 260 * U), bp) }
+                val x0 = r.left + 290 * U
+                text(c, "지금 기분 · ${m.moodLabel}", x0, r.top + 90 * U, 48 * U, FG, bold)
+                val bar = RectF(x0, r.top + 120 * U, r.right - 40 * U, r.top + 140 * U)
+                p.shader = LinearGradient(bar.left, 0f, bar.right, 0f, intArrayOf(0xFFE5484D.toInt(), 0xFFF59F00.toInt(), 0xFF12B886.toInt()), null, Shader.TileMode.CLAMP); c.drawRoundRect(bar, 10 * U, 10 * U, p); p.shader = null
+                val mx = bar.left + bar.width() * m.mood / 100f; p.color = FG; c.drawCircle(mx, bar.centerY(), 14 * U, p); p.color = SURF; c.drawCircle(mx, bar.centerY(), 7 * U, p)
+                text(c, "긴장", bar.left, bar.bottom + 30 * U, 20 * U, MUTED, medium); text(c, "콧노래", bar.right, bar.bottom + 30 * U, 20 * U, MUTED, medium, Paint.Align.RIGHT)
+                text(c, "마지막 변화: ${m.moodWhy.ifBlank { "아직 없음" }}", x0, r.top + 216 * U, 26 * U, FG, medium)
+                lab(c, "급정거 −15 · 깜빡이 없이 회전 −8 · 부드럽게 1km +3 · 크루즈 +5 (실제 주행 신호)", x0, r.bottom - 28 * U, r.right - x0 - 32 * U, FAINT) }
+            "anniv" -> row(240 * U) { r -> box(c, r); exTag(c, r)
+                text(c, "D+100", r.left + 32 * U, r.top + 150 * U, 96 * U, ACC, bold)
+                text(c, "우리 만난 지 100일", r.left + 360 * U, r.top + 96 * U, 44 * U, FG, bold)
+                text(c, "함께 1,284km · 별 ${m.xp}개 · 오늘은 기념 사진 컷", r.left + 360 * U, r.top + 142 * U, 26 * U, MUTED, medium, maxW = r.width() - 400 * U)
+                text(c, "\"고마워\" 라고 말해 주면 답장해요", r.left + 360 * U, r.bottom - 36 * U, 24 * U, ACC, semi) }
+            // ---- 차 관리 ----
+            "cost" -> row(260 * U) { r -> box(c, r); exTag(c, r)
+                lab(c, "이번 주 충전·주유비", r.left + 32 * U, r.top + 40 * U)
+                text(c, "32,400원", r.left + 32 * U, r.top + 120 * U, 64 * U, FG, bold)
+                text(c, "지난주보다 4,100원 아꼈어요 · 에코 모드 덕분", r.left + 32 * U, r.top + 166 * U, 26 * U, GOOD, semi)
+                val wk = listOf(36500f, 32400f); val bx = r.right - 260 * U
+                wk.forEachIndexed { i, v2 -> val hh = 140 * U * v2 / 40000f; p.color = if (i == 1) ACC else SURF2; c.drawRoundRect(RectF(bx + i * 110 * U, r.bottom - 50 * U - hh, bx + i * 110 * U + 80 * U, r.bottom - 50 * U), 8 * U, 8 * U, p)
+                    text(c, if (i == 0) "지난주" else "이번 주", bx + i * 110 * U + 40 * U, r.bottom - 20 * U, 20 * U, MUTED, medium, Paint.Align.CENTER) }
+                lab(c, "주행 거리 ✅ · 단가는 공공 충전 요금 연동 예정", r.left + 32 * U, r.bottom - 26 * U, col = FAINT) }
+            "service" -> row(230 * U) { r -> box(c, r); exTag(c, r)
+                text(c, "정비할 때가 됐어요", r.left + 32 * U, r.top + 86 * U, 44 * U, FG, bold)
+                listOf("엔진오일" to 0.92f, "와이퍼" to 0.8f, "에어컨 필터" to 0.55f).forEachIndexed { i, (n2, pr) -> val y = r.top + 130 * U + i * 30 * U
+                    text(c, n2, r.left + 32 * U, y + 8 * U, 22 * U, MUTED, medium); val bar = RectF(r.left + 180 * U, y - 4 * U, r.left + 520 * U, y + 6 * U)
+                    p.color = SURF2; c.drawRoundRect(bar, 5 * U, 5 * U, p); p.color = if (pr > 0.85f) WARN else ACC; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * pr, bar.bottom), 5 * U, 5 * U, p) }
+                text(c, "가는 길 블루핸즈 1.4km", r.right - 32 * U, r.top + 140 * U, 26 * U, ACC, semi, Paint.Align.RIGHT)
+                lab(c, "공기압은 계기판에서(외부 앱엔 막힘)", r.right - 32 * U - 330 * U, r.bottom - 22 * U, 330 * U, FAINT) }
+            "tireseason" -> row(230 * U) { r -> box(c, r); exTag(c, r)
+                val cx = r.left + 110 * U; val cy = r.centerY()
+                p.color = 0xFF2B2F36.toInt(); c.drawCircle(cx, cy, 80 * U, p); p.color = 0xFF9AA3B2.toInt(); c.drawCircle(cx, cy, 36 * U, p)
+                p.color = 0xFFE6EDF3.toInt(); for (i in 0 until 8) { val a = Math.toRadians(i * 45.0); c.drawCircle(cx + (60 * U * Math.cos(a)).toFloat(), cy + (60 * U * Math.sin(a)).toFloat(), 6 * U, p) }
+                text(c, "다음 주 영하 −4°", r.left + 230 * U, r.top + 92 * U, 48 * U, FG, bold)
+                text(c, "겨울 타이어로 바꿀 때예요 · 예약할까요?", r.left + 230 * U, r.top + 140 * U, 28 * U, MUTED, medium)
+                text(c, "\"타이어 예약\" 이라고 말해요", r.left + 230 * U, r.bottom - 36 * U, 26 * U, ACC, semi) }
+            "ubi" -> row(250 * U) { r -> box(c, r); exTag(c, r)
+                val score = (100 - m.harshN * 5).coerceIn(60, 100) - 8
+                text(c, "$score", r.left + 32 * U, r.top + 150 * U, 110 * U, ACC, bold); lab(c, "운전점수", r.left + 40 * U, r.top + 190 * U)
+                text(c, "보험 할인 예상 약 10%", r.left + 300 * U, r.top + 96 * U, 44 * U, FG, bold)
+                val bar = RectF(r.left + 300 * U, r.top + 130 * U, r.right - 40 * U, r.top + 146 * U); p.color = SURF2; c.drawRoundRect(bar, 8 * U, 8 * U, p)
+                p.color = GOOD; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * ((score - 60) / 40f), bar.bottom), 8 * U, 8 * U, p)
+                text(c, "70점부터 할인 구간 · 급정거 줄이면 더 올라가요", r.left + 300 * U, r.top + 186 * U, 24 * U, MUTED, medium)
+                lab(c, "할인율은 보험사 기준 연동 전 예시", r.left + 300 * U, r.bottom - 20 * U, col = FAINT) }
+            // ---- 공유 ----
+            "sharecard" -> row(min(420 * U, z.height())) { r -> box(c, r)
+                val card = RectF(r.left + 24 * U, r.top + 24 * U, r.left + 24 * U + (r.height() - 48 * U) * 0.8f, r.bottom - 24 * U)
+                p.color = if (skinned) sk.colors.bg else 0xFFFFF3D6.toInt(); c.drawRoundRect(card, 16 * U, 16 * U, p)
+                p.color = if (skinned) sk.style.patternColor else 0xFFF2D9A0.toInt(); var yy = card.top + 10 * U; var row2 = 0; while (yy < card.bottom) { var xx = card.left + (if (row2 % 2 == 0) 10 * U else 20 * U); while (xx < card.right) { c.drawCircle(xx, yy, 2.4f * U, p); xx += 20 * U }; yy += 18 * U; row2++ }
+                p.style = Paint.Style.STROKE; p.strokeWidth = 4 * U; p.color = 0xFF16120E.toInt(); c.drawRoundRect(card, 16 * U, 16 * U, p); p.style = Paint.Style.FILL
+                val tf2 = if (skinned) sk.fonts.title else bold
+                text(c, "이번 주 현비서", card.left + 20 * U, card.top + 50 * U, 30 * U, 0xFF16120E.toInt(), tf2)
+                v.asset("bot_cool.webp")?.let { b -> c.drawBitmap(b, null, RectF(card.centerX() - 70 * U, card.top + 70 * U, card.centerX() + 70 * U, card.top + 210 * U), bp) }
+                text(c, "%.1fkm".format(max(m.dayKmShown, 86.4)), card.left + 20 * U, card.bottom - 86 * U, 40 * U, 0xFF16120E.toInt(), tf2)
+                text(c, "★ +${max(m.weekPoints, 142)} · 명장면: 깜빡이 장인", card.left + 20 * U, card.bottom - 50 * U, 20 * U, 0xFF3A322A.toInt(), medium, maxW = card.width() - 40 * U)
+                text(c, "#현비서 #안전운전", card.left + 20 * U, card.bottom - 20 * U, 18 * U, 0xFFFF4F79.toInt(), medium)
+                val x0 = card.right + 40 * U
+                text(c, "주간 공유 카드", x0, r.top + 100 * U, 48 * U, FG, bold)
+                text(c, "지금 스킨 그림체로 만든 한 장 · 일요일 밤마다", x0, r.top + 146 * U, 26 * U, MUTED, medium, maxW = r.right - x0 - 32 * U)
+                button(c, "폰으로 보내기", RectF(x0, r.bottom - 120 * U, x0 + 260 * U, r.bottom - 56 * U), true, "noop")
+                lab(c, "폰(짭비서) 공유 연동 예정 · 숫자는 이번 주 기록(없으면 예시)", x0, r.bottom - 22 * U, r.right - x0 - 32 * U, FAINT) }
+            "league" -> row(340 * U) { r -> box(c, r); exTag(c, r)
+                lab(c, "가족 온기 리그 · 이번 주", r.left + 32 * U, r.top + 40 * U)
+                listOf(Triple("엄마", 214, false), Triple("나", max(m.weekPoints, 186), true), Triple("동생", 142, false), Triple("아빠", 98, false)).sortedByDescending { it.second }.forEachIndexed { i, (n2, pts, me) ->
+                    val y = r.top + 70 * U + i * 54 * U; if (me) { p.color = ACC_SOFT; c.drawRoundRect(RectF(r.left + 20 * U, y, r.right - 20 * U, y + 48 * U), 12 * U, 12 * U, p) }
+                    text(c, "${i + 1}", r.left + 40 * U, y + 34 * U, 28 * U, if (i == 0) WARN else MUTED, bold); text(c, n2, r.left + 90 * U, y + 34 * U, 28 * U, FG, if (me) bold else medium)
+                    val bar = RectF(r.left + 220 * U, y + 18 * U, r.right - 160 * U, y + 30 * U); p.color = SURF2; c.drawRoundRect(bar, 6 * U, 6 * U, p); p.color = if (me) ACC else Glass.a(ACC, 90); c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * pts / 240f, bar.bottom), 6 * U, 6 * U, p)
+                    text(c, "★ $pts", r.right - 40 * U, y + 34 * U, 26 * U, FG, semi, Paint.Align.RIGHT) }
+                lab(c, "1등은 한정 소품 '왕관' · 가족 계정 연동 예정", r.left + 32 * U, r.bottom - 18 * U, col = FAINT) }
+            // ---- 출퇴근 ----
+            "commute" -> row(230 * U) { r -> box(c, r)
+                val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY); val morning = hr < 14
+                icon(c, if (morning) "sun" else "clock", r.left + 80 * U, r.centerY(), 80 * U, if (morning) 0xFFFFB020.toInt() else ACC)
+                text(c, if (morning) "출근 모드" else "퇴근 모드", r.left + 170 * U, r.top + 92 * U, 52 * U, FG, bold)
+                text(c, if (morning) "뉴스 5분 → 첫 일정 9:30 → 집중 음악" else "\"오늘 수고\" 플레이리스트 · 저녁 장보기 경유", r.left + 170 * U, r.top + 140 * U, 28 * U, MUTED, medium, maxW = r.width() - 200 * U)
+                text(c, "평일 ${hr}시 · 시각으로 저절로 바뀌어요", r.left + 170 * U, r.bottom - 36 * U, 24 * U, ACC, semi) }
+            // ---- 놀이·글레오 ----
+            "senior" -> row(240 * U) { r -> box(c, r)
+                text(c, "시니어 모드", r.left + 32 * U, r.top + 100 * U, 64 * U, FG, bold)
+                text(c, "글자 1.3배 · 안내 두 번 · 밤엔 대비 크게", r.left + 32 * U, r.top + 160 * U, 36 * U, MUTED, medium)
+                text(c, "\"글씨 크게\" 라고 말하면 켜져요", r.left + 32 * U, r.bottom - 32 * U, 30 * U, ACC, semi) }
+            "gleo3" -> row(min(380 * U, z.height())) { r -> box(c, r)
+                lab(c, "글레오가 부르는 현비서 함수 3개 · Gleo Interface(앱당 3개)", r.left + 32 * U, r.top + 40 * U)
+                val fns = listOf(Triple("현비서_오늘_브리핑", "\"글레오, 현비서 오늘 뭐 있어?\"", "날씨 · 소식 · 첫 일정"), Triple("현비서_안전점수", "\"글레오, 나 오늘 운전 어땠어?\"", "급정거 · 별 · 레벨 · 기분"), Triple("현비서_꾸미기", "\"글레오, 현비서 산타 모자 씌워 줘\"", "소품 입기(정차 중)"))
+                val cs = cols(RectF(r.left + 24 * U, r.top + 64 * U, r.right - 24 * U, r.bottom - 64 * U), 1f, 1f, 1f)
+                fns.forEachIndexed { i, (fn, say2, what) -> val q = cs[i]; p.color = SURF2; c.drawRoundRect(q, 16 * U, 16 * U, p)
+                    text(c, "${i + 1}", q.left + 20 * U, q.top + 46 * U, 34 * U, ACC, bold); text(c, fn, q.left + 56 * U, q.top + 42 * U, 22 * U, FG, semi, maxW = q.width() - 70 * U)
+                    wrap(c, say2, q.left + 20 * U, q.top + 100 * U, 24 * U, FG, q.width() - 40 * U, 3, medium, lh = 1.35f)
+                    text(c, what, q.left + 20 * U, q.bottom - 22 * U, 20 * U, MUTED, medium, maxW = q.width() - 40 * U) }
+                text(c, "앱 안에선 지금도 말로 동작 · 마지막 호출: ${m.gleoLast.ifBlank { "없음" }}", r.left + 32 * U, r.bottom - 24 * U, 22 * U, if (m.gleoLast.isBlank()) FAINT else GOOD, medium) }
             else -> row(240 * U) { r -> box(c, r); exTag(c, r)   // star1000
                 icon(c, "star", r.left + 110 * U, r.centerY(), 120 * U, WARN)
                 text(c, "별 1,000개!", r.left + 220 * U, r.top + 110 * U, 56 * U, FG, bold)
@@ -1912,13 +2086,17 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             "alert" -> Quad("warn", RED, "1.2km 앞 호우특보", "속도를 줄여요")
             "arrive10" -> Quad("clock", ACC, "10분 남았어요", "주차장 입구는 오른쪽")
             "dj" -> Quad("music", ACC, "맑은 날의 노래", "이어서 틀게요 · DJ 현비서")
+            "kidquiz" -> Quad("chat", GOOD, "뒷좌석 퀴즈 · 3점", "아이 목소리로 대답 중 · 운전자는 그대로")
+            "parkhunt" -> Quad("pin", ACC, "공영주차장 300m", "건물 주차장은 만차 확률 높아요")
+            "schoolzone" -> Quad("warn", WARN, "스쿨존 · 30 이하", "어린이보호구역 400m")
+            "voicegame" -> Quad("music", ACC, "스무고개 · 7번째", "\"동물이에요?\" 처럼 말로만")
             else -> Quad("clock", ACC, "늦은 밤이에요", "30분마다 졸음 체크")   // night
         }
         glassCard(c, r, 24 * U, col)
         icon(c, ic, r.left + 80 * U, r.centerY(), 64 * U, col)
         text(c, big, r.left + 150 * U, r.centerY() + 4 * U, fit(big, 56 * U, r.width() - 180 * U, bold), FG, bold, maxW = r.width() - 180 * U)
         text(c, sub, r.left + 150 * U, r.centerY() + 54 * U, 30 * U, MUTED, medium, maxW = r.width() - 180 * U)
-        if (id == "alert" || id == "dj" || id == "drowsy" || id == "combo") text(c, "예시", r.right - 24 * U, r.top + 34 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT)
+        if (id in setOf("alert", "dj", "drowsy", "combo", "kidquiz", "parkhunt", "schoolzone", "voicegame")) text(c, "예시", r.right - 24 * U, r.top + 34 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT)
     }
     private data class Quad(val a: String, val b: Int, val c: String, val d: String)
 

@@ -78,7 +78,7 @@ Claude Code 세션(두뇌): wait.py를 run_in_background로 띄워 두고(대기
 - 넣은 값은 고정(실제 신호가 덮지 않음). 숫자는 `--ei`/`--ef`/`--es` 아무거나. 속도·기어·시동 같은 진짜 차 신호는 VHAL(`su 0 dumpsys android.hardware.automotive.vehicle.IVehicle/default --set …`)로
 - **화면 미리보기**(11-09): `screen` = 상황 6 `ignition`/`ready`/`drive`/`stop`/`park`/`off` · 취미 9 `news`/`nav`/`webtoon`/`music`/`sports`/`stock`/`weather`/`local`/`schedule` · `auto`(강제 해제 → 자동 상황 흐름). 강제 화면은 허용 규칙을 무시하고 왼쪽 위에 "미리보기 · 자동으로" 칩(누르면 auto). STAGE 방송의 `--es screen` 도 같은 키를 받는다(그 밖의 값은 예전처럼 onboard·deco·settings·debug·none)
 - **내비(모의 경로)**: `nav` `on`/`off` — 켜면 판교 → 코엑스 모의 경로(첫 회전 판교역로 우회전 350m)로 안내 중이 되어 모든 화면 위에 상시 내비 띠, 끄면 사라짐. 실제 내비(NaviHelper) 목적지가 있으면 그 값이 우선
-- **상황별 아이디어 미리보기**(11-09): `idea` = 아이디어 id 37개(목록과 데이터는 `docs/hyun-content-ideas.md`, 코드는 `StageModel.IDEAS`). 그 아이디어의 상황으로 강제 전환하고 레이아웃을 띄운다. `moment` 도 같은 키를 받는다. `rain`·`night` 는 비 장면·밤 화면을 함께 켠다. `screen auto` 로 해제. 스킨: `skin` `basic`/`nash`
+- **상황별 아이디어 미리보기**(11-09 · 2차 11-10): `idea` = 아이디어 id 62개(1차 37 + 2차 25)(목록과 데이터는 `docs/hyun-content-ideas.md`, 코드는 `StageModel.IDEAS` · `IDEAS2`). 레벨·기분은 실제 주행 신호로 바뀐다(prefs `stage.xp` · `stage.mood`). 그 아이디어의 상황으로 강제 전환하고 레이아웃을 띄운다. `moment` 도 같은 키를 받는다. `rain`·`night` 는 비 장면·밤 화면을 함께 켠다. `screen auto` 로 해제. 스킨: `skin` `basic`/`nash`
 - 허브 '주행 상태' 패널: 상황 버튼 아래 '화면' select(자동 · 상황 6 · 취미 9) + '내비' 칩 → 위 두 키로 보낸다. 앱 안에서는 왼쪽 위 상황 글자를 세 번 누르면 디버그 판(상황 · 취미 · 내비 켜기 · 차 신호)
 
 ### 상황 화면 · 취미 레이아웃 · 내비(11-09, 기준 = `docs/hyun-content-plan.md`)

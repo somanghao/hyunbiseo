@@ -36,7 +36,7 @@ data class Tile(val icon: String, val label: String, val value: String, val sub:
 data class Entry(val icon: String, val why: String, val delta: Int)
 
 /** 상황별 아이디어 한 개(docs/hyun-content-ideas.md) — moment = 특별한 순간 */
-data class Idea(val id: String, val sit: Sit, val name: String, val moment: Boolean = false)
+data class Idea(val id: String, val sit: Sit, val name: String, val moment: Boolean = false, val round: Int = 1, val theme: String = "")
 
 /** 웹툰(서버 /hyun/feed?cat=webtoon) · 시세(cat=stock) */
 data class Toon(val rank: Int, val title: String, val author: String, val star: Double, val img: String)
@@ -94,7 +94,17 @@ class StageModel {
     val raining get() = forceRain || status?.wiper?.v == true || wcode in 51..67 || wcode in 80..82
     var forceRain = false                     // 특별한 순간 "비 오는 날" 미리보기
     var idea: String? = null                  // 상황별 아이디어 미리보기(docs/hyun-content-ideas.md) — 그 상황 화면에 그 레이아웃
-    val snowing get() = wcode in 71..77 || wcode in 85..86
+    val snowing get() = forceSnow || wcode in 71..77 || wcode in 85..86
+    var forceSnow = false                     // 첫눈 미리보기
+    // 캐릭터 관계(2차) — 경험치(모은 별 누적) → 레벨 · 기분(운전 결에 반응, 실제 주행 신호로 오르내림)
+    var xp = 0
+    var mood = 60                             // 0~100 — 부드러우면 오르고 급정거·깜빡이 없는 회전이면 내려간다
+    var moodWhy = ""                          // 마지막으로 기분이 바뀐 이유
+    var gleoLast = ""                         // 글레오 함수 마지막 호출(2차 gleo3)
+    val level get() = (1 + kotlin.math.sqrt(xp / 25.0).toInt()).coerceAtMost(10)
+    fun xpFor(l: Int) = 25 * (l - 1) * (l - 1)
+    val levelTitle get() = LEVELS[level - 1]
+    val moodLabel get() = when { mood >= 75 -> "콧노래"; mood >= 40 -> "편안"; else -> "긴장" }
     var dayStartAt = 0L; var stopsToday = 0; var dayKmShown = 0.0
     var todayPoints = 0
     var preview: String? = null               // 상점에서 미리보기 중인 컨셉
@@ -201,7 +211,25 @@ class StageModel {
             Idea("first", Sit.IGNITION, "오늘 첫 주행", true), Idea("long", Sit.PARK, "장거리 완주", true), Idea("night", Sit.DRIVE, "늦은 밤", true),
             Idea("rain", Sit.IGNITION, "비·눈 오는 날", true), Idea("birthday", Sit.IGNITION, "생일", true), Idea("hundred", Sit.PARK, "100번째 주행", true),
             Idea("star1000", Sit.OFF, "별 1,000개", true))
-        fun idea(id: String?) = IDEAS.firstOrNull { it.id == id }
+        val LEVELS = listOf("견습 내비게이터", "새내기 길동무", "든든한 길동무", "골목 박사", "부드러운 손", "정속의 달인", "도로 위 신사", "안전 장인", "베테랑 내비게이터", "전설의 동승자")
+        /** 2차 추천 24(docs/hyun-content-ideas.md "2차 추천") */
+        val IDEAS2 = listOf(
+            Idea("kidquiz", Sit.DRIVE, "뒷좌석 아이 퀴즈", round = 2, theme = "동승자"), Idea("date", Sit.IGNITION, "데이트 모드", round = 2, theme = "동승자"),
+            Idea("parent", Sit.READY, "부모님 모드", round = 2, theme = "동승자"), Idea("childlock", Sit.READY, "아이 잠금 확인", round = 2, theme = "동승자"),
+            Idea("holiday", Sit.IGNITION, "명절 귀성 플래너", round = 2, theme = "계절"), Idea("firstsnow", Sit.IGNITION, "첫눈", true, 2, "계절"),
+            Idea("blossom", Sit.PARK, "벚꽃 코스", round = 2, theme = "계절"), Idea("heat", Sit.IGNITION, "폭염 출발 루틴", round = 2, theme = "계절"),
+            Idea("suneung", Sit.IGNITION, "수능 응원", true, 2, "계절"),
+            Idea("level", Sit.PARK, "현비서 레벨", round = 2, theme = "캐릭터"), Idea("mood", Sit.OFF, "운전에 반응하는 기분", round = 2, theme = "캐릭터"),
+            Idea("anniv", Sit.IGNITION, "우리 기념일", round = 2, theme = "캐릭터"), Idea("memory", Sit.READY, "그때 기억나요", round = 2, theme = "캐릭터"),
+            Idea("cost", Sit.OFF, "충전·주유비", round = 2, theme = "차 관리"), Idea("service", Sit.IGNITION, "정비 알림", round = 2, theme = "차 관리"),
+            Idea("tireseason", Sit.IGNITION, "겨울 타이어", round = 2, theme = "차 관리"), Idea("ubi", Sit.OFF, "보험 할인 예상", round = 2, theme = "차 관리"),
+            Idea("sharecard", Sit.OFF, "주간 공유 카드", round = 2, theme = "공유"), Idea("league", Sit.PARK, "온기 리그", round = 2, theme = "공유"),
+            Idea("commute", Sit.IGNITION, "출근·퇴근 모드", round = 2, theme = "출퇴근"), Idea("parkhunt", Sit.DRIVE, "주차장 찾기", round = 2, theme = "출퇴근"),
+            Idea("schoolzone", Sit.DRIVE, "스쿨존", round = 2, theme = "출퇴근"),
+            Idea("voicegame", Sit.DRIVE, "말 게임", round = 2, theme = "놀이·글레오"), Idea("senior", Sit.IGNITION, "시니어 모드", round = 2, theme = "놀이·글레오"),
+            Idea("gleo3", Sit.PARK, "글레오 함수 3개", round = 2, theme = "놀이·글레오"))
+        val ALL_IDEAS get() = IDEAS + IDEAS2
+        fun idea(id: String?) = ALL_IDEAS.firstOrNull { it.id == id }
     }
 }
 
@@ -236,6 +264,8 @@ class StageFeature : Feature {
     private var lastSpeed = 0f
     private var pointM = 0.0
     private var restSaid = false
+    private var smoothM = 0
+    private var brakeOn = false
     private var settled = false
     private var tripStartWall = 0L            // 이번 주행 출발 시각(벽시계) — 자주 가는 곳 학습
     private var tripDest: String? = null      // 이번 주행에 내비가 읽은 목적지(도착하면 비워지기 전 값)
@@ -261,7 +291,7 @@ class StageFeature : Feature {
         this.hub = hub
         val pr = hub.prefs
         m.skill = pr.getString("stage.skill", null)
-        m.points = pr.getInt("stage.points", 0)
+        m.points = pr.getInt("stage.points", 0); m.xp = pr.getInt("stage.xp", m.points); m.mood = pr.getInt("stage.mood", 60)
         m.concept = pr.getString("stage.concept", "pleos")!!; m.face = pr.getString("stage.face", "neutral")!!; m.acc = pr.getString("stage.acc", "")!!
         m.owned = pr.getStringSet("stage.owned", m.owned)!!.toSet() + m.owned
         m.decor = pr.getStringSet("stage.decor", emptySet())!!.toSet()
@@ -355,12 +385,15 @@ class StageFeature : Feature {
             inTrip = true
             tripM += v; tripS += 1; pointM += v; dayKm += v / 1000.0; m.dayKmShown = dayKm
             if (m.dayStartAt == 0L) m.dayStartAt = System.currentTimeMillis()
-            if (pointM >= 100) { pointM -= 100; m.tripPoints += 1; addPoints(1) }
+            if (pointM >= 100) { pointM -= 100; m.tripPoints += 1; addPoints(1); smoothM += 100; if (smoothM >= 1000) { smoothM = 0; moodBy(3, "부드럽게 1km") } }
             settled = false
         }
+        val brk = m.status?.brake?.v == true
+        if (brk && !brakeOn && v > 3f && lastSpeed - v in 0.3f..2.5f) moodBy(1, "브레이크 미리, 부드럽게")   // Pleos 브레이크 + 감속 폭이 작으면 칭찬
+        brakeOn = brk
         if (lastSpeed - v > HARSH_MS && lastSpeed > 4f) {
             harsh++; hub.log("stage|harsh|${"%.1f".format(lastSpeed)}→${"%.1f".format(v)}")
-            penalty("⚠️", "급정거", if (m.novice) 2 else 5)
+            penalty("⚠️", "급정거", if (m.novice) 2 else 5); moodBy(-15, "급정거")
             if (m.novice) hub.say("조금 부드럽게 멈춰 볼까요. 브레이크는 미리, 천천히요.", "care", false, 2, tag = "초보·급정거")
         }
         lastSpeed = v
@@ -394,7 +427,7 @@ class StageFeature : Feature {
         if (m.sit == Sit.DRIVE && m.overlay != null && m.overlay != "debug") m.overlay = null   // 주행 중엔 덮개 화면을 닫는다
         m.view?.let { vw -> if (!m.viewForced && !StageModel.allowed(vw, m.sit)) { m.view = null; hub.log("stage|view|$vw 닫음(${m.sit.key})") } }   // 허용 규칙(미리보기는 예외)
         status?.let { st -> if (pollN++ % 2 == 0) Thread { st.poll() }.start(); st.appTrip(tripS / 60, (tripM / 1000).toFloat()) }
-        hub.view.idleFace = if (m.face != "neutral") m.face else m.look().idleFace
+        hub.view.idleFace = if (m.face != "neutral") m.face else when { m.mood >= 75 -> "humming"; m.mood < 40 -> "worried"; else -> m.look().idleFace }   // 기분이 표정으로
         react()
         // 이야기 넘기기 — 정차·주차 땐 14초마다 다음 이야기(주행 중엔 넘기지 않음)
         if (m.sit != Sit.DRIVE && m.overlay == null && m.tiles.size > 1 && SystemClock.elapsedRealtime() - m.heroAt > 16_000) { m.heroIdx = (m.heroIdx + 1) % m.tiles.size; m.heroAt = SystemClock.elapsedRealtime(); m.reactAt = m.heroAt; m.reactFace = "happy" }
@@ -428,11 +461,11 @@ class StageFeature : Feature {
         val steer = st?.steer?.v
         if (steer != null && kotlin.math.abs(steer) > 90 && v > 4f && now - turnAt > 20_000) {
             turnAt = now
-            if (now - signalAt < 5_000) award("💡", "깜빡이 켜고 회전", 1) else penalty("↪️", "깜빡이 없이 회전", if (m.novice) 1 else 2)
+            if (now - signalAt < 5_000) { award("💡", "깜빡이 켜고 회전", 1); moodBy(2, "깜빡이 켜고 회전") } else { penalty("↪️", "깜빡이 없이 회전", if (m.novice) 1 else 2); moodBy(-8, "깜빡이 없이 회전") }
         }
         // 크루즈 — 일정하게 1분 쓰면 +5(주행당 한 번)
         if (st?.cruise?.v == "작동") cruiseS++
-        if (!cruiseGiven && cruiseS >= 60) { cruiseGiven = true; award("◎", "크루즈로 일정하게", 5) }
+        if (!cruiseGiven && cruiseS >= 60) { cruiseGiven = true; award("◎", "크루즈로 일정하게", 5); moodBy(5, "크루즈로 일정하게") }
         // 쉼표 없이 오래 — 초보 90분 · 숙련 120분(한 번)
         val longS = if (m.novice) 90 * 60.0 else 120 * 60.0
         if (!longGiven && hub.trip.driveS > longS) {
@@ -449,6 +482,7 @@ class StageFeature : Feature {
     }
 
     private fun addPoints(n: Int) {
+        if (n > 0) { val lv0 = m.level; m.xp += n; if (m.level > lv0) { hub.say("레벨 업! 이제 ${m.levelTitle}예요.", "happy", false, 2, tag = "레벨"); m.reactAt = SystemClock.elapsedRealtime(); m.reactFace = "cheer" } }
         m.points = (m.points + n).coerceAtLeast(0)
         m.todayPoints += n; m.weekPoints = (m.weekPoints + n).coerceAtLeast(0)
         hub.prefs.edit().putInt("stage.week", m.weekPoints).putInt("stage.weekNo", Calendar.getInstance().get(Calendar.WEEK_OF_YEAR)).apply()
@@ -476,7 +510,7 @@ class StageFeature : Feature {
         m.viewAt = SystemClock.elapsedRealtime()
         when {
             k == "auto" -> { m.view = null; m.viewForced = false; if (m.forced) { m.forced = false; lastKey = "" }; m.overlay = m.overlay.takeIf { it == "onboard" }
-                if (m.idea != null) { if (m.idea == "night") m.nightOverride = null; m.idea = null; m.forceRain = false } }
+                if (m.idea != null) { if (m.idea == "night") m.nightOverride = null; m.idea = null; m.forceRain = false; m.forceSnow = false } }
             Sit.values().any { it.key == k } -> { val s = Sit.values().first { it.key == k }; m.view = null; m.viewForced = true; m.overlay = null; m.forced = true; if (s == Sit.DRIVE) startTripIfNeeded(); enter(s, why = "미리보기") }
             StageModel.CATS.any { it.first == k } -> { m.view = k; m.viewForced = true; m.overlay = null }
         }
@@ -487,7 +521,7 @@ class StageFeature : Feature {
         if (id == "off" || id == "none") { setScreen("auto"); return }
         val d = StageModel.idea(id) ?: run { hub.log("stage|idea|모름|$id"); return }
         if (m.idea == "night" && id != "night") m.nightOverride = null
-        m.forceRain = id == "rain"
+        m.forceRain = id == "rain"; m.forceSnow = id == "firstsnow"
         if (id == "night") m.nightOverride = true
         setScreen(d.sit.key)
         m.idea = id
@@ -648,7 +682,7 @@ class StageFeature : Feature {
             a == "nav:start" -> { setNav(true); hub.say("안내를 시작할게요. 모의 경로예요.", "happy", false, 2, tag = "내비") }
             a == "nav:toggle" -> setNav(!m.simNav)
             a == "toon:next" -> m.toonPage++
-            a == "idea:next" || a == "idea:prev" -> { val l = StageModel.IDEAS; val i0 = l.indexOfFirst { it.id == m.idea }; val n = if (a.endsWith("next")) (i0 + 1) % l.size else (if (i0 <= 0) l.size - 1 else i0 - 1); setIdea(l[n].id) }
+            a == "idea:next" || a == "idea:prev" -> { val l = StageModel.ALL_IDEAS; val i0 = l.indexOfFirst { it.id == m.idea }; val n = if (a.endsWith("next")) (i0 + 1) % l.size else (if (i0 <= 0) l.size - 1 else i0 - 1); setIdea(l[n].id) }
             a == "idea:off" -> setScreen("auto")
             a == "skintab" -> if (!movingNow()) { m.overlay = "deco"; m.decoTab = "skin" }
             a.startsWith("skin:") -> setSkin(a.substringAfter(":"))
@@ -685,7 +719,8 @@ class StageFeature : Feature {
 
     private fun toast(s: String) { m.toast = s; m.toastAt = SystemClock.elapsedRealtime() }
 
-    private fun save() = hub.prefs.edit().putInt("stage.points", m.points).putStringSet("stage.owned", m.owned)
+    private fun moodBy(d: Int, why: String) { val o = m.mood; m.mood = (m.mood + d).coerceIn(0, 100); m.moodWhy = why; if (o != m.mood) hub.log("stage|mood|$o→${m.mood}|$why") }
+    private fun save() = hub.prefs.edit().putInt("stage.xp", m.xp).putInt("stage.mood", m.mood).putInt("stage.points", m.points).putStringSet("stage.owned", m.owned)
         .putString("stage.concept", m.concept).putString("stage.face", m.face).putString("stage.acc", m.acc).putStringSet("stage.decor", m.decor).putString("stage.equip", m.equipped.entries.joinToString(",") { "${it.key}:${it.value}" }).apply()
 
     // ======================================================================
@@ -693,6 +728,17 @@ class StageFeature : Feature {
     // ======================================================================
     override fun onHeard(text: String): Boolean {
         val t = text.replace(" ", "")
+        // 글레오 함수 3개(Gleo Interface 후보) — 오늘 브리핑 · 안전점수 · 꾸미기
+        if (Regex("오늘(뭐있|브리핑|어때)|브리핑해").containsMatchIn(t)) {
+            m.gleoLast = "오늘 브리핑"
+            hub.say("오늘은 ${m.weatherShort.ifBlank { "날씨 확인 중" }}이에요. ${news.firstOrNull()?.let { "주요 소식은 $it." } ?: ""} 첫 일정은 9시 반 주간 회의예요.", "", false, 1, reply = true, tag = "글레오·브리핑"); return true }
+        if (Regex("운전(어땠|점수)|안전점수|내점수").containsMatchIn(t)) {
+            m.gleoLast = "안전점수"
+            hub.say("오늘 급정거 ${harsh}번, 별 ${sign(m.todayPoints)}개예요. 저는 지금 ${m.moodLabel} 기분이고, 레벨 ${m.level} ${m.levelTitle}예요.", "happy", false, 1, reply = true, tag = "글레오·점수"); return true }
+        StageModel.ACC_DEFS.firstOrNull { t.contains(it.name.replace(" ", "")) && Regex("씌워|입혀|달아|끼워|해줘").containsMatchIn(t) }?.let { d ->
+            m.gleoLast = "꾸미기 · ${d.name}"
+            if (movingNow()) { hub.say("${d.name}은 차를 세우면 바로 해 드릴게요.", "", false, 1, reply = true, tag = "글레오·꾸미기"); return true }
+            wearAcc(d.id); hub.say("${d.name} 했어요. 어때요?", "happy", false, 1, reply = true, tag = "글레오·꾸미기"); refresh(); hub.render(); return true }
         if (pending != null) {
             if (Regex("^(응|네|예|좋아|그래|오케이|ㅇㅇ|해줘|부탁|어|콜)").containsMatchIn(t)) return doPending()
             if (Regex("^(아니|됐어|괜찮|싫어|안해)").containsMatchIn(t)) { pending = null; hub.say("네, 그대로 둘게요.", "", false, 1, reply = true, tag = "반응"); return true }
