@@ -798,9 +798,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val panel = RectF(w * 0.42f, pad, w - pad, h - pad)
         glassCard(c, panel, 28 * U)
         val x0 = panel.left + 40 * U; val x1 = panel.right - 40 * U
-        text(c, "테마", x0, panel.top + 64 * U, 44 * U, FG, bold)
-        text(c, "안전운전으로 모은 별로 열어요 · 잠긴 테마도 눌러서 10초 미리보기", x0, panel.top + 104 * U, 22 * U, MUTED, medium, maxW = x1 - x0 - 260 * U)
-        button(c, "닫기", RectF(x1 - 120 * U, panel.top + 28 * U, x1, panel.top + 84 * U), false, "close")
+        // 닫기 — 상세 레이어 왼쪽 위 끝
+        button(c, "닫기", RectF(x0, panel.top + 28 * U, x0 + 120 * U, panel.top + 84 * U), false, "close")
+        text(c, "테마", x0 + 140 * U, panel.top + 64 * U, 44 * U, FG, bold)
+        text(c, "안전운전으로 모은 별로 열어요 · 잠긴 테마도 눌러서 10초 미리보기", x0, panel.top + 112 * U, 22 * U, MUTED, medium, maxW = x1 - x0 - 260 * U)
         p.textSize = 24 * U; p.typeface = semi
         val pw = p.measureText("${m.points}") + 64 * U
         val pr2 = RectF(x1 - 132 * U - pw, panel.top + 28 * U, x1 - 132 * U, panel.top + 84 * U)
@@ -1741,7 +1742,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         glassCard(c, r, 24 * U)
         hits += r to "noop"
         val x0 = r.left + 4f * S; val x1 = r.right - 4f * S
-        text(c, "설정", x0, r.top + 7f * S, 4f * S, FG, bold)
+        // 닫기 — 상세 레이어 왼쪽 위 끝
+        button(c, "닫기", RectF(x0, r.top + 2.4f * S, x0 + 12f * S, r.top + 7.6f * S), false, "close")
+        text(c, "설정", x0 + 14f * S, r.top + 7f * S, 4f * S, FG, bold)
         text(c, "운전 숙련도", x0, r.top + 14f * S, 2.1f * S, MUTED, medium)
         val sh = 6f * S; val sy = r.top + 16f * S; val sw = (x1 - x0) / 2
         listOf("novice" to "초보 운전", "expert" to "숙련 운전").forEachIndexed { i, (key, lab) ->
@@ -1754,9 +1757,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val desc = if (m.novice) "출발·정차·주차 팁을 말로 · 회전 300m 앞 차로 알림 · 감점은 절반 · 50분 쉼표" else "꼭 필요한 알림만 · 팁 없이 바로 길 안내 · 점수는 정확하게 · 120분 쉼표"
         wrap(c, desc, x0, sy + sh + 4f * S, 2f * S, MUTED, x1 - x0, 2, body)
         val by = r.bottom - 8.4f * S
-        button(c, "차량 점검 다시", RectF(x0, by, x0 + (x1 - x0) * 0.32f, by + 5.6f * S), false, "recheck")
-        button(c, "테마", RectF(x0 + (x1 - x0) * 0.34f, by, x0 + (x1 - x0) * 0.62f, by + 5.6f * S), false, "deco")
-        button(c, "닫기", RectF(x1 - (x1 - x0) * 0.3f, by, x1, by + 5.6f * S), true, "close")
+        button(c, "차량 점검 다시", RectF(x0, by, x0 + (x1 - x0) * 0.49f, by + 5.6f * S), false, "recheck")
+        button(c, "테마", RectF(x0 + (x1 - x0) * 0.51f, by, x1, by + 5.6f * S), false, "deco")
     }
 
     // ======================================================================
