@@ -284,6 +284,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             else -> GLOW to 0
         }
         if (ga > 0) { p.shader = RadialGradient(cx, cy, s * 0.62f, Glass.a(gc, ga), Glass.a(gc, 0), Shader.TileMode.CLAMP); c.drawCircle(cx, cy, s * 0.62f, p); p.shader = null }
+        if (m.avatar == "puff") {   // 몽글 — 코드로 그리는 하늘색 솜뭉치 + 빛나는 하트(그림 파일·소품 없음)
+            val md = when (v.mode) { HyunView.Mode.LISTENING -> 1; HyunView.Mode.THINKING -> 2; HyunView.Mode.SPEAKING -> 3; else -> 0 }
+            Puff.draw(c, cx, cy, s, t, face, md, alive, darkUi)
+            return
+        }
         val bot = v.asset("bot_$face.webp")
         if (m.overlay != "deco" && !small && !skinned) aroundCharacter(c, cx, cy, s, t, alive, bot)
         accParts(c, cx, cy, s, face, back = true)   // 헬멧 뒤로 가는 조각(머리띠 · 반대쪽 헤드폰 · 넥타이)
