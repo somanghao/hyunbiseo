@@ -128,11 +128,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
         val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
         val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
-        zoneL = if (mirror) 48 * U else w * 0.4f; zoneR = if (mirror) w * 0.6f else w - 48 * U
+        zoneL = if (mirror) 32 * U else w * 0.3f; zoneR = if (mirror) w * 0.7f else w - 32 * U   // 내용 칸 70%(댄 11-09 "컨텐츠가 영역을 더")
         if (m.sit == Sit.OFF) scrim(c, w, h, ((now - m.sitAt) / 1500f).coerceIn(0f, 0.35f))
         // 캐릭터 — 보통: 화면 높이 33% · 내비 주화면: 14% 배지(왼쪽 위)
         val showLine = !driving && m.sit != Sit.STOP && !intro && m.view == null
-        val bigH = h * 0.33f; val bigCx = if (mirror) w * 0.8f else w * 0.2f; val bigFeet = h * 0.7f
+        val bigH = h * 0.25f; val bigCx = if (mirror) w * 0.85f else w * 0.15f; val bigFeet = h * 0.66f
         val smH = h * 0.14f; val smCx = 40 * U + smH / 2; val smFeet = 16 * U + smH
         val chH = bigH + (smH - bigH) * nk; val cx = bigCx + (smCx - bigCx) * nk; val feet = bigFeet + (smFeet - bigFeet) * nk
         val react = m.reactFace.takeIf { now - m.reactAt < 1200 }
@@ -143,10 +143,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         character(c, cx, feet, chH, t, face, alive = !driving && nk < 0.5f, small = nk > 0.5f)
         if (!intro) {
             if (nk > 0.5f) speech(c, cx + chH * 0.6f, 16 * U + chH * 0.42f, w * 0.5f, navLine())
-            else if (mirror) speech(c, zoneR + 64 * U, feet - chH - 56 * U, w - zoneR - 128 * U)
-            else speech(c, 64 * U, feet - chH - 56 * U, zoneL - 128 * U)
+            else if (mirror) speech(c, zoneR + 48 * U, feet - chH - 64 * U, w - zoneR - 96 * U)
+            else speech(c, 48 * U, feet - chH - 64 * U, zoneL - 96 * U)
         }
-        if (showLine && nk < 0.01f) { if (mirror) timeline(c, zoneR + 64 * U, w - 160 * U, h - 100 * U) else timeline(c, 64 * U, zoneL - 64 * U, h - 100 * U) }
+        if (showLine && nk < 0.01f) { if (mirror) timeline(c, zoneR + 48 * U, w - 160 * U, h - 100 * U) else timeline(c, 48 * U, zoneL - 48 * U, h - 100 * U) }
         topRight(c, w)
         if (intro) {   // 테마 인트로
             themeIntro(c, w, h, ((now - m.sitAt) / 1800f).coerceIn(0f, 1f), false)
@@ -163,9 +163,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 header(c)
                 val card = v.card
                 val sheetOn = m.overlay in setOf("brief", "todo", "car", "log")
-                val bottom = h - 48 * U - 64 * U - 20 * U
-                var top = 96 * U
-                if (m.navActive && !navMain) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }
+                val bottom = h - 36 * U - 64 * U - 16 * U
+                var top = 88 * U
+                if (m.navActive && !navMain) { navStrip(c, RectF(zoneL, top, zoneR, top + 80 * U)); top += 80 * U + 14 * U }
                 val full = RectF(zoneL, top, zoneR, bottom)
                 when {
                     sheetOn -> sheet(c, full, m.overlay!!)
@@ -319,12 +319,12 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val h = 48 * U; val cy = 48 * U
         if (k.id == "arcade") {   // 8비트 점수판
             val g = tf("Galmuri11.ttf")
-            text(c, "SCORE %06d".format(m.points), w - 48 * U, cy + 6 * U, 26 * U, 0xFFFFE14D.toInt(), g, Paint.Align.RIGHT)
-            text(c, "HI %06d".format(max(m.points, 1200)), w - 48 * U, cy + 36 * U, 18 * U, 0xFF00F0FF.toInt(), g, Paint.Align.RIGHT)
-            p.textSize = 26 * U; p.typeface = g; hits += RectF(w - 48 * U - p.measureText("SCORE 000000"), cy - 24 * U, w - 48 * U, cy + 40 * U) to "deco"
+            text(c, "SCORE %06d".format(m.points), w - 32 * U, cy + 6 * U, 26 * U, 0xFFFFE14D.toInt(), g, Paint.Align.RIGHT)
+            text(c, "HI %06d".format(max(m.points, 1200)), w - 32 * U, cy + 36 * U, 18 * U, 0xFF00F0FF.toInt(), g, Paint.Align.RIGHT)
+            p.textSize = 26 * U; p.typeface = g; hits += RectF(w - 32 * U - p.measureText("SCORE 000000"), cy - 24 * U, w - 32 * U, cy + 40 * U) to "deco"
             return
         }
-        val g = RectF(w - 48 * U - h, cy - h / 2, w - 48 * U, cy + h / 2)
+        val g = RectF(w - 32 * U - h, cy - h / 2, w - 32 * U, cy + h / 2)
         glassCard(c, g, 12 * U); icon(c, "gear", g.centerX(), cy, 22 * U, MUTED); hits += g to "settings"
         val lab = "${m.points}  ·  테마"
         p.textSize = 22 * U; p.typeface = semi
@@ -610,7 +610,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private val DOCK = listOf("brief" to "브리핑", "todo" to "할 일", "car" to "내 차", "deco" to "테마", "log" to "기록")
     private fun dock(c: Canvas, w: Float, h: Float) {
         val dh = 64 * U; val iw = 128 * U
-        val r = RectF(zoneL, h - 48 * U - dh, zoneL + iw * DOCK.size, h - 48 * U)
+        val r = RectF(zoneL, h - 36 * U - dh, zoneL + iw * DOCK.size, h - 36 * U)
         glassCard(c, r, 16 * U)
         DOCK.forEachIndexed { i, (key, lab) ->
             val b = RectF(r.left + i * iw, r.top, r.left + (i + 1) * iw, r.bottom)
@@ -725,7 +725,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     /** 마이크 — 오른쪽 아래 동그라미 하나(상태 글은 옆에 작게) */
     private fun micButton(c: Canvas, w: Float, h: Float) {
         val rr = 40 * U
-        val mx = w - 48 * U - rr; val my = h - 48 * U - rr
+        val mx = w - 32 * U - rr; val my = h - 36 * U - rr
         val mc = when (v.mode) { HyunView.Mode.LISTENING -> ACC; else -> if (darkUi) 0xFF262C36.toInt() else 0xFF1F2733.toInt() }
         if (v.mode == HyunView.Mode.LISTENING) { p.color = Glass.a(ACC, 50); c.drawCircle(mx, my, rr * (1.25f + 0.08f * sin(SystemClock.elapsedRealtime() / 160f)), p) }   // 라이브 상태만 움직인다
         p.color = mc; p.setShadowLayer(16 * U, 0f, 6 * U, 0x29111827); c.drawCircle(mx, my, rr, p); p.clearShadowLayer()
@@ -943,7 +943,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     /** 왼쪽 위 — 상황 · 시각 · 날씨(세 번 누르면 디버그 판) + 레이아웃 칩(상황 화면으로 · 미리보기) */
     private fun header(c: Canvas) {
         val col = if (sceneDark) 0xCCFFFFFF.toInt() else MUTED
-        val x = if (mirror) zoneR + 64 * U else 64 * U
+        val x = if (mirror) zoneR + 48 * U else 48 * U
         val line = "${m.sit.label} · ${m.kicker.substringAfter(" · ")}" + (if (m.weatherShort.isNotBlank()) "   ${m.weatherShort}" else "")
         text(c, line, x, 60 * U, 22 * U, col, medium)
         p.textSize = 22 * U; p.typeface = medium; hits += RectF(x - 8 * U, 28 * U, x + p.measureText(line) + 8 * U, 76 * U) to "sitpill"
@@ -1314,12 +1314,12 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 lab(c, "오늘의 인기 · 네이버 웹툰 ${m.toonSource.substringAfter(" ")}", shelf.left + 32 * U, shelf.top + 40 * U)
                 // 표지(네이버 썸네일 480×623 ≈ 1:1.3)를 자르지 않게 — 비율 그대로 한 줄 4권, 넘기기
                 val g = RectF(shelf.left + 32 * U, shelf.top + 62 * U, shelf.right - 32 * U, shelf.bottom - 20 * U)
-                val per = 4; val ratio = 623f / 480f
+                val per = if (g.width() / 5 >= 230 * U) 5 else 4; val ratio = 623f / 480f
                 val coverW = min((g.width() - G * 1.5f * (per - 1)) / per, (g.height() - 60 * U) / ratio); val coverH = coverW * ratio
                 val gapX = (g.width() - coverW * per) / (per - 1)
                 val pages = max(1, (m.toons.size + per - 1) / per); val pg = m.toonPage % pages
                 if (m.toons.isEmpty()) text(c, "웹툰을 불러오는 중이에요", g.left, g.top + 60 * U, 26 * U, MUTED, medium)
-                if (pages > 1) { val lab2 = "${pg * per + 1}–${min(m.toons.size, pg * per + per)} / ${m.toons.size}   다음 ›"
+                if (pages > 1 && m.toons.size > per) { val lab2 = "${pg * per + 1}–${min(m.toons.size, pg * per + per)} / ${m.toons.size}   다음 ›"
                     text(c, lab2, shelf.right - 32 * U, shelf.top + 40 * U, 20 * U, ACC, semi, Paint.Align.RIGHT)
                     p.textSize = 20 * U; p.typeface = semi; hits += RectF(shelf.right - 48 * U - p.measureText(lab2), shelf.top + 8 * U, shelf.right - 16 * U, shelf.top + 60 * U) to "toon:next" }
                 val gy = g.top + (g.height() - coverH - 52 * U) / 2
