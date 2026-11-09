@@ -1,0 +1,91 @@
+{
+  "id": "basic",
+  "name": "기본",
+  "author": "현비서",
+  "colors": {
+    "bg": "#0B0F14",
+    "card": "#151B23",
+    "card2": "#222A35",
+    "fg": "#E6EDF3",
+    "sub": "#B8C1CC",
+    "muted": "#8B949E",
+    "faint": "#6E7681",
+    "line": "#2A3440",
+    "accent": "#4FD1C5",
+    "onAccent": "#0B0F14",
+    "ok": "#3FB950",
+    "warn": "#F0B429",
+    "track": "#2A313C",
+    "divider": "#14FFFFFF",
+    "tbtBg": "#000000",
+    "tbtFg": "#FFFFFF",
+    "tbtSub": "#C9D1D9",
+    "tbtMuted": "#8B949E",
+    "near": "#4FD1C5",
+    "bubbleMe": "#243140",
+    "bubbleMeText": "#B8C1CC",
+    "bubbleHyun": "#151B23",
+    "moods": {
+      "calm": [
+        "#4FD1C5",
+        "#6AA8FF"
+      ],
+      "happy": [
+        "#FFC857",
+        "#FF8A65"
+      ],
+      "fun": [
+        "#B794F4",
+        "#F687B3"
+      ],
+      "care": [
+        "#FF9F43",
+        "#FF6B8A"
+      ],
+      "alert": [
+        "#FF5A52",
+        "#FF9F43"
+      ]
+    },
+    "prio": [
+      "#FF6B5A",
+      "#F2A64B",
+      "#6AA8FF",
+      "#B18CFF"
+    ]
+  },
+  "fonts": {
+    "title": "default-bold",
+    "body": "sans-serif",
+    "bold": "sans-serif:bold",
+    "medium": "sans-serif-medium",
+    "light": "sans-serif-light"
+  },
+  "layout": {
+    "charSide": "left",
+    "infoCharW": 0.24,
+    "chatCharW": 0.42,
+    "bubbleMaxW": 0.84,
+    "answerAt": "main"
+  },
+  "style": {
+    "radius": 1.0,
+    "border": 0,
+    "borderColor": "#000000",
+    "shadow": [
+      0,
+      0
+    ],
+    "shadowColor": "#000000",
+    "pattern": "none",
+    "patternColor": "#000000",
+    "bubbleTail": false,
+    "burst": false,
+    "burstColor": "#000000",
+    "stickers": {},
+    "stickerColor": "#000000",
+    "stickerText": "#FFFFFF",
+    "titleTilt": 0,
+    "bubbleShape": "round"
+  }
+}

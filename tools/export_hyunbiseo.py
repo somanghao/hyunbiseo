@@ -9,6 +9,7 @@
   records/hyun-e2e/ — 시험 기록(보고서 · 영상 · 대화 · 스크린샷)
   design_assets/hyun/ — 이미지 에셋 전부(캐릭터 3종 · 표정 · 레이어 · 액세서리 · 상점 · 아이콘 · 히어로 · 사람 비서 — 사용자 11-09)
   docs/ — 현비서 문서(.claude/docs/wiki/hyun-*.md 등 사본)
+  CLAUDE.md — 다른 개발자(Claude Code)용 화면 구조 요약(원본 tools/hyun_export_CLAUDE.md)
 빼는 것: 보고서·제안서·명세 HTML(dashboard/hyun — 에셋은 design_assets/hyun과 같은 사본)
 내보내기 전에 비밀 문자열(API 키·토큰 모양)을 훑어 하나라도 있으면 멈춘다.
 """
@@ -109,6 +110,7 @@ def main():
     with open(os.path.join(dst, ".gitignore"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(GITIGNORE)
     shutil.copy2(os.path.join(ROOT, "tools", "hyun_export_README.md"), os.path.join(dst, "README.md"))
+    shutil.copy2(os.path.join(ROOT, "tools", "hyun_export_CLAUDE.md"), os.path.join(dst, "CLAUDE.md"))
     print(f"{len(files)}개 파일 + 문서 {len(DOCS)} · README → {dst}")
 
 

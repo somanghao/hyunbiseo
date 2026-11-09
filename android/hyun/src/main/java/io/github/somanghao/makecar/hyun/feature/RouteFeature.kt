@@ -87,7 +87,11 @@ class RouteFeature : Feature {
         }
     }
 
+    /** 실험(11-09): RouteInfo.isMobileRequest(문서 없음 · SDK 3.0.4 바이너리) — 켜면 내비가 앞으로 안 뜨나. `--ez mobile true|false` */
+    private var mobileRequest = false
+
     override fun onIntent(i: Intent, first: Boolean) {
+        if (i.hasExtra("mobile")) { mobileRequest = i.getBooleanExtra("mobile", false); hub.log("nav|mobileRequest=$mobileRequest") }
         if (i.getBooleanExtra("cancel", false)) { cancelTrip("demo"); if (first) hub.main.postDelayed({ hub.navi?.call("cancelRoute") { cancelRoute() } }, 2500) }   // 처음엔 내비 연결 뒤에 한 번 더
         i.getStringExtra("dest")?.let { d -> hub.main.postDelayed({ goTo(d, i.getFloatExtra("lat", 37.4979f).toDouble(), i.getFloatExtra("lng", 127.0276f).toDouble()) }, if (first) 2500 else 0) }
         i.getStringExtra("via")?.split("|")?.takeIf { it.size >= 3 }?.let { p ->
@@ -108,7 +112,7 @@ class RouteFeature : Feature {
         hub.log("nav|$name|$dLat,$dLng|est=${est.toInt()}m${via?.let { "|via=${it.first}" } ?: ""}")
         if (hub.isCar) hub.navi?.call("requestRoute") {
             val dest = RouteInfo(latitude = dLat, longitude = dLng, displayLongitude = null, displayLatitude = null,
-                poiName = name, poiId = "", poiSubId = "0", address = name)
+                poiName = name, poiId = "", poiSubId = "0", address = name, isMobileRequest = mobileRequest)
             if (via == null) requestRoute(dest)
             else {
                 requestRouteWithWaypoints(RouteWithWaypointsRequest(dest, listOf(RequestWaypointInfo(latitude = via.second, longitude = via.third,

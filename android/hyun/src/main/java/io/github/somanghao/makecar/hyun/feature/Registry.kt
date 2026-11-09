@@ -12,7 +12,8 @@ import io.github.somanghao.makecar.hyun.core.Feature
 object Registry {
     fun all(): List<Feature> = listOf(
         QuietFeature(),        // "조용히 해 줘" · "이제 말해도 돼"
-        ListenModeFeature(),   // "상시 모드로" · "버튼 모드로"(차)
+        UiModeFeature(),       // 차 화면 대화형 ↔ 정보형 · "대화형으로"(차)
+        SkinFeature(),         // 차 화면 스킨(기본 · 내쉬 웹툰 · 팀원) · "내쉬 스킨으로"(차) — assets/skins/<id>.json
         CharacterFeature(),    // 캐릭터 3종 · "캐릭터 바꿔 줘"(차)
         GleoFeature(),         // Gleo Interface — ASK_HYUN · HYUN_STATUS · HYUN_QUIET(차)
         RouteFeature(),        // 목적지 · 경유지 · 안내 끝 · 주행 이벤트(출발 · 절반 · 곧 도착 · 도착 · 목적지 없이 출발)

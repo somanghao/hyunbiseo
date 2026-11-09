@@ -1,11 +1,13 @@
 package io.github.somanghao.makecar.hyun.core
 
 import ai.pleos.playground.navi.data.CurrentLocationInfo
+import ai.pleos.playground.navi.data.DestinationArrivedInfo
 import ai.pleos.playground.navi.data.TBTInfo
 import ai.pleos.playground.navi.helper.listener.NaviHelperEventListener
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -17,6 +19,8 @@ import android.util.Log
 import io.github.somanghao.makecar.hyun.FrontActivity
 import io.github.somanghao.makecar.hyun.brain.Link
 import io.github.somanghao.makecar.hyun.drive.CarSense
+import io.github.somanghao.makecar.hyun.drive.HeadsUp
+import io.github.somanghao.makecar.hyun.drive.HomeWindow
 import io.github.somanghao.makecar.hyun.drive.Navi
 import io.github.somanghao.makecar.hyun.drive.PhoneSense
 import io.github.somanghao.makecar.hyun.drive.Sense
@@ -98,6 +102,8 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     fun start(intent: Intent?) {
         view.phone = !isCar; view.lightTheme = !isCar; view.botName = botName; view.hyunLine = "안녕하세요, ${botName}예요"
         view.onMic = ::micPressed
+        view.onRecentCard = { k -> view.card = k; cardAt = SystemClock.elapsedRealtime(); log("card|reopen|${k.title}"); render() }
+        view.onCardClose = { view.card = null; log("card|close|tap"); render() }
         if (isCar) navi = Navi(act, main, ::log).also { it.listen(naviCore); it.beforeCommand = ::primeFront }
         features.forEach { it.start(this) }
         intent?.let { onIntent(it, first = true) }
@@ -105,8 +111,8 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         voice = Voice.create(act, isCar, this)
         if (isCar) {
             sttBase = intent?.getStringExtra("stt") ?: link.base.replace(":8790", ":8791"); ear = Ear({ sttBase }, this)
-            earAlways = prefs.getBoolean("earAlways", true)
-            view.showListenToggle = true; view.listenAlways = earAlways; view.onListenMode = { setListenMode(it, byVoice = false) }
+            prefs.edit().remove("earAlways").apply()
+            naviSplit = prefs.getBoolean("naviSplit", true)   // 옛 '눌러서 말하기' 설정 — 이제 늘 상시 듣기(사용자 11-09)
             sense = CarSense(act, this).also { it.start() }
             navi?.start(::onNaviConnected)
         } else {
@@ -136,7 +142,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private fun micGranted() = isCar || act.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     private var fg = false   // 앱이 앞에 있나(onResume ~ onPause) — 마이크 포그라운드 서비스는 앞에 있을 때만 새로 켤 수 있다
-    fun onResume() { fg = true; ensureEar() }
+    fun onResume() { fg = true; ensureEar(); if (isCar) HeadsUp.cancel(act) }
     fun onPause() { fg = false }
     fun onStop() { keepFront() }
 
@@ -159,9 +165,63 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         val since = SystemClock.elapsedRealtime() - at
         primedAt = 0L                              // 명령 하나에 한 번만
         if (since > KEEP_FRONT_MS) return          // 한참 뒤 가려짐 = 운전자가 다른 화면을 고른 것
-        log("front|covered|명령 ${since}ms 뒤 → 현비서 다시 앞으로")
+        if (navi?.lastCommand == "cancelRoute") {   // 안내 끝 — 내비를 옆에 둘 까닭이 없다: 내비를 숨기면 그 자리에 현비서(0.24초) · 안 되면 예전 되돌리기
+            log("front|covered|안내 끝 ${since}ms 뒤 → 내비 숨김")
+            runCatching { HomeWindow.hide(act, HomeWindow.NAVI.packageName) }.onFailure { log("front|hide|FAIL|${it.message}") }
+            main.postDelayed({ if (!fg) toFront() }, 1500)
+        } else if (naviSplit) {   // 반반 — 내비를 1칸으로 줄이면 빈 칸에 현비서(가장 최근에 숨은 앱). 홈이 옮기므로 BAL 무관(11-09 실측 0.37초)
+            log("front|covered|명령 ${since}ms 뒤 → 반반(내비 1칸 · 홈 방송)")
+            runCatching { HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.ONE) }.onFailure { log("front|split|FAIL|${it.message}") }
+            autoSplit = true; sidesAt = SystemClock.elapsedRealtime() + 3000
+            main.postDelayed({ if (!fg) { log("front|split|안 보임 → 다시 앞으로(대비책)"); toFront() } }, 1500)   // 홈 방송이 안 먹는 빌드 대비 — FrontActivity 유예 10초 안
+        } else { log("front|covered|명령 ${since}ms 뒤 → 현비서 다시 앞으로"); toFront() }
+    }
+
+    private fun toFront() {
         runCatching { act.startActivity(Intent(act, act.javaClass).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) }
             .onFailure { log("front|FAIL|${it.javaClass.simpleName} ${it.message}") }
+    }
+
+    /** 내비가 덮으면 반반으로(기본, 앱 설정 naviSplit · `--ez navisplit false` = 예전처럼 현비서를 다시 앞으로). Pleos 홈 비공식 방송 → wiki/hyun-pleos-capabilities.md §⑧ */
+    private var naviSplit = true
+    private var autoSplit = false                 // 우리가 반반으로 만들었나 — 안내가 끝나면 1칸으로 되돌린다
+
+    /** 헤드업 알림은 Pleos 시스템이 왼쪽 위(11시)에 띄워 내비 회전 안내를 가린다 — 앱이 위치를 못 정함(11-09 실측) →
+     *  사용자 11-09 "11시 방향이면 무조건 반반": 가려진 채 말하면 보이는 앱 하나를 1칸으로 줄여 빈 칸에 현비서. 헤드업은 `--ez hun true`일 때만 */
+    private var hunMode = false
+
+    private fun coveredTalk(l: Speaker.Line) {
+        if (hunMode) { log("hun|P${l.prio}|${l.text}"); HeadsUp.show(act, l.text, l.prio == 0); return }
+        val vis = HomeWindow.visible(act)
+        val me = ComponentName(act, act.javaClass).flattenToString()
+        val other = vis.singleOrNull()?.takeIf { it != me }   // 1칸 전체에 다른 앱 하나(내비 등) — 그 앱을 1칸으로
+        if (other == null) { log("talk|covered|P${l.prio}|반반 불가(보이는 창 ${vis.size}) — 소리만"); return }
+        log("talk|covered|P${l.prio} → 반반(${other.substringBefore('/')} 1칸)")
+        ComponentName.unflattenFromString(other)?.let { HomeWindow.slots(act, it, HomeWindow.ONE); autoSplit = true }
+    }
+
+    /** 반반이면 내비 왼쪽 · 현비서 오른쪽으로 고정(사용자 11-09) — 2초마다 보이는 창 순서(왼→오)를 보고, 현비서가 왼쪽이면
+     *  내비를 전체로 키웠다가 다시 1칸으로(홈은 1칸으로 줄인 앱을 왼쪽에, 빈 칸엔 최근에 숨은 앱 = 현비서) — 운전자가 ⋮로 나눈 경우도 */
+    private var sidesAt = 0L
+
+    private fun keepSides() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - sidesAt < 2000) return
+        sidesAt = now
+        val vis = HomeWindow.visible(act)
+        if (vis.size != 2 || vis[0] != ComponentName(act, act.javaClass).flattenToString() || !vis[1].startsWith(HomeWindow.NAVI.packageName + "/")) return
+        log("front|sides|현비서 왼쪽 → 내비 왼쪽 · 현비서 오른쪽")
+        sidesAt = now + 3000
+        HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.TWO)
+        main.postDelayed({ HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.ONE); autoSplit = true }, 700)
+    }
+
+    /** 안내 끝·도착 — 우리가 만든 반반이면 현비서를 다시 전체로 */
+    private fun unsplit(why: String) {
+        if (!autoSplit) return
+        autoSplit = false
+        sidesAt = SystemClock.elapsedRealtime() + 4000   // 1칸으로 바뀌는 사이 창 순서가 잠깐 [현비서, 내비]로 보인다 — 좌우 고정이 끼어들지 않게
+        if (HomeWindow.visible(act).size >= 2) { log("front|unsplit|$why"); HomeWindow.slots(act, ComponentName(act, act.javaClass), HomeWindow.TWO) }
     }
 
     fun stop() {
@@ -186,9 +246,11 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     // ======================================================================
     fun onIntent(i: Intent, first: Boolean) {
         i.getStringExtra("server")?.let { link.base = it }
+        if (i.hasExtra("hun")) { hunMode = i.getBooleanExtra("hun", false); log("front|hunMode=$hunMode") }
+        if (i.hasExtra("navisplit")) { naviSplit = i.getBooleanExtra("navisplit", true); prefs.edit().putBoolean("naviSplit", naviSplit).apply(); log("front|naviSplit=$naviSplit") }
         i.getStringExtra("line")?.let { l ->       // "P3|말" — 스케줄러 시험
             val pr = l.substringBefore("|").removePrefix("P").toIntOrNull()?.coerceIn(0, 3) ?: 2
-            main.postDelayed({ say(l.substringAfter("|"), if (pr == 0) "alert" else "", false, pr, tag = "demo") }, if (first) 6000 else 0)
+            main.postDelayed({ say(l.substringAfter("|"), if (pr == 0) "alert" else "", false, pr, tag = "demo") }, if (first) 6000 else i.getIntExtra("after", 0).toLong())   // --ei after ms(가려진 뒤 말 — 헤드업 알림 시험)
         }
         val harness = i.getBooleanExtra("harness", false)   // 하네스 화면 시험 — 서버가 취향·기억·최근 대화에 넣지 않는다(tools/hyun_harness)
         i.getStringExtra("say")?.let { q -> main.postDelayed({ heard(q, harness) }, if (first) 5000 else 0) }
@@ -222,6 +284,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
                 if (turnM < 0) { log("turn|demo|passed"); turnDemoUntil = 0; turnM = -1.0 }
             }
             features.forEach { it.tick() }
+            if (isCar && fg) keepSides()
             if (speaker.waiting.isNotEmpty()) pump() else render()
             main.postDelayed(this, 1000)
         }
@@ -270,6 +333,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         log("heard|$text")
         main.removeCallbacks(listenTimeout)
         view.userLine = text
+        view.addChat(true, text)   // 대화형 말풍선
         view.card = null   // 새 질문 — 이전 표를 지운다(하네스 화면 점검: 이전 카드가 남아 답과 안 맞음 4건, 11-06)
         lastTalkAt = SystemClock.elapsedRealtime()
         reasked = false
@@ -388,7 +452,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         view.note = when {
             lastTurnBusy -> "회전 앞 ${turnM.toInt().coerceAtLeast(0)}m · 잠깐 조용히"
             quiet() -> "조용히 모드 ${ceil((quietUntil - SystemClock.elapsedRealtime()) / 60_000.0).toInt()}분"
-            earOn() && earAlways -> "상시 듣기 · \"현비서야\""
+            earOn() -> "상시 듣기 · \"현비서야\""
             else -> ""
         }
         view.waiting = speaker.waiting.map { it.prio }
@@ -435,6 +499,8 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         if (view.mode == Mode.LISTENING) stopListening()
         log("say|P${l.prio}|${if (silent && l.prio > 0) "자막만|" else ""}${l.text}")
         view.hyunLine = l.text; view.mood = l.mood; view.prio = l.prio; view.prioReply = l.reply
+        view.addChat(false, l.text)
+        if (isCar && !fg) coveredTalk(l)   // 가려진 동안(내비 전체 화면 등) 말하면 — 반반으로 옆에 나온다
         listenAfter = l.listen
         buzz?.invoke(l.prio == 0)
         val v = voice
@@ -482,6 +548,11 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     /** 코어가 듣는 내비 콜백 — 위치(맥락)와 다음 회전(침묵 구간) */
     private val naviCore = object : NaviHelperEventListener {
         override fun onCurrentLocationInfo(info: CurrentLocationInfo) { place(info.latitude, info.longitude, info.address) }
+        override fun onDestinationArrived(destinationArrivedInfo: DestinationArrivedInfo) { unsplit("arrived") }
+        override fun onRouteCancelled() {   // 새 경로 전에도 온다(11-07) — 안내 끝 명령이거나 운전자가 내비에서 끝낸 것만
+            val n = navi ?: return
+            if (n.lastCommand == "cancelRoute" || SystemClock.elapsedRealtime() - n.lastCommandAt > 10_000) unsplit("cancel")
+        }
         override fun onTBTInfo(tbtInfos: List<TBTInfo>) {
             if (SystemClock.elapsedRealtime() < turnDemoUntil) return   // 시연 주입 중엔 덮지 않는다
             val n = tbtInfos.firstOrNull()
@@ -496,7 +567,6 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private var earReady = false
     private var sttBase = ""
     private fun earOn() = ear?.running == true && earReady
-    private var earAlways = true                  // 상시 듣기(호출어) ↔ 눌러서 말하기 — 앱 설정에 남는다
     private fun earUsable() = ear != null && earReady
     private var heardText = ""
     private var answered = false
@@ -504,24 +574,12 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private var spoke = false                     // 이번 듣기에서 말소리가 시작됐나(Pleos STT) — 빈 결과면 다시 묻기
     private var greeted = false
 
-    /** 귀를 켤지 — 상시 듣기면 늘, 눌러서 말하기면 대화 창이 열렸을 때만. 차는 마이크 포그라운드 서비스도(내비 화면에서도 듣게) */
+    /** 귀 켜기 — 늘 상시 듣기(호출어 "현비서야", 눌러서 말하기 모드는 11-09 없앰). 차는 마이크 포그라운드 서비스도(내비 화면에서도 듣게) */
     private fun ensureEar() {
-        if (earUsable() && micGranted() && (earAlways || view.mode == Mode.LISTENING)) {
+        if (earUsable() && micGranted()) {
             ear?.start()
             if (isCar && fg) EarService.start(act)
         } else { ear?.stop(); EarService.stop(act) }
-    }
-
-    /** 듣기 모드 — 상시(호출어) ↔ 눌러서 말하기. 화면 두 칸 버튼·말("상시 모드로") */
-    fun setListenMode(always: Boolean, byVoice: Boolean) {
-        val changed = always != earAlways
-        earAlways = always; view.listenAlways = always
-        prefs.edit().putBoolean("earAlways", always).apply()
-        log("listenMode|${if (always) "always" else "ptt"}|${if (byVoice) "voice" else "tap"}")
-        ensureEar()
-        if (changed || byVoice) say(if (always) "상시 듣기로 바꿨어요. 현비서야 하고 불러 주세요." else "이제 마이크 버튼을 누를 때만 들을게요.",
-            "calm", false, 1, reply = true, tag = "듣기 모드")
-        render()
     }
 
     private fun micPressed() {
@@ -540,7 +598,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     /** 대화 창 열기(손 안 대고 이어 말하기 · 마이크 버튼 · 글레오 호출 자리) */
     fun listen() {
         if (!micGranted()) { view.userLine = "(마이크 권한을 허용해 주세요)"; act.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_PERMS); render(); return }
-        if (earUsable()) {   // 앱 귀 — 상시면 이미 듣는 중, 눌러서 말하기면 지금 켠다 · 호출어 없이 받을 '대화 창'을 연다
+        if (earUsable()) {   // 앱 귀 — 이미 상시로 듣는 중 · 호출어 없이 받을 '대화 창'을 연다
             ear?.start()
             if (view.mode == Mode.SPEAKING) { voice?.stopSpeaking(); speaker.finished() }
             heardText = ""; answered = false
@@ -577,7 +635,6 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     /** 듣기가 끝났으면 듣는 사이 줄 선 말을 꺼낸다 */
     private fun endListening() {
         logLevel("end")
-        if (!earAlways) main.post { ensureEar() }   // 눌러서 말하기 — 창이 닫히면 마이크를 놓는다
         main.removeCallbacks(listenTimeout)
         if (view.mode == Mode.LISTENING) view.mode = Mode.READY
         pump()

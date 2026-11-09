@@ -84,9 +84,46 @@
 - 다른 미디어 앱 제어 · 현비서 → 글레오 → 다른 앱: 근거 없음/API없음(시스템 권한 추정)
 - 전화·문자·캘린더·주소록: 차에선 제한될 수 있음(문서) · 다른 앱 실행: 미시험 · 알림·Mini app·Global Search: 미시험, 운전과 무관한 알림 금지
 - **내비와 같이 보기 = 앱 영역 2칸 분할**(11-07 에뮬 실측): 현비서 화면 오른쪽 끝 ⋮ 손잡이를 끌면 왼쪽 현비서 · 오른쪽 내비로 나란히 뜬다 — 현비서는 내비 목적지·남은 km·분·도착 시각·진행선을 그대로 보여 준다(내비 카드와 같은 23분). 반쪽 폭에선 왼쪽 열이 좁아 도착 시각·버튼 글자가 "…"로 잘림 → 분할용 좁은 배치 필요
-- **내비 위에 떠 있는 아이콘(다른 앱 위에 그리기) = 막힘(추정)**: 에뮬에 '다른 앱 위에 표시' 허용 화면이 없다(`MANAGE_OVERLAY_PERMISSION` → No activity found) — 사용자가 켤 길이 없음. adb `appops`로는 켤 수 있으나 시연 흉내일 뿐, 심사·앱 정책 위험
+- **내비 위에 떠 있는 아이콘(다른 앱 위에 그리기) = 막힘(11-09 실측 — 추정이던 것 확인)**: 에뮬에 '다른 앱 위에 표시' 허용 화면이 없다(`MANAGE_OVERLAY_PERMISSION` → No activity found) — 사용자가 켤 길이 없음. adb `appops`로는 켤 수 있으나 시연 흉내일 뿐, 심사·앱 정책 위험. 정식 길은 헤드업 알림 → 아래 ⑧
 - **Mini app**(Driving view 아래 작은 카드, AppWidget 기반): 홈(`ai.umos.homescreen`)이 위젯 호스트, 올라간 것은 전부 시스템(`ai.umos.*MiniAppProvider` — 미디어·TPMS·트립·빠른 제어). 현비서 `QuickWidget`도 제공자 목록엔 잡히지만 서드파티를 올리는 문서·화면은 못 찾음 → 42dot 문의 대상(되면 '내비 옆 현비서 카드'의 정식 길)
 - 시연 도구: Virtual Console REST + `tools/vconsole.py`(실측OK)
+
+## ⑧ 창 배치(반반·숨기기) · 내비 위 띄우기 — 11-09 에뮬 실측(시험 앱 `tools/navprobe/` + 홈 APK 분해)
+
+> **Pleos 홈(`ai.umos.homescreen`)의 문서에 없는 내부 방송** — 앱 권한으로 된다. 내비 앱 개발 가이드의 "비공식 API 사용 금지" 문장과 부딪힘 → 시연(에뮬)은 OK, 기획서엔 "Pleos 홈 창 배치 요청 — 제휴·정식 API화 시" · partnership@pleos.ai 문의 대상. **현비서에 붙임**(11-09 사용자 — 반반 자동 · 좌우 [내비 | 현비서] 고정 · 헤드업은 11시라 꺼 둠 → `drive/HomeWindow.kt` · [[hyun-app]] §차 화면). 실차 전엔 "비공식 API" 정책 확인 필요. 근거 화면 `records/navi-window/20261109/`
+
+| 무엇 | 방법 | 결과 |
+|---|---|---|
+| 창을 1칸(반반)·전체로 | 방송 `ai.umos.homescreen.intent.action.REQUEST_TO_ENFORCE_APP_ORIENTATION` · `setPackage("ai.umos.homescreen")` · extra `componentName`(flattenToShortString) · `orientation` 1 = 1칸 / 2 = 전체 — 수신기에 권한 검사 없음 | 실측OK(메인 세션 재확인 — 셸 `am broadcast --user 10 …`로 [현비서 / 내비] 반반 ↔ 1칸). 보이는 창에만 먹음 · 1칸으로 줄이면 빈 칸엔 '가장 최근에 숨은 앱' |
+| **내비가 덮으면 반반(추천)** | 내비 명령 뒤 4초 안에 가려지면(onStop) `orientation(내비, 1)` | 내비 왼쪽(운전석 쪽) · 현비서 오른쪽(onResume) · 가려진 시간 ~0.37초 · 홈이 옮기므로 BAL 무관 (`s03`) |
+| 먼저 반반 | 명령 직전 자기 자신을 1칸으로 | 빈 칸에 최근 숨은 앱이 0.8초 먼저 보였다가 내비가 왼쪽 → 화면이 두 번 바뀜, 덜 좋음 |
+| 내비 숨기기(1칸 유지) | 방송 `ai.umos.intent.action.HIDE_APP` + extra `packageName` — 보내는 앱에 `ai.umos.homescreen.permission.MANAGE_TASK`(normal, 설치 때 부여) | 실측OK — 가려진 시간 0.24초 · 안내는 계속(`routeStarted`) · FrontActivity 유예 대신 쓸 수 있음 (`s04`) |
+| 보이는 창 읽기 | `contentResolver.call(Uri "content://ai.umos.homescreen.provider", "getTaskStatus")` → `status` String[] | 1개 = 1칸 · 2개 = 반반(권한 검사 없음). `getWindowBounds`는 서명 권한 |
+| 안 됨 | `screenOrientation=portrait`·`setRequestedOrientation`(가운데 레터박스) · `ActivityOptions.setLaunchBounds`(무시) · `LAUNCH_ADJACENT`+`MULTIPLE_TASK`(내비 task가 하나 더) · `setLaunchWindowingMode`(숨은 API) · `ENFORCE_APP_RATIO`·`SHOW_MINI_APP`(서명 권한) | — |
+
+- **내비 위 작은 창**: 정식 길은 **헤드업 알림(HUN)** 하나 — `IMPORTANCE_HIGH` · category navigation 카드가 내비 위에 뜨고 버튼을 누르면 현비서가 앞으로(`BAL_ALLOW_PENDING_INTENT`, `s07`). `POST_NOTIFICATIONS` 런타임 권한(차에서 요청 창이 뜨는지 미시험) · 정책 "운전과 무관한 알림 금지"(경로·안내 알림은 해당) · 주행 중(D) 표시 미시험
+- 오버레이 `TYPE_APPLICATION_OVERLAY`: `-g`·`appops`면 내비 위에 뜨지만(`s05`) 스토어 설치 앱은 받을 길 없음(`canDrawOverlays=false` · `BadTokenException … window type 2038` · 설정 화면 없음) / PiP `FEATURE_PICTURE_IN_PICTURE=false` / Mini app = 홈이 정해진 시스템 종류(`miniAppType`)만 / 반투명 액티비티 = 홈이 새 앱으로 보고 내비를 숨김 → 전부 불가
+- 홈 코드 근거(dexdump): `BroadcastRepositoryImpl.registerEnforceAppOrientationObserver`(RECEIVER_EXPORTED · 권한 없음) → `handleEnforceAppOrientationRequest` → `TaskSlotLayout.changeTaskOrientation` · `HIDE_APP` → `hideRootTaskForPackage` → `showLastHiddenViewIfNeeded`. 홈 APK·분해본은 42dot 바이너리 — 저장소에 넣지 않는다
+- 붙일 때 코드(방송 extra·형식 실측):
+
+```kotlin
+object HomeWindow {   // Pleos 홈 창 배치 — 문서에 없는 내부 방송(홈 바이너리 · 에뮬 11-09 실측)
+    private const val HOME = "ai.umos.homescreen"
+    const val ONE = 1; const val TWO = 2   // 1칸(반반의 한쪽) / 앱 영역 전체
+    val NAVI = ComponentName("ai.umos.maps.android.navigation.app", "ai.umos.maps.android.navigation.app.MainActivity")
+    fun slots(ctx: Context, comp: ComponentName, o: Int) = ctx.sendBroadcast(
+        Intent("ai.umos.homescreen.intent.action.REQUEST_TO_ENFORCE_APP_ORIENTATION").setPackage(HOME)
+            .putExtra("componentName", comp.flattenToShortString()).putExtra("orientation", o))
+    fun hide(ctx: Context, pkg: String) = ctx.sendBroadcast(   // MANAGE_TASK 필요
+        Intent("ai.umos.intent.action.HIDE_APP").setPackage(HOME).putExtra("packageName", pkg))
+    fun visible(ctx: Context): List<String> = runCatching {
+        ctx.contentResolver.call(Uri.parse("content://ai.umos.homescreen.provider"), "getTaskStatus", null, null)
+            ?.getStringArray("status")?.toList() }.getOrNull() ?: emptyList()
+}
+// Hyun.keepFront() — since <= KEEP_FRONT_MS: 반반 설정이면 slots(act, NAVI, ONE), 아니면 hide(act, NAVI.packageName)
+//   + 1.2초 뒤에도 안 보이면 지금의 REORDER_TO_FRONT(대비책) · 안내 끝 = slots(act, ComponentName(act, HyunActivity::class.java), TWO)
+// 매니페스트: uses-permission ai.umos.homescreen.permission.MANAGE_TASK · …ENFORCE_APP_ORIENTATION(지금은 검사 안 함) · <queries><package ai.umos.homescreen/></queries>
+```
 
 ## 11-15 전에 현비서를 가장 키울 5개 (검증됐거나 확인 싼 것)
 
