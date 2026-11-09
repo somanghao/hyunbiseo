@@ -108,6 +108,8 @@ class StageModel {
     var viewForced = false                    // 허브·SIM 미리보기 — 허용 규칙을 무시하고 "미리보기" 표시
     var viewAt = 0L
     var story: Tile? = null                   // 2분 안에 생긴 신호 반응 이야기(상황 화면 맨 위 한 줄)
+    // 시동 화면 맨 위 '어디로 갈까요?' — 지금 목적지(내비) · 이 시간에 자주 가는 곳(지난 주행 기록) · 없으면 말로 등록하라는 안내
+    var goName = ""; var goSub = ""; var goTag = ""
     // 취미 데이터 — 서버 정보 통로(/hyun/feed) · Open-Meteo · 연합뉴스 RSS
     var newsTimes: Map<String, String> = emptyMap()
     var toons: List<Toon> = emptyList(); var toonSource = ""; var toonPage = 0
@@ -210,6 +212,8 @@ class StageFeature : Feature {
     private var pointM = 0.0
     private var restSaid = false
     private var settled = false
+    private var tripStartWall = 0L            // 이번 주행 출발 시각(벽시계) — 자주 가는 곳 학습
+    private var tripDest: String? = null      // 이번 주행에 내비가 읽은 목적지(도착하면 비워지기 전 값)
     private var onboardGen = 0
     private var dayKm = 0.0
     private var dayPoints = 0
@@ -268,6 +272,7 @@ class StageFeature : Feature {
         b.get("nav")?.toString()?.let { setNav(it == "on" || it == "true" || it == "1") }
         b.getString("skin")?.let { setSkin(it) }
         b.getString("screen")?.let { setScreen(it) }
+        b.getString("golog")?.let { if (it == "demo") seedGoLog() else if (it == "clear") hub.prefs.edit().remove(GO_LOG).apply() }   // 시연: 자주 가는 곳 기록
         refresh(); hub.render()
     }
 
@@ -484,10 +489,12 @@ class StageFeature : Feature {
             Sit.PARK -> parkLine()
             Sit.OFF -> offLine()
         }
-        line?.let { hub.say(it, if (s == Sit.PARK) "happy" else "", false, if (s == Sit.STOP) 3 else 2, tag = "상황·${s.key}") }
+        // 시동: 브리핑 영역을 말로 고르게 — 듣기 켜기
+        line?.let { hub.say(it, if (s == Sit.PARK) "happy" else "", s == Sit.IGNITION, if (s == Sit.STOP) 3 else 2, tag = "상황·${s.key}") }
     }
 
     private fun newTrip() {
+        tripStartWall = System.currentTimeMillis(); tripDest = hub.view.dest
         tripM = 0.0; tripS = 0; harsh = 0; m.tripPoints = 0; pointM = 0.0; restSaid = false
         m.ledger.clear(); cruiseS = 0; cruiseGiven = false; longGiven = false; penalties = 0; overS = 0; settled = false
     }
@@ -501,6 +508,7 @@ class StageFeature : Feature {
         m.tripPoints = got
         dayPoints += got; m.dayLedger += m.ledger
         save()
+        recordGo()
         hub.log("stage|trip|${"%.1f".format(tripM / 1000)}km|${tripS / 60}분|급정거 $harsh|+$got → ${m.points}")
     }
 
@@ -657,7 +665,36 @@ class StageFeature : Feature {
             Regex("포인트(몇|얼마|알려)|내포인트").containsMatchIn(t) -> { hub.say("안전운전 포인트는 ${m.points}점이에요.", "happy", false, 1, reply = true, tag = "포인트"); return true }
             Regex("차량점검|차점검|점검해").containsMatchIn(t) -> { act("recheck"); return true }
         }
+        // 시동 화면 브리핑 영역 고르기 — "차 컨디션" · "증시/코스피" · "뉴스" · "퀘스트"
+        if (m.sit == Sit.IGNITION && t.length <= 20) briefPick(t)?.let { return it }
         return false
+    }
+
+    private fun briefPick(t: String): Boolean? {
+        val st = m.status
+        fun say(s: String) = hub.say(s, "", false, 1, reply = true, tag = "브리핑")
+        return when {
+            Regex("차컨디션|컨디션|차상태|배터리|내차").containsMatchIn(t) -> {
+                m.overlay = "car"; refresh(); hub.render()
+                val soc = st?.soc?.v; val rng = st?.rangeKm?.v
+                val ok = st?.belt?.v != false && st?.doorOpen?.v != true
+                say((soc?.let { "배터리는 ${it}%, " } ?: "") + (rng?.let { "${it}킬로미터 갈 수 있어요. " } ?: "") + (if (ok) "벨트랑 문도 괜찮아요. " else "벨트나 문을 한 번 확인해 주세요. ") + "타이어 공기압은 계기판에서 봐 주세요.")
+                true
+            }
+            Regex("증시|코스피|코스닥|주식|장어때|^장$").containsMatchIn(t) -> {
+                act("view:stock")
+                val q = m.indices.take(2)
+                say(if (q.isEmpty()) "증시 정보를 아직 불러오는 중이에요." else q.joinToString(", ") { "${it.name} ${it.price}, ${if (it.ratio >= 0) "%.2f%% 올랐어요".format(it.ratio) else "%.2f%% 내렸어요".format(-it.ratio)}" } + ".")
+                true
+            }
+            Regex("퀘스트|미션").containsMatchIn(t) -> {
+                m.overlay = "log"; refresh(); hub.render()
+                say("오늘의 운전 퀘스트는 급정거 없이 10킬로미터예요. 지금 %.1f킬로미터 왔어요. 성공하면 별 20개를 드려요.".format(m.dayKmShown))
+                true
+            }
+            Regex("뉴스|소식").containsMatchIn(t) -> { act("view:news"); false }   // 화면만 열고 읽기는 두뇌에게
+            else -> null
+        }
     }
 
     override fun ctx(c: JSONObject) {
@@ -684,6 +721,8 @@ class StageFeature : Feature {
         val soc = st?.soc?.v; val range = st?.rangeKm?.v
         val km = tripM / 1000; val min = max(1, tripS / 60)
         m.navActive = hub.view.dest != null || m.simNav
+        if (inTrip) hub.view.dest?.let { tripDest = it }
+        goBox()
         if (m.navActive || m.view == "nav" || m.sit == Sit.DRIVE || m.sit == Sit.STOP) navState()
         m.story = reactions.firstOrNull { SystemClock.elapsedRealtime() - it.second < 120_000 }?.first
         m.tripKm = tripM / 1000; m.tripMin = tripS / 60; m.harshN = harsh; m.cruiseMin = cruiseS / 60
@@ -880,6 +919,65 @@ class StageFeature : Feature {
         in 80..82 -> "소나기"; in 85..86 -> "눈 소나기"; in 95..99 -> "천둥번개"; else -> ""
     }
 
+    // ---------- 어디로 갈까요? — 이 시간에 자주 가는 곳(지난 주행 기록으로 계산) ----------
+    private data class Go(val name: String, val startMin: Int, val travelMin: Int, val day: String)
+
+    private fun goLog(): List<Go> = hub.prefs.getString(GO_LOG, "")!!.lines().mapNotNull { l ->
+        l.split('|').takeIf { it.size == 4 }?.let { p -> runCatching { Go(p[0], p[1].toInt(), p[2].toInt(), p[3]) }.getOrNull() } }
+
+    private fun saveGoLog(list: List<Go>) = hub.prefs.edit().putString(GO_LOG, list.takeLast(80).joinToString("\n") { "${it.name}|${it.startMin}|${it.travelMin}|${it.day}" }).apply()
+
+    private fun dayKey(cal: Calendar) = "%04d%02d%02d".format(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+
+    /** 주차할 때 — 목적지가 있던 주행만 기록(출발 시각 · 걸린 시간) */
+    private fun recordGo() {
+        val name = tripDest?.trim()?.takeIf { it.isNotBlank() } ?: return
+        if (tripS < 60 || tripStartWall == 0L) return
+        val cal = Calendar.getInstance().apply { timeInMillis = tripStartWall }
+        saveGoLog(goLog() + Go(name.replace('|', ' ').replace('\n', ' '), cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE), max(1, tripS / 60), dayKey(cal)))
+        hub.log("stage|go|$name|${tripS / 60}분")
+    }
+
+    /** 지금 시각 ±60분에 2일 이상 간 곳 — (이름, 평소 출발 분, 평균 걸린 분, 간 날 수) */
+    private fun habitGo(): Triple<Go, Int, Int>? {
+        val now = Calendar.getInstance(); val nowMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        fun gap(a: Int, b: Int) = minOf(kotlin.math.abs(a - b), 1440 - kotlin.math.abs(a - b))
+        val near = goLog().filter { gap(it.startMin, nowMin) <= 60 }
+        val best = near.groupBy { it.name }.maxByOrNull { (_, l) -> l.map { it.day }.distinct().size } ?: return null
+        val days = best.value.map { it.day }.distinct().size
+        if (days < 2) return null
+        val l = best.value
+        val start = l.map { it.startMin }.sorted()[l.size / 2]
+        return Triple(Go(best.key, start, l.map { it.travelMin }.average().roundToInt(), ""), days, l.size)
+    }
+
+    private fun hm(min: Int) = "%02d:%02d".format((min / 60) % 24, min % 60)
+
+    private fun goBox() {
+        val v = hub.view
+        val dest = v.dest
+        val h = habitGo()
+        val nowMin = Calendar.getInstance().let { it.get(Calendar.HOUR_OF_DAY) * 60 + it.get(Calendar.MINUTE) }
+        when {
+            dest != null -> { m.goName = dest; m.goSub = listOf(v.remain, v.eta).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "길을 찾는 중이에요" }; m.goTag = "오늘 목적지" }
+            h != null -> {
+                val (g, days, n) = h
+                m.goName = g.name
+                m.goSub = "평소 ${hm(g.startMin)} 출발 · 지금 출발하면 ${hm(nowMin + g.travelMin)} 도착 · 약 ${g.travelMin}분"
+                m.goTag = "자주 가는 곳 · 최근 ${days}일 · ${n}번 평균"
+            }
+            else -> { m.goName = ""; m.goSub = "\"회사 가자\"처럼 말하면 길 안내를 시작해요"; m.goTag = "" }
+        }
+    }
+
+    /** 시연용 — 지난 5일 이 시간쯤 '회사'에 간 기록 */
+    private fun seedGoLog() {
+        val now = Calendar.getInstance(); val nowMin = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val seed = (1..5).map { d -> val c = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -d) }
+            Go("회사", (nowMin - 10 + d * 4 + 1440) % 1440, 21 + d % 3 * 2, dayKey(c)) }
+        saveGoLog(goLog() + seed)
+    }
+
     private fun recommendDest(): Pair<String, String> {
         val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         return when (h) { in 6..10 -> "회사" to "평소 출근 시간이에요 · 약 25분"; in 17..21 -> "집" to "퇴근길 · 약 30분"; else -> "자주 가는 카페" to "지난주 두 번 갔어요" }
@@ -897,7 +995,11 @@ class StageFeature : Feature {
     private fun ignitionLine(): String {
         val t = tempC
         val base = look().greet + "${greet()}. " + (t?.let { "밖이 ${it}도라 " + (if (t <= 8) "목도리 둘렀어요. " else "") } ?: "") + "${drink().first} 한 잔 어때요?"
-        return if (m.novice) "$base 출발 전에 시트랑 미러부터 맞춰요." else base
+        // 어디로 갈지 → 브리핑 영역 고르기(말로)
+        val go = habitGo()?.let { (g, _, _) -> val nowMin = Calendar.getInstance().let { it.get(Calendar.HOUR_OF_DAY) * 60 + it.get(Calendar.MINUTE) }
+            " 이 시간엔 보통 ${g.name}에 가시죠? 지금 출발하면 ${hm(nowMin + g.travelMin)}쯤 도착해요." } ?: ""
+        val ask = " 차 컨디션, 증시, 뉴스, 운전 퀘스트 중에 어떤 걸 브리핑해 드릴까요? 말해 주시면 자세하게 알려 드릴게요."
+        return (if (m.novice) "$base 출발 전에 시트랑 미러부터 맞춰요." else base) + go + ask
     }
 
     private fun parkLine(): String {
@@ -1042,6 +1144,7 @@ class StageFeature : Feature {
 
     companion object {
         const val ACTION = "io.github.somanghao.makecar.hyun.STAGE"
+        private const val GO_LOG = "stage.goLog"   // 지난 주행: "목적지|출발 분(하루 중)|걸린 분|yyyyMMdd" 줄 목록
         const val SIM_ACTION = "io.github.somanghao.makecar.hyun.SIM"
         private val SIM_KEYS = listOf("wiper", "door", "window", "passenger", "kid", "belt", "lights", "lock", "cruise", "turn", "cabin", "soc", "range", "mode", "steer")
         private const val HARSH_MS = 3.5f          // 1초에 이만큼(약 12.6km/h) 넘게 줄면 급정거
