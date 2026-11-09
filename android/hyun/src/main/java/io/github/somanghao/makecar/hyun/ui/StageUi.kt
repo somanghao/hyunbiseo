@@ -230,27 +230,19 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (skinned) { inkCard(c, r, rad, tint); return }
         if (r.height() > 70 * U && themeCard(c, r, rad, tint)) return
         val sp = Path().apply { addRoundRect(r, rad, rad, Path.Direction.CW) }
-        if (!darkUi) { p.color = SURF; p.setShadowLayer(24 * U, 0f, 8 * U, 0x14111827); c.drawPath(sp, p); p.clearShadowLayer() }
         val blur = artBlur
+        if (!darkUi && blur != null) { p.color = SURF; p.setShadowLayer(24 * U, 0f, 8 * U, 0x14111827); c.drawPath(sp, p); p.clearShadowLayer() }   // 불투명 그림자 판은 그림 배경일 때만(유리 카드는 비침)
         c.save(); c.clipPath(sp)
         if (blur != null && art != null) {
             c.drawBitmap(blur, null, artRect, bp)
             p.color = if (darkUi) Glass.a(SURF, 210) else Glass.a(Color.WHITE, 184); c.drawRect(r, p)
         } else {   // 바탕과 살짝 다른 면 — 위가 조금 밝은 은은한 그라데이션(칼리 11-09 "배경이랑 동일")
-            // 밤: 반투명 유리(뒤 풍경이 은은히 비침) + 위쪽 광택 · 낮: 흰 면
-            val top = if (darkUi) Glass.a(0xFF2A3A55.toInt(), 170) else 0xFFFFFFFF.toInt(); val bot = if (darkUi) Glass.a(0xFF0F1726.toInt(), 196) else 0xFFF9FAFC.toInt()
-            p.color = Color.WHITE
-            p.shader = LinearGradient(r.left, r.top, r.left, r.bottom, top, bot, Shader.TileMode.CLAMP); c.drawRect(r, p)
-            if (darkUi) {
-                p.shader = LinearGradient(r.left, r.top, r.left, r.top + min(r.height() * 0.35f, 90 * U), Glass.a(Color.WHITE, 20), Glass.a(Color.WHITE, 0), Shader.TileMode.CLAMP); c.drawRect(r, p)
-                p.shader = LinearGradient(r.left, 0f, r.right, 0f, intArrayOf(Glass.a(0xFFB8D4FF.toInt(), 0), Glass.a(0xFFB8D4FF.toInt(), 90), Glass.a(0xFFB8D4FF.toInt(), 0)), floatArrayOf(0.05f, 0.4f, 0.95f), Shader.TileMode.CLAMP)
-                c.drawRect(r.left, r.top, r.right, r.top + max(1f, U), p)   // 위 모서리 빛
-            }
-            p.shader = null
+            // 기본 유리 카드 — 그라데이션·광택 없이 한 가지 반투명 면(칼리 11-09 참고: 깔끔한 서리 유리)
+            p.color = if (darkUi) Glass.a(Color.WHITE, 22) else Glass.a(Color.WHITE, 178); c.drawRect(r, p)
         }
         tint?.let { p.color = Glass.a(it, if (darkUi) 30 else 18); c.drawRect(r, p) }
         c.restore()
-        p.style = Paint.Style.STROKE; p.strokeWidth = max(1f, U); p.color = if (blur != null && !darkUi) 0x99FFFFFF.toInt() else if (darkUi) Glass.a(0xFF9CC2FF.toInt(), 44) else 0xFFDCE1E8.toInt(); c.drawPath(sp, p); p.style = Paint.Style.FILL
+        p.style = Paint.Style.STROKE; p.strokeWidth = max(1f, U); p.color = if (blur != null && !darkUi) 0x99FFFFFF.toInt() else if (darkUi) Glass.a(Color.WHITE, 30) else Glass.a(Color.WHITE, 230); c.drawPath(sp, p); p.style = Paint.Style.FILL
     }
 
     /** 바탕 — 그림 없이 절제된 그라데이션 + 큰 부드러운 빛 둘(무늬·도형 없음). 기본은 Pleos 밝은 회색(밤엔 깊은 회청) */
