@@ -516,8 +516,10 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
         p.color = if (lightTheme) Color.WHITE else CARD; c.drawRoundRect(card, u * 0.05f, u * 0.05f, p)
         val x = card.left + pad; val maxW = card.width() - pad * 2
         var y = card.top + u * 0.1f
-        text(c, "목록", x, y, u * 0.05f, FG, bold)
-        text(c, "닫기", card.right - pad, y, u * 0.034f, MUTED, align = Paint.Align.RIGHT)
+        // 닫기 — 왼쪽 위 끝(목록은 아무 데나 눌러도 닫힘)
+        text(c, "닫기", x, y, u * 0.034f, MUTED)
+        p.textSize = u * 0.034f
+        text(c, "목록", x + p.measureText("닫기") + u * 0.04f, y, u * 0.05f, FG, bold)
         y += u * 0.06f
         val sections = listOf("알림" to reminderItems, "할 일" to todoItems, "${botName}가 기억하는 것" to memory.reversed())
         for ((title, items) in sections) {
