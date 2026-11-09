@@ -75,7 +75,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     }
     private fun tone(t: String) = when (t) { "warn" -> WARN; "good" -> GOOD; "muted" -> MUTED; else -> ACC }
 
-    fun animating() = m.sit == Sit.DRIVE && ((m.status?.turn?.v ?: 0) != 0 || SystemClock.elapsedRealtime() - m.carEventAt < 6500)
+    fun animating() = m.sit == Sit.DRIVE && ((m.status?.turn?.v ?: 0) != 0 || SystemClock.elapsedRealtime() - m.carEventAt < 6500 || SystemClock.elapsedRealtime() - navMainAt < 900)
+    private var lastNavMain = false; private var navMainAt = 0L
 
     // ---------- 배경 그림 · 흐린 판(카드 뒤) ----------
     private var artKey = ""
@@ -120,42 +121,60 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val driving = m.sit == Sit.DRIVE
         val now = SystemClock.elapsedRealtime()
         // 테마 인트로(시동 직후 1.6초) · 마무리(시동 끔)
-        val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1800)
+        val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1800 && !m.viewForced)
         val outroX = if (m.sit == Sit.OFF && now - m.sitAt < 1800) (now - m.sitAt) / 1800f else -1f
-        zoneL = if (mirror) 48 * U else w * 0.6f; zoneR = if (mirror) w * 0.4f else w - 48 * U
+        // 내비가 주화면(내비 레이아웃 · 주행 중) — 캐릭터는 왼쪽 위 작은 배지, 내비가 화면을 넓게(댄 11-09)
+        val navMain = !intro && v.card == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (driving && m.view == null))
+        if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
+        val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
+        val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
+        zoneL = if (mirror) 48 * U else w * 0.4f; zoneR = if (mirror) w * 0.6f else w - 48 * U
         if (m.sit == Sit.OFF) scrim(c, w, h, ((now - m.sitAt) / 1500f).coerceIn(0f, 0.35f))
-        // 캐릭터
-        val showLine = !driving && m.sit != Sit.STOP && !intro
-        val chH = h * (if (driving) 0.36f else 0.33f)
-        val cx = if (mirror) w * 0.72f else w * (if (driving) 0.3f else 0.27f); val feet = h * (if (showLine) 0.68f else 0.72f)
+        // 캐릭터 — 보통: 화면 높이 33% · 내비 주화면: 14% 배지(왼쪽 위)
+        val showLine = !driving && m.sit != Sit.STOP && !intro && m.view == null
+        val bigH = h * 0.33f; val bigCx = if (mirror) w * 0.8f else w * 0.2f; val bigFeet = h * 0.7f
+        val smH = h * 0.14f; val smCx = 40 * U + smH / 2; val smFeet = 16 * U + smH
+        val chH = bigH + (smH - bigH) * nk; val cx = bigCx + (smCx - bigCx) * nk; val feet = bigFeet + (smFeet - bigFeet) * nk
         val react = m.reactFace.takeIf { now - m.reactAt < 1200 }
-        val face0 = when { intro -> "waving"; m.sit == Sit.OFF && now - m.sitAt > 2500 -> "sleep"; react != null && v.mode == HyunView.Mode.READY -> react; driving -> "driving"; else -> v.botFace() }
+        val face0 = when { intro -> "waving"; m.sit == Sit.OFF && now - m.sitAt > 2500 -> "sleep"; react != null && v.mode == HyunView.Mode.READY -> react; driving -> "driving"
+            m.view != null && v.mode == HyunView.Mode.READY -> VIEW_FACE[m.view!!] ?: v.botFace(); else -> v.botFace() }
         val celebrate = m.unlockAt > 0 && now - m.unlockAt < 1500
         val face = if (celebrate) face0 else calm(face0)
-        character(c, cx, feet, chH, t, face, alive = !driving)
-        if (!intro) { if (mirror) speech(c, w * 0.43f, feet - chH * 0.78f, cx - chH * 0.62f - w * 0.43f) else speech(c, cx + chH * 0.62f, feet - chH * 0.78f, w * 0.6f - (cx + chH * 0.62f) - 64 * U) }
-        if (showLine) { if (mirror) timeline(c, w * 0.46f, w - 64 * U, h - 100 * U) else timeline(c, 64 * U, w * 0.52f, h - 100 * U) }
+        character(c, cx, feet, chH, t, face, alive = !driving && nk < 0.5f, small = nk > 0.5f)
+        if (!intro) {
+            if (nk > 0.5f) speech(c, cx + chH * 0.6f, 16 * U + chH * 0.42f, w * 0.5f, navLine())
+            else if (mirror) speech(c, zoneR + 64 * U, feet - chH - 56 * U, w - zoneR - 128 * U)
+            else speech(c, 64 * U, feet - chH - 56 * U, zoneL - 128 * U)
+        }
+        if (showLine && nk < 0.01f) { if (mirror) timeline(c, zoneR + 64 * U, w - 160 * U, h - 100 * U) else timeline(c, 64 * U, zoneL - 64 * U, h - 100 * U) }
         topRight(c, w)
         if (intro) {   // 테마 인트로
             themeIntro(c, w, h, ((now - m.sitAt) / 1800f).coerceIn(0f, 1f), false)
         } else {
-            val card = v.card
-            val sheetOn = m.overlay in setOf("brief", "todo", "car", "log")
-            if (driving) driveCard(c, RectF(zoneL, 96 * U, zoneR, h - 48 * U))
-            else {
-                badges(c)
+            if (nk > 0.01f) {   // 내비 주화면 — 아래에서 올라오며 나타남
+                if (nk < 1f) c.saveLayerAlpha(0f, 0f, w, h, (nk * 255).toInt()) else c.save()
+                c.translate(0f, (1f - nk) * 24 * U)
+                navMainScreen(c, RectF(40 * U, 16 * U + smH + 28 * U, w - 40 * U, h - 32 * U), w, h)
+                c.restore()
+                if (nk > 0.5f) viewChips(c, cx + chH * 0.6f, 16 * U + chH * 0.42f + 44 * U)
+            }
+            if (nk < 0.99f) {
+                if (nk > 0f) c.saveLayerAlpha(0f, 0f, w, h, ((1f - nk) * 255).toInt()) else c.save()
+                header(c)
+                val card = v.card
+                val sheetOn = m.overlay in setOf("brief", "todo", "car", "log")
                 val bottom = h - 48 * U - 64 * U - 20 * U
-                val full = RectF(zoneL, 96 * U, zoneR, bottom)
+                var top = 96 * U
+                if (m.navActive && !navMain) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }
+                val full = RectF(zoneL, top, zoneR, bottom)
                 when {
                     sheetOn -> sheet(c, full, m.overlay!!)
                     card != null -> { glassCard(c, full, 24 * U); val lt = v.lightTheme; v.lightTheme = !darkUi; v.listCard(c, card, full.left + 24 * U, full.top + 24 * U, full.right - 24 * U, full.bottom - 24 * U, h); v.lightTheme = lt }
-                    else -> {
-                        val nh = 170 * U
-                        messageCard(c, RectF(full.left, full.top, full.right, full.bottom - nh - 20 * U))
-                        nextUp(c, RectF(full.left, full.bottom - nh, full.right, full.bottom))
-                    }
+                    m.view != null && m.view != "nav" -> category(c, full, m.view!!)
+                    !driving -> stateScreen(c, full)
                 }
-                dock(c, w, h)
+                if (!driving) dock(c, w, h)
+                c.restore()
             }
             micButton(c, w, h)
         }
@@ -230,7 +249,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     // ======================================================================
     // 캐릭터 — 바닥 그림자 · 눈빛 후광(상태 색) · 숨쉬기 · 소품(그림)
     // ======================================================================
-    private fun character(c: Canvas, cx: Float, feet: Float, size: Float, t: Float, face: String, alive: Boolean) {
+    private fun character(c: Canvas, cx: Float, feet: Float, size: Float, t: Float, face: String, alive: Boolean, small: Boolean = false) {
         val breathe = 1f   // unslop: 라이브가 아닌 반복 모션 없음
         val s = size * breathe
         val cy = feet - s * 0.5f
@@ -249,10 +268,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
         if (ga > 0) { p.shader = RadialGradient(cx, cy, s * 0.62f, Glass.a(gc, ga), Glass.a(gc, 0), Shader.TileMode.CLAMP); c.drawCircle(cx, cy, s * 0.62f, p); p.shader = null }
         val bot = v.asset("bot_$face.webp")
-        if (m.overlay != "deco") aroundCharacter(c, cx, cy, s, t, alive, bot)
+        if (m.overlay != "deco" && !small) aroundCharacter(c, cx, cy, s, t, alive, bot)
         accParts(c, cx, cy, s, face, back = true)   // 헬멧 뒤로 가는 조각(머리띠 · 반대쪽 헤드폰 · 넥타이)
         bot?.let { bm -> p.isFilterBitmap = true; p.color = Color.WHITE; c.drawBitmap(bm, null, RectF(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2), p) }
         accParts(c, cx, cy, s, face, back = false)
+        if (small) return   // 작은 배지 — 날씨 소품·방 소품은 생략(입은 소품은 함께 줄어든다)
         // 날씨 소품(그림) — 우산·목도리·차 한 잔·선글라스
         val spots = listOf(-0.52f to -0.12f, 0.5f to 0.22f, -0.5f to 0.3f, 0.48f to -0.2f)
         m.weatherStickers.mapNotNull { PROPS[it] }.distinct().take(4).forEachIndexed { i, prop ->
@@ -455,8 +475,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     // ---------- 캐릭터 말풍선(짧게, 타자 치듯) ----------
     private var bubbleText = ""; private var bubbleAt = 0L
-    private fun speech(c: Canvas, cx: Float, headTop: Float, maxW: Float) {
+    private fun speech(c: Canvas, cx: Float, headTop: Float, maxW: Float, over: String? = null) {
         val full = when {
+            over != null && v.mode == HyunView.Mode.READY -> over
+            m.view != null && v.mode == HyunView.Mode.READY -> viewLine(m.view!!)
             v.mode == HyunView.Mode.LISTENING -> "듣고 있어요…"
             v.mode == HyunView.Mode.THINKING -> "음… 생각 중이에요"
             v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() -> firstSentence(v.hyunLine)
@@ -465,7 +487,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }.let { if (it.length > 34) it.take(33) + "…" else it }
         if (full.isBlank()) return
         if (full != bubbleText) { bubbleText = full; bubbleAt = SystemClock.elapsedRealtime() }
-        val n = ((SystemClock.elapsedRealtime() - bubbleAt) / 38).toInt().coerceIn(0, full.length)
+        val n = if (m.sit == Sit.DRIVE) full.length else ((SystemClock.elapsedRealtime() - bubbleAt) / 38).toInt().coerceIn(0, full.length)   // 주행 중엔 화면을 자주 다시 그리지 않으니 타자 효과 없이
         val shown = full.take(n)
         val fs = 26 * U
         val col = if (sceneDark) 0xF2FFFFFF.toInt() else FG
@@ -823,23 +845,599 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     }
 
     private fun debug(c: Canvas, w: Float, h: Float) {
-        val r = RectF(w * 0.04f, h - 24f * S, w * 0.96f, h - 2f * S)
+        val r = RectF(w * 0.04f, h - 36f * S, w * 0.96f, h - 2f * S)
         glassCard(c, r, 24 * U, WARN)
-        text(c, "디버그 · 상황", r.left + 2.4f * S, r.top + 3.6f * S, 1.9f * S, WARN, bold)
-        text(c, "adb: am broadcast -a io.github.somanghao.makecar.hyun.STAGE --es sit drive --es sim \"wiper=on,passenger=on\"", r.right - 2.4f * S, r.top + 3.6f * S, 1.5f * S, MUTED, body, Paint.Align.RIGHT)
-        val list = Sit.values().map { it.key to it.label } + listOf("auto" to "자동(신호)", "x" to "닫기")
-        val bw = (r.width() - 4.8f * S - 1f * S * (list.size - 1)) / list.size
-        list.forEachIndexed { i, (key, lab) ->
-            val br = RectF(r.left + 2.4f * S + i * (bw + S), r.top + 5f * S, 0f, r.top + 10.4f * S).also { it.right = it.left + bw }
-            button(c, lab, br, key == m.sit.key && m.forced, if (key == "x") "debug" else "sit:$key")
+        text(c, "화면 미리보기 · 상황", r.left + 2.4f * S, r.top + 3.6f * S, 1.9f * S, WARN, bold)
+        text(c, "adb: am broadcast -a io.github.somanghao.makecar.hyun.SIM --es screen webtoon --es nav on  (screen auto = 자동)", r.right - 2.4f * S, r.top + 3.6f * S, 1.5f * S, MUTED, body, Paint.Align.RIGHT)
+        fun rowOf(list: List<Triple<String, String, Boolean>>, top: Float, bottom: Float) {
+            val bw = (r.width() - 4.8f * S - 0.8f * S * (list.size - 1)) / list.size
+            list.forEachIndexed { i, (lab, action, on) -> button(c, lab, RectF(r.left + 2.4f * S + i * (bw + 0.8f * S), top, r.left + 2.4f * S + i * (bw + 0.8f * S) + bw, bottom), on, action) }
         }
-        text(c, "차 신호 시뮬레이터(Pleos SDK 대신)", r.left + 2.4f * S, r.top + 13.4f * S, 1.9f * S, WARN, bold)
+        rowOf(Sit.values().map { Triple(it.label, "force:${it.key}", it == m.sit && m.forced) } + listOf(Triple("자동", "force:auto", !m.forced && m.view == null), Triple("닫기", "debug", false)), r.top + 5f * S, r.top + 10.4f * S)
+        text(c, "취미 레이아웃 · 내비", r.left + 2.4f * S, r.top + 13.4f * S, 1.9f * S, WARN, bold)
+        rowOf(StageModel.CATS.map { Triple(it.second.substringBefore("·"), "force:${it.first}", m.view == it.first) } + listOf(Triple(if (m.simNav) "내비 끄기" else "내비 켜기", "nav:toggle", m.simNav)), r.top + 15f * S, r.top + 20.4f * S)
+        text(c, "차 신호 시뮬레이터(Pleos SDK 대신)", r.left + 2.4f * S, r.top + 23.4f * S, 1.9f * S, WARN, bold)
         val sims = listOf("비(와이퍼)" to "wiper=on", "동승자" to "passenger=on", "뒷좌석" to "kid=on", "더워요 28°" to "cabin=28", "배터리 18%" to "soc=18", "크루즈 100" to "cruise=100",
             "왼쪽 깜빡이" to "turn=left", "문 열림" to "door=open", "벨트 풀림" to "belt=off", "에코" to "mode=ECO", "초기화" to "reset")
-        val sw = (r.width() - 4.8f * S - 0.8f * S * (sims.size - 1)) / sims.size
-        sims.forEachIndexed { i, (lab, spec) ->
-            val br = RectF(r.left + 2.4f * S + i * (sw + 0.8f * S), r.top + 15f * S, 0f, r.bottom - 1.6f * S).also { it.right = it.left + sw }
-            button(c, lab, br, false, "sim:$spec")
+        rowOf(sims.map { Triple(it.first, "sim:${it.second}", false) }, r.top + 25f * S, r.bottom - 1.6f * S)
+    }
+
+    // ======================================================================
+    // 상황 화면 6 · 취미 레이아웃 9 · 상시 내비 띠 · 내비 주화면 — docs/hyun-content-plan.md (댄 11-09)
+    //  - 정보마다 모양이 다르다: 사진 / 큰 화살표 / 표지 / 정사각 / 전광판 / 큰 숫자+선 / 큰 기온 / 인용 / 시간 축
+    //  - 경로 안내 중이면 모든 화면 위에 내비 띠(폰의 진행 중 알림처럼) · 누르면 내비 주화면
+    //  - 내비 주화면: 캐릭터는 왼쪽 위 배지(높이 14%), 내비가 화면을 넓게
+    // ======================================================================
+    private val G get() = 16 * U
+    private val UP = 0xFFE5484D.toInt()        // 오름(국내 관례 빨강)
+    private val DOWN = 0xFF2F6BFF.toInt()      // 내림(파랑)
+    private fun updown(r: Float) = if (r > 0f) UP else if (r < 0f) DOWN else MUTED
+    private fun pct(r: Float) = (if (r > 0f) "+" else "") + "%.2f%%".format(r)
+    private fun box(c: Canvas, r: RectF, action: String? = null) { glassCard(c, r, 24 * U); action?.let { hits += r to it } }
+    private fun lab(c: Canvas, s: String, x: Float, y: Float, maxW: Float = Float.MAX_VALUE, col: Int = MUTED) = text(c, s, x, y, 20 * U, col, medium, maxW = maxW)
+    private fun cols(r: RectF, vararg wts: Float): List<RectF> {
+        val tot = wts.sum(); val avail = r.width() - G * (wts.size - 1); var x = r.left
+        return wts.map { wt -> val ww = avail * wt / tot; RectF(x, r.top, x + ww, r.bottom).also { x += ww + G } }
+    }
+    /** 세로로 쌓기 — 들어가지 않는 줄은 버린다 */
+    private fun stack(c: Canvas, zone: RectF, rows: List<Pair<Float, (RectF) -> Unit>>) {
+        var y = zone.top; var i = 0
+        for ((hh, d) in rows) {
+            val r = if (hh <= 0f) RectF(zone.left, y, zone.right, zone.bottom) else RectF(zone.left, y, zone.right, y + hh)
+            if (r.bottom > zone.bottom + 1 || r.height() < 60 * U) break
+            spring(c, i) { d(r) }; y = r.bottom + G; i++
+        }
+    }
+    private fun row(hh: Float, d: (RectF) -> Unit): Pair<Float, (RectF) -> Unit> = hh to d
+    private fun etaIn(min: Int): String { val k = java.util.Calendar.getInstance().apply { add(java.util.Calendar.MINUTE, min) }; return "%02d:%02d".format(k.get(java.util.Calendar.HOUR_OF_DAY), k.get(java.util.Calendar.MINUTE)) }
+    private fun sgn(n: Int) = if (n >= 0) "+$n" else "−${-n}"
+
+    /** 인터넷 그림을 칸에 꽉 채워(가운데 자르기) — 아직 없으면 옅은 면 */
+    private fun cover(c: Canvas, url: String?, r: RectF, rad: Float, clip: RectF? = null) {
+        val bm = url?.let { v.urlBmp(it) }
+        c.save(); c.clipPath(Path().apply { addRoundRect(clip ?: r, rad, rad, Path.Direction.CW) }); c.clipRect(r)
+        if (bm != null) { val sc = max(r.width() / bm.width, r.height() / bm.height); val bw = bm.width * sc; val bh = bm.height * sc
+            c.drawBitmap(bm, null, RectF(r.centerX() - bw / 2, r.centerY() - bh / 2, r.centerX() + bw / 2, r.centerY() + bh / 2), bp) }
+        else { p.shader = null; p.color = SURF2; c.drawRect(r, p) }
+        c.restore()
+    }
+
+    private fun stat(c: Canvas, x: Float, y: Float, big: String, sub: String, col: Int, maxW: Float, size: Float = 56 * U) {
+        text(c, big, x, y, fit(big, size, maxW, bold), col, bold, maxW = maxW)
+        lab(c, sub, x, y + 36 * U, maxW)
+    }
+    /** 작은 카드 — 이름 · 값 · 설명 */
+    private fun mini(c: Canvas, r: RectF, label: String, value: String, sub: String, action: String?, vcol: Int = FG) {
+        box(c, r, action)
+        val x0 = r.left + 28 * U; val iw = r.width() - 56 * U
+        lab(c, label, x0, r.top + 38 * U, iw)
+        text(c, value, x0, r.top + 84 * U, fit(value, 34 * U, iw, bold), vcol, bold, maxW = iw)
+        if (sub.isNotBlank() && r.height() > 110 * U) lab(c, sub, x0, r.top + 118 * U, iw)
+    }
+    private fun chip(c: Canvas, s: String, x: Float, cy: Float, action: String, warn: Boolean): Float {
+        p.textSize = 20 * U; p.typeface = medium
+        val r = RectF(x, cy - 20 * U, x + p.measureText(s) + 32 * U, cy + 20 * U)
+        p.shader = null; p.color = if (warn) Glass.a(WARN, if (darkUi) 70 else 52) else if (darkUi) SURF2 else Glass.a(Color.WHITE, 220); c.drawRoundRect(r, 20 * U, 20 * U, p)
+        text(c, s, x + 16 * U, cy + 7 * U, 20 * U, if (warn) (if (darkUi) 0xFFFFD27A.toInt() else 0xFF8A5300.toInt()) else FG, medium)
+        hits += r to action
+        return r.right
+    }
+    /** 왼쪽 위 — 상황 · 시각 · 날씨(세 번 누르면 디버그 판) + 레이아웃 칩(상황 화면으로 · 미리보기) */
+    private fun header(c: Canvas) {
+        val col = if (sceneDark) 0xCCFFFFFF.toInt() else MUTED
+        val x = if (mirror) zoneR + 64 * U else 64 * U
+        val line = "${m.sit.label} · ${m.kicker.substringAfter(" · ")}" + (if (m.weatherShort.isNotBlank()) "   ${m.weatherShort}" else "")
+        text(c, line, x, 60 * U, 22 * U, col, medium)
+        p.textSize = 22 * U; p.typeface = medium; hits += RectF(x - 8 * U, 28 * U, x + p.measureText(line) + 8 * U, 76 * U) to "sitpill"
+        viewChips(c, x, 112 * U)
+    }
+    private fun viewChips(c: Canvas, x: Float, cy: Float) {
+        var xx = x
+        if (m.view != null) xx = chip(c, "‹ 상황 화면", xx, cy, "view:close", false) + 12 * U
+        if (m.viewForced && (m.view != null || m.forced)) chip(c, "미리보기 · 자동으로", xx, cy, "view:auto", true)
+    }
+
+    /** 리드 기사 — 사진이 있는 관심 뉴스 먼저(연합뉴스 RSS 사진) */
+    private fun leadNews(): String? = m.newsList.firstOrNull { m.newsImgs[it] != null } ?: m.newsImgs.keys.firstOrNull() ?: m.newsList.firstOrNull()
+    private fun navLine(): String = "${v.dist(m.navTurnM)} 앞에서 ${shortTurn(m.navTurnType, m.navTurn)}이에요"
+    private fun outfitLine(): String {
+        val t = m.tempNow ?: return "날씨를 살펴보는 중이에요"
+        val base = when { t <= 5 -> "두꺼운 외투에 목도리까지"; t <= 12 -> "얇은 니트에 가벼운 겉옷이면 돼요"; t <= 19 -> "긴소매 한 장이면 충분해요"; t <= 25 -> "반소매도 괜찮아요"; else -> "가볍게 입고 선글라스 챙겨요" }
+        return base + if (m.rainMax >= 50 || m.raining) " · 우산 챙겨요" else ""
+    }
+    private fun viewLine(k: String): String = when (k) {
+        "news" -> "오늘 소식 정리했어요"
+        "nav" -> navLine()
+        "webtoon" -> "쉬는 동안 한 화 어때요"
+        "music" -> "도착까지 잔잔하게 틀게요"
+        "sports" -> "응원하는 팀이 이기고 있어요"
+        "stock" -> m.indices.firstOrNull()?.let { if (it.ratio < 0f) "오늘 장은 조금 내렸어요" else "오늘 장은 올랐어요" } ?: "장 소식을 불러오는 중이에요"
+        "weather" -> m.todayMax?.let { "오늘 최고 ${it}°, ${outfitLine().substringBefore(" ·")}" } ?: "오늘 날씨를 정리했어요"
+        "local" -> "신호 기다리는 동안 하나"
+        else -> "첫 일정까지 여유 있어요"
+    }
+
+    // ---------- 상시 내비 띠 — 다음 회전 · 거리 · 길 이름 · 도착/남은 시간. 누르면 내비 주화면 ----------
+    private fun navStrip(c: Canvas, r: RectF) {
+        glassCard(c, r, 20 * U); hits += r to "view:nav"
+        val tile = RectF(r.left + 12 * U, r.top + 12 * U, r.left + 12 * U + r.height() - 24 * U, r.bottom - 12 * U)
+        p.shader = null; p.color = ACC; c.drawRoundRect(tile, 14 * U, 14 * U, p)
+        v.turnIcon(c, m.navTurnType.ifBlank { "TURN_STRAIGHT" }, tile.centerX(), tile.centerY() - tile.height() * 0.04f, tile.height() * 0.86f, Color.WHITE)
+        p.style = Paint.Style.FILL; p.strokeWidth = 0f
+        val d = v.dist(m.navTurnM)
+        text(c, d, tile.right + 20 * U, r.centerY() + 14 * U, 40 * U, FG, bold)
+        p.textSize = 40 * U; p.typeface = bold; val sx = tile.right + 20 * U + p.measureText(d) + 20 * U
+        val right = "${m.navEta} · ${m.navRemain}" + (if (m.navMin > 0) " · ${m.navMin}분" else "") + (if (m.mockRoute) " · 모의 경로" else "")
+        p.textSize = 22 * U; p.typeface = medium; val rw = p.measureText(right)
+        text(c, m.navTurn, sx, r.centerY() + 10 * U, 26 * U, FG, medium, maxW = r.right - 24 * U - rw - 24 * U - sx)
+        text(c, right, r.right - 24 * U, r.centerY() + 8 * U, 22 * U, MUTED, medium, Paint.Align.RIGHT)
+    }
+
+    // ---------- 내비 주화면 — 왼쪽: 다음 회전 · 차로 · 도착 / 오른쪽: 경로 지도 ----------
+    private fun navMainScreen(c: Canvas, r: RectF, w: Float, h: Float) {
+        val leftW = min(600 * U, r.width() * 0.36f)
+        val L = RectF(r.left, r.top, r.left + leftW, r.bottom)
+        val M = RectF(L.right + G, r.top, r.right, r.bottom)
+        val t1 = RectF(L.left, L.top, L.right, L.top + 380 * U)
+        box(c, t1)
+        val tile = RectF(t1.left + 32 * U, t1.top + 32 * U, t1.left + 212 * U, t1.top + 212 * U)
+        p.shader = null; p.color = ACC; c.drawRoundRect(tile, 32 * U, 32 * U, p)
+        v.turnIcon(c, m.navTurnType.ifBlank { "TURN_STRAIGHT" }, tile.centerX(), tile.centerY(), 124 * U, Color.WHITE)
+        p.style = Paint.Style.FILL; p.strokeWidth = 0f
+        val dist = v.dist(m.navTurnM); val num = dist.takeWhile { it.isDigit() || it == '.' }; val unit = dist.drop(num.length)
+        val nx = tile.right + 28 * U; val ns = fit(num, 112 * U, t1.right - nx - 90 * U, bold)
+        text(c, num, nx, tile.top + 116 * U, ns, FG, bold)
+        p.textSize = ns; p.typeface = bold; text(c, unit, nx + p.measureText(num) + 6 * U, tile.top + 116 * U, 44 * U, FG, bold)
+        text(c, shortTurn(m.navTurnType, m.navTurn), nx, tile.top + 168 * U, 30 * U, MUTED, medium, maxW = t1.right - nx - 24 * U)
+        wrap(c, m.navTurn, t1.left + 32 * U, tile.bottom + 56 * U, 34 * U, FG, t1.width() - 64 * U, 2, medium, lh = 1.3f)
+        if (m.navNext.isNotBlank()) {
+            p.color = LINE; c.drawRect(t1.left + 32 * U, t1.bottom - 70 * U, t1.right - 32 * U, t1.bottom - 70 * U + max(1f, U), p)
+            lab(c, "그다음", t1.left + 32 * U, t1.bottom - 28 * U)
+            v.turnIcon(c, m.navNextType.ifBlank { "TURN_STRAIGHT" }, t1.left + 120 * U, t1.bottom - 35 * U, 34 * U, MUTED); p.style = Paint.Style.FILL; p.strokeWidth = 0f
+            text(c, "${v.dist(m.navNextM)}  ${m.navNext}", t1.left + 148 * U, t1.bottom - 26 * U, 24 * U, FG, medium, maxW = t1.width() - 180 * U)
+        }
+        // 차로(주행 중 차 신호가 바뀌면 6초 동안 그 알림)
+        val t2 = RectF(L.left, t1.bottom + G, L.right, t1.bottom + G + 150 * U)
+        val ev = m.carEvent
+        if (m.sit == Sit.DRIVE && ev != null && SystemClock.elapsedRealtime() - m.carEventAt < 6000) {
+            val col = when (ev.first) { "warn" -> RED; "signal" -> WARN; "cruise", "road", "flag" -> GOOD; else -> ACC }
+            glassCard(c, t2, 24 * U, col)
+            p.color = Glass.a(col, if (darkUi) 60 else 36); c.drawCircle(t2.left + 76 * U, t2.centerY(), 44 * U, p)
+            if (ev.first != "signal" || (SystemClock.elapsedRealtime() / 500) % 2 == 0L) icon(c, ev.first, t2.left + 76 * U, t2.centerY(), 44 * U, col)
+            text(c, ev.second, t2.left + 140 * U, t2.centerY() + 12 * U, fit(ev.second, 34 * U, t2.width() - 170 * U, bold), FG, bold, maxW = t2.width() - 170 * U)
+        } else {
+            box(c, t2)
+            lab(c, "차로", t2.left + 32 * U, t2.top + 38 * U)
+            val ty = m.navTurnType
+            val rt = ty.contains("RIGHT") || ty == "TURN_KEEP_R" || ty == "TURN_EXIT_IC"; val lt = ty.contains("LEFT") || ty == "TURN_KEEP_L" || ty == "TURN_UTURN"
+            val lw = (t2.width() - 64 * U) / 4
+            for (i in 0 until 4) {
+                val on = (rt && i >= 2) || (lt && i < 2) || (!rt && !lt)
+                val lty = if (rt && i >= 2) "TURN_RIGHT" else if (lt && i < 2) "TURN_LEFT" else "TURN_STRAIGHT"
+                val lx = t2.left + 32 * U + lw * (i + 0.5f)
+                v.turnIcon(c, lty, lx, t2.centerY() + 18 * U, 64 * U, if (on) ACC else Glass.a(MUTED, 110)); p.style = Paint.Style.FILL; p.strokeWidth = 0f
+                if (i > 0) { p.color = LINE; var yy = t2.top + 56 * U; while (yy < t2.bottom - 20 * U) { c.drawRect(t2.left + 32 * U + lw * i - U, yy, t2.left + 32 * U + lw * i + U, yy + 10 * U, p); yy += 18 * U } }
+            }
+        }
+        // 도착
+        val t3 = RectF(L.left, t2.bottom + G, L.right, L.bottom)
+        if (t3.height() > 100 * U) {
+            box(c, t3)
+            lab(c, "도착" + if (m.mockRoute) " · 모의 경로" else "", t3.left + 32 * U, t3.top + 40 * U)
+            text(c, m.navEta.removePrefix("도착 "), t3.left + 32 * U, t3.top + 108 * U, 60 * U, FG, bold)
+            text(c, "${m.navRemain}" + (if (m.navMin > 0) " · ${m.navMin}분" else "") + " · ${m.navDest}", t3.left + 32 * U, t3.top + 150 * U, 26 * U, MUTED, medium, maxW = t3.width() - 64 * U)
+        }
+        mapView(c, M)
+    }
+
+    /** 경로 지도(코드로 그림) — 차는 아래 가운데, 다음 회전 지점이 거리만큼 다가온다 */
+    private fun mapView(c: Canvas, r: RectF) {
+        val rad = 24 * U
+        val clip = Path().apply { addRoundRect(r, rad, rad, Path.Direction.CW) }
+        c.save(); c.clipPath(clip)
+        val bg = if (darkUi) 0xFF141A22.toInt() else 0xFFE6EBF0.toInt(); val blk = if (darkUi) 0xFF1B222C.toInt() else 0xFFF4F6F9.toInt(); val road = if (darkUi) 0xFF2A3442.toInt() else Color.WHITE
+        p.shader = null; p.color = bg; c.drawRect(r, p)
+        val bw = 220 * U; val bh = 150 * U; val gap = 22 * U
+        val off = ((600 - m.navTurnM.coerceIn(0, 600)) * 0.5f * U) % bh
+        p.color = blk
+        var by = r.top - bh + off
+        while (by < r.bottom) { var bx = r.left - 40 * U; var j = 0; while (bx < r.right) { c.drawRoundRect(RectF(bx + gap / 2, by + gap / 2, bx + bw * (if (j % 3 == 1) 1.4f else 1f) - gap / 2, by + bh - gap / 2), 10 * U, 10 * U, p); bx += bw * (if (j % 3 == 1) 1.4f else 1f); j++ }; by += bh }
+        val ty = m.navTurnType
+        val rt = ty.contains("RIGHT") || ty == "TURN_KEEP_R" || ty == "TURN_EXIT_IC"; val lt = ty.contains("LEFT") || ty == "TURN_KEEP_L" || ty == "TURN_UTURN"
+        val vx = r.left + r.width() * (if (lt) 0.66f else 0.34f)
+        val carY = r.bottom - 120 * U
+        val turnY = carY - (m.navTurnM.coerceIn(0, 600) / 600f) * (carY - r.top - 170 * U) - 30 * U
+        val endX = if (rt) r.left + r.width() * 0.8f else if (lt) r.left + r.width() * 0.2f else vx
+        // 큰 길
+        p.style = Paint.Style.STROKE; p.strokeCap = Paint.Cap.BUTT; p.strokeWidth = 40 * U; p.color = road
+        c.drawLine(vx, r.top, vx, r.bottom, p); c.drawLine(r.left, turnY, r.right, turnY, p)
+        if (rt || lt) c.drawLine(endX, r.top, endX, turnY, p)
+        // 경로
+        path.reset(); path.moveTo(vx, r.bottom + 20 * U); path.lineTo(vx, turnY)
+        if (rt || lt) { path.lineTo(endX, turnY); path.lineTo(endX, r.top + 90 * U) } else path.lineTo(vx, r.top + 90 * U)
+        p.strokeJoin = Paint.Join.ROUND; p.strokeCap = Paint.Cap.ROUND
+        p.color = Glass.a(ACC, 70); p.strokeWidth = 30 * U; c.drawPath(path, p)
+        p.color = ACC; p.strokeWidth = 16 * U; c.drawPath(path, p)
+        p.style = Paint.Style.FILL; p.strokeJoin = Paint.Join.MITER; p.strokeCap = Paint.Cap.BUTT
+        // 길 이름
+        val street = m.navTurn.substringBefore(" 방면").substringBefore(" ").ifBlank { "" }
+        if (street.isNotBlank()) text(c, street, (if (rt) vx + 40 * U else if (lt) r.left + 40 * U else vx + 40 * U), turnY - 30 * U, 22 * U, MUTED, medium)
+        // 회전 지점 · 도착 핀 · 내 차
+        p.color = Color.WHITE; c.drawCircle(vx, turnY, 18 * U, p); p.color = ACC; c.drawCircle(vx, turnY, 11 * U, p)
+        icon(c, "pin", endX, r.top + 60 * U, 52 * U, RED)
+        p.color = Color.WHITE; p.setShadowLayer(12 * U, 0f, 4 * U, 0x33000000); c.drawCircle(vx, carY, 34 * U, p); p.clearShadowLayer()
+        path.reset(); path.moveTo(vx, carY - 20 * U); path.lineTo(vx + 15 * U, carY + 16 * U); path.lineTo(vx, carY + 8 * U); path.lineTo(vx - 15 * U, carY + 16 * U); path.close()
+        p.color = ACC; c.drawPath(path, p)
+        // 위 왼쪽 — 목적지까지
+        val tag = "${m.navDest}까지 ${m.navRemain}" + if (m.mockRoute) " · 모의 경로" else ""
+        p.textSize = 22 * U; p.typeface = medium
+        val tr = RectF(r.left + 24 * U, r.top + 24 * U, r.left + 24 * U + p.measureText(tag) + 36 * U, r.top + 72 * U)
+        p.color = if (darkUi) Glass.a(SURF, 230) else Glass.a(Color.WHITE, 235); c.drawRoundRect(tr, 24 * U, 24 * U, p)
+        text(c, tag, tr.left + 18 * U, tr.centerY() + 8 * U, 22 * U, FG, medium)
+        c.restore()
+        p.style = Paint.Style.STROKE; p.strokeWidth = max(1f, U); p.color = LINE; c.drawPath(clip, p); p.style = Paint.Style.FILL
+    }
+
+    // ---------- 상황 화면 ----------
+    private fun storyRow(c: Canvas, r: RectF, tl: Tile) {
+        box(c, r, tl.action)
+        val col = tone(tl.tone)
+        p.shader = null; p.color = col; c.drawRoundRect(RectF(r.left + 20 * U, r.top + 22 * U, r.left + 25 * U, r.bottom - 22 * U), 3 * U, 3 * U, p)
+        icon(c, tl.icon, r.left + 62 * U, r.centerY(), 28 * U, col)
+        lab(c, tl.label + (if (tl.tag.isNotBlank()) " · ${tl.tag}" else ""), r.left + 96 * U, r.top + 38 * U, r.width() - 130 * U)
+        text(c, adult(firstSentence(tl.value)), r.left + 96 * U, r.top + 76 * U, 28 * U, FG, medium, maxW = r.width() - 130 * U)
+    }
+    private fun tipRow(c: Canvas, r: RectF, s: String) {
+        box(c, r)
+        text(c, "초보 팁", r.left + 28 * U, r.centerY() + 8 * U, 22 * U, if (darkUi) WARN else 0xFFB26A00.toInt(), semi)
+        text(c, s, r.left + 130 * U, r.centerY() + 9 * U, 25 * U, FG, medium, maxW = r.width() - 160 * U)
+    }
+    private fun newsRow(c: Canvas, r: RectF) {
+        box(c, r, "view:news")
+        val n = leadNews()
+        val th = RectF(r.left + 16 * U, r.top + 16 * U, r.left + 16 * U + (r.height() - 32 * U) * 1.5f, r.bottom - 16 * U)
+        cover(c, n?.let { m.newsImgs[it] }, th, 14 * U)
+        val x0 = th.right + 24 * U
+        lab(c, "관심 뉴스 · 연합뉴스" + (n?.let { m.newsTimes[it] }?.let { " $it" } ?: ""), x0, r.top + 40 * U)
+        text(c, n ?: "헤드라인을 불러오는 중이에요", x0, r.top + 80 * U, 28 * U, FG, medium, maxW = r.right - x0 - 120 * U)
+        text(c, "듣기", r.right - 32 * U, r.centerY() + 9 * U, 24 * U, ACC, semi, Paint.Align.RIGHT)
+    }
+    private fun questRow(c: Canvas, r: RectF) {
+        box(c, r, "screen:log")
+        val x0 = r.left + 28 * U
+        lab(c, "오늘의 온기 퀘스트", x0, r.top + 38 * U)
+        text(c, "급정거 없이 10km", x0, r.top + 78 * U, 28 * U, FG, medium)
+        val pr = (m.dayKmShown / 10.0).toFloat().coerceIn(0f, 1f)
+        val bar = RectF(x0 + 300 * U, r.top + 66 * U, r.right - 280 * U, r.top + 76 * U)
+        p.shader = null; p.color = SURF2; c.drawRoundRect(bar, 5 * U, 5 * U, p)
+        p.color = WARN; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + max(10 * U, bar.width() * pr), bar.bottom), 5 * U, 5 * U, p)
+        text(c, "%.1f / 10km · +20".format(m.dayKmShown), r.right - 28 * U, r.top + 78 * U, 24 * U, MUTED, medium, Paint.Align.RIGHT)
+    }
+
+    private fun stateScreen(c: Canvas, z: RectF) {
+        val rows = mutableListOf<Pair<Float, (RectF) -> Unit>>()
+        m.story?.let { st -> rows += row(108 * U) { r -> storyRow(c, r, st) } }
+        val st = m.status
+        val soc = st?.soc?.v; val rng = st?.rangeKm?.v
+        when (m.sit) {
+            Sit.IGNITION -> {
+                rows += row(170 * U) { r ->
+                    box(c, r, "screen:car"); val x0 = r.left + 32 * U
+                    lab(c, "차 컨디션 · 시동 점검", x0, r.top + 40 * U)
+                    val cs = cols(RectF(x0, r.top, r.right - 32 * U, r.bottom), 1f, 1f, 1f)
+                    val ok = st?.belt?.v != false && st?.doorOpen?.v != true
+                    stat(c, cs[0].left, r.top + 108 * U, soc?.let { "$it%" } ?: "—", "${st?.energyLabel?.v ?: "배터리"} · 주행 가능 ${rng ?: "-"}km", if (soc != null && soc < 30) WARN else FG, cs[0].width())
+                    stat(c, cs[1].left, r.top + 108 * U, if (ok) "OK" else "확인", "벨트 · 문 · 전조등", if (ok) FG else WARN, cs[1].width())
+                    stat(c, cs[2].left, r.top + 108 * U, "—", "타이어는 계기판에서", FAINT, cs[2].width())
+                }
+                rows += row(140 * U) { r ->
+                    val cs = cols(r, 1f, 1f, 1f)
+                    mini(c, cs[0], "날씨", m.tempNow?.let { "$it° · 최고 ${m.todayMax ?: it}°" } ?: "불러오는 중", outfitLine(), "view:weather")
+                    mini(c, cs[1], "첫 일정 · 예시", "09:30 주간 회의", "지금 출발하면 ${etaIn(23)} 도착", "view:schedule")
+                    val ks = m.indices.firstOrNull()
+                    mini(c, cs[2], "장 · ${ks?.name ?: "코스피"}", ks?.let { "${it.price}  ${pct(it.ratio)}" } ?: "불러오는 중", m.stockAsof.substringAfter(" ").ifBlank { "네이버 증권" }, "view:stock", ks?.let { updown(it.ratio) } ?: FG)
+                }
+                rows += row(112 * U) { r -> newsRow(c, r) }
+                rows += row(100 * U) { r -> questRow(c, r) }
+                if (m.novice) rows += row(76 * U) { r -> tipRow(c, r, "출발 전에 시트 → 미러 → 벨트 순서로. 빨간 경고등이 없는지도 한 번.") }
+            }
+            Sit.READY -> {
+                rows += row(300 * U) { r ->
+                    box(c, r); val x0 = r.left + 32 * U
+                    val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                    val (name, sub) = when {
+                        m.navActive -> "${m.navDest}" to "${m.navRemain} · ${m.navMin}분 · ${m.navEta}" + if (m.mockRoute) " · 모의 경로" else ""
+                        hr in 6..10 -> "회사 · 판교 사옥" to "12.4km · 23분 · ${etaIn(23)} 도착 · 정체 없음 · 예시"
+                        hr in 17..21 -> "집" to "14.0km · 30분 · ${etaIn(30)} 도착 · 퇴근길 · 예시"
+                        else -> "자주 가는 카페" to "3.2km · 9분 · ${etaIn(9)} 도착 · 지난주 두 번 · 예시"
+                    }
+                    lab(c, if (m.navActive) "안내 중인 목적지" else "추천 목적지", x0, r.top + 40 * U)
+                    text(c, name, x0, r.top + 94 * U, 44 * U, FG, bold, maxW = r.width() * 0.5f)
+                    lab(c, sub, x0, r.top + 132 * U, r.width() - 64 * U)
+                    // 경로 미리보기 — 출발 · 가는 김에 · 도착
+                    val a = RectF(x0 + r.width() * 0.48f, r.top + 40 * U, r.right - 40 * U, r.top + 150 * U)
+                    path.reset(); path.moveTo(a.left, a.bottom - 10 * U); path.cubicTo(a.left + a.width() * 0.35f, a.bottom - 10 * U, a.left + a.width() * 0.4f, a.top + 30 * U, a.centerX(), a.centerY())
+                    path.cubicTo(a.left + a.width() * 0.65f, a.bottom - 30 * U, a.left + a.width() * 0.8f, a.top + 10 * U, a.right, a.top + 10 * U)
+                    p.style = Paint.Style.STROKE; p.strokeCap = Paint.Cap.ROUND; p.strokeWidth = 6 * U; p.color = ACC; c.drawPath(path, p); p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT
+                    p.color = ACC; c.drawCircle(a.left, a.bottom - 10 * U, 10 * U, p); p.color = WARN; c.drawCircle(a.centerX(), a.centerY(), 9 * U, p); p.color = RED; c.drawCircle(a.right, a.top + 10 * U, 10 * U, p)
+                    val by = r.bottom - 32 * U - 64 * U
+                    if (m.navActive) button(c, "내비 크게 보기", RectF(x0, by, x0 + 240 * U, by + 64 * U), true, "view:nav")
+                    else button(c, "안내 시작", RectF(x0, by, x0 + 220 * U, by + 64 * U), true, "nav:start")
+                    button(c, "다른 곳", RectF(x0 + 240 * U, by, x0 + 400 * U, by + 64 * U), false, "mic")
+                }
+                rows += row(140 * U) { r ->
+                    val cs = cols(r, 1f, 1f, 1f)
+                    mini(c, cs[0], "가는 김에 · 예시", "세탁물 찾기", "경로 위 0.4km · +5분", "view:schedule")
+                    mini(c, cs[1], "출발 편성", "뉴스 5분 → 음악", "도착 시간에 맞춰 편성", "view:music")
+                    mini(c, cs[2], "배터리", soc?.let { "$it% · ${rng ?: "-"}km" } ?: "—", if (soc != null && soc < 30) "가는 길 충전소에 들러요" else "오늘 길엔 넉넉해요", "screen:car", if (soc != null && soc < 30) WARN else FG)
+                }
+                if (m.novice) rows += row(76 * U) { r -> tipRow(c, r, "브레이크 꾹 → D → 주변 확인 → 천천히. 출발할 땐 깜빡이부터.") }
+            }
+            Sit.STOP -> {
+                if (!m.navActive) rows += row(90 * U) { r ->
+                    box(c, r, "view:nav")
+                    p.shader = null; p.color = ACC; c.drawCircle(r.left + 60 * U, r.centerY(), 28 * U, p)
+                    v.turnIcon(c, m.navTurnType.ifBlank { "TURN_STRAIGHT" }, r.left + 60 * U, r.centerY(), 46 * U, Color.WHITE); p.style = Paint.Style.FILL; p.strokeWidth = 0f
+                    text(c, "${v.dist(m.navTurnM)} 앞 ${shortTurn(m.navTurnType, m.navTurn)}", r.left + 110 * U, r.centerY() + 11 * U, 32 * U, FG, bold)
+                    text(c, m.navEta + if (m.mockRoute) " · 모의 경로" else "", r.right - 32 * U, r.centerY() + 8 * U, 22 * U, MUTED, medium, Paint.Align.RIGHT)
+                }
+                rows += row(250 * U) { r ->
+                    box(c, r, "view:local"); val x0 = r.left + 32 * U
+                    lab(c, "동네 이야기 · 오른쪽 180m · 예시", x0, r.top + 40 * U)
+                    val g = m.tiles.firstOrNull { it.icon == "chat" }?.value ?: LOCAL[0].first
+                    wrap(c, g, x0, r.top + 100 * U, 36 * U, FG, r.width() - 64 * U, 3, medium, lh = 1.3f)
+                    lab(c, "말로 들려줘요 · 출발하면 바로 접어요", x0, r.bottom - 28 * U)
+                }
+                rows += row(86 * U) { r ->
+                    box(c, r); val x0 = r.left + 32 * U
+                    lab(c, "야구 · 예시", x0, r.centerY() + 7 * U)
+                    text(c, "서울 4 : 2 울산", x0 + 130 * U, r.centerY() + 11 * U, 30 * U, FG, bold)
+                    text(c, "8회말 · 2사 1,2루", r.right - 32 * U, r.centerY() + 8 * U, 22 * U, MUTED, medium, Paint.Align.RIGHT)
+                }
+                if (m.novice) rows += row(76 * U) { r -> tipRow(c, r, "정차 중엔 브레이크를 계속 꾹. 앞차가 출발하면 한 박자 쉬고 천천히.") }
+            }
+            Sit.PARK -> {
+                rows += row(170 * U) { r ->
+                    val cs = cols(r, 1.2f, 1f)
+                    box(c, cs[0], "screen:log"); var x0 = cs[0].left + 32 * U
+                    lab(c, "이번 주행", x0, r.top + 40 * U)
+                    stat(c, x0, r.top + 108 * U, "%.1fkm · ${max(1, m.tripMin)}분".format(m.tripKm), "급정거 ${m.harshN} · 크루즈 ${m.cruiseMin}분 · 평균 ${m.avgKmh}km/h", FG, cs[0].width() - 64 * U)
+                    box(c, cs[1], "deco"); x0 = cs[1].left + 32 * U
+                    lab(c, "온기 포인트", x0, r.top + 40 * U)
+                    stat(c, x0, r.top + 108 * U, sgn(m.tripPoints), m.ledger.take(2).joinToString(" · ") { "${it.why} ${sgn(it.delta)}" }.ifBlank { "모은 별 ${m.points} · 꾸미기에 써요" }, if (m.tripPoints >= 0) GOOD else RED, cs[1].width() - 64 * U)
+                }
+                rows += row(200 * U) { r ->
+                    box(c, r, "view:webtoon"); val x0 = r.left + 32 * U
+                    lab(c, "쉬는 동안 · 웹툰 이어보기", x0, r.top + 40 * U)
+                    val items = m.toons.take(4)
+                    if (items.isEmpty()) text(c, "웹툰을 불러오는 중이에요", x0, r.top + 110 * U, 26 * U, MUTED, medium)
+                    val cw = (r.width() - 64 * U) / 4
+                    items.forEachIndexed { i, tn ->
+                        val ix = x0 + i * cw
+                        val th = RectF(ix, r.top + 62 * U, ix + 90 * U, r.bottom - 22 * U)
+                        cover(c, tn.img, th, 10 * U)
+                        text(c, tn.title, th.right + 16 * U, th.top + 34 * U, 24 * U, FG, medium, maxW = cw - 130 * U)
+                        lab(c, "이어보기", th.right + 16 * U, th.top + 66 * U)
+                    }
+                }
+                rows += row(140 * U) { r ->
+                    val cs = cols(r, 1f, 1f)
+                    mini(c, cs[0], "쉼표", "15분 쉬어 가기", "등받이 젖히고 목 스트레칭 세 번", null)
+                    if (m.novice) mini(c, cs[1], "초보 · 주차 요령", "핸들 풀고 → P → 주차 브레이크", "내리기 전에 사이드미러 접기", null)
+                    else mini(c, cs[1], "내리기 전에", "휴대폰 · 지갑", "뒷좌석도 한 번 봐요", null)
+                }
+            }
+            Sit.OFF -> {
+                rows += row(170 * U) { r ->
+                    box(c, r, "screen:log"); val x0 = r.left + 32 * U
+                    lab(c, "오늘 하루", x0, r.top + 40 * U)
+                    val cs = cols(RectF(x0, r.top, r.right - 32 * U, r.bottom), 1f, 1f, 1f)
+                    stat(c, cs[0].left, r.top + 108 * U, "%.1fkm".format(m.dayKmShown), "오늘 달린 거리", FG, cs[0].width())
+                    stat(c, cs[1].left, r.top + 108 * U, sgn(m.todayPoints), "오늘 별 · 이번 주 ${m.weekPoints} / ${m.weekGoal}", GOOD, cs[1].width())
+                    stat(c, cs[2].left, r.top + 108 * U, "${m.stopsToday}회", "신호 대기", FG, cs[2].width())
+                }
+                rows += row(220 * U) { r ->
+                    box(c, r); val x0 = r.left + 32 * U; val x1 = r.right - 32 * U
+                    lab(c, "내리기 전에", x0, r.top + 40 * U)
+                    val win = st?.windowOpen?.v == true; val kid = st?.rearKid?.v == true; val pas = st?.passenger?.v == true
+                    listOf(Triple("휴대폰 · 지갑", if (pas) "조수석에 누가 있어요 — 함께 챙겨요" else "조수석 감지 없음", false),
+                        Triple("뒷좌석 확인", if (kid) "뒷좌석 착석 감지 — 꼭 확인" else "뒷좌석 감지 없음", kid),
+                        Triple("창문 · 실내등", if (win) "창문이 열려 있어요" else "모두 닫힘", win)).forEachIndexed { i, (a, b, warn) ->
+                        val y = r.top + 64 * U + i * 50 * U
+                        p.color = LINE; c.drawRect(x0, y, x1, y + max(1f, U), p)
+                        text(c, a, x0, y + 34 * U, 26 * U, FG, medium)
+                        text(c, b, x1, y + 34 * U, 22 * U, if (warn) WARN else MUTED, medium, Paint.Align.RIGHT)
+                    }
+                }
+                rows += row(130 * U) { r ->
+                    val cs = cols(r, 1f, 1f)
+                    mini(c, cs[0], "내일", m.tomorrowLine.ifBlank { "불러오는 중" }, "09:30 주간 회의 · 예시", "view:weather")
+                    val next = StageModel.CONCEPTS.filter { "concept:${it.id}" !in m.owned }.minByOrNull { it.price }
+                    mini(c, cs[1], "꾸미기", next?.let { if (m.points >= it.price) "${it.name} 열 수 있어요" else "${it.name}까지 ${it.price - m.points}★" } ?: "전부 열었어요", "테마 · 소품 보기", "deco")
+                }
+            }
+            Sit.DRIVE -> {}
+        }
+        stack(c, z, rows)
+    }
+
+    // ---------- 취미 레이아웃 ----------
+    private fun category(c: Canvas, z: RectF, k: String) {
+        when (k) {
+            "news" -> {
+                val cs = cols(z, 1.1f, 1f)
+                val lead = leadNews()
+                val L = cs[0]
+                box(c, L, "say:뉴스 들려줘")
+                val ir = RectF(L.left, L.top, L.right, L.bottom - 150 * U)
+                cover(c, lead?.let { m.newsImgs[it] }, ir, 24 * U, L)
+                lab(c, "관심 뉴스 · 연합뉴스" + (lead?.let { m.newsTimes[it] }?.let { " $it" } ?: ""), L.left + 32 * U, ir.bottom + 40 * U)
+                wrap(c, lead ?: "헤드라인을 불러오는 중이에요", L.left + 32 * U, ir.bottom + 84 * U, 30 * U, FG, L.width() - 64 * U, 2, medium, lh = 1.3f)
+                val R = cs[1]; box(c, R); val x0 = R.left + 32 * U; val x1 = R.right - 32 * U
+                lab(c, "헤드라인 · ${m.newsSource.substringBefore(" ·").ifBlank { "연합뉴스" }}", x0, R.top + 40 * U, R.width() - 64 * U)
+                var y = R.top + 64 * U
+                m.newsList.filter { it != lead }.forEachIndexed { i, n ->
+                    if (y + 68 * U > R.bottom - 112 * U) return@forEachIndexed
+                    p.color = LINE; c.drawRect(x0, y, x1, y + max(1f, U), p)
+                    text(c, "${i + 2}", x0, y + 43 * U, 22 * U, FAINT, medium)
+                    text(c, n, x0 + 36 * U, y + 43 * U, 24 * U, FG, medium, maxW = x1 - x0 - 120 * U)
+                    m.newsTimes[n]?.let { text(c, it, x1, y + 42 * U, 18 * U, FAINT, medium, Paint.Align.RIGHT) }
+                    y += 68 * U
+                }
+                button(c, "헤드라인 듣기", RectF(x0, R.bottom - 32 * U - 60 * U, x0 + 230 * U, R.bottom - 32 * U), true, "say:뉴스 들려줘")
+                text(c, "다음 소식", x0 + 256 * U, R.bottom - 32 * U - 22 * U, 22 * U, MUTED, medium)
+            }
+            "webtoon" -> {
+                val shelf = RectF(z.left, z.top, z.right, z.bottom - 112 * U)
+                box(c, shelf)
+                lab(c, "오늘의 인기 · 네이버 웹툰 ${m.toonSource.substringAfter(" ")}", shelf.left + 32 * U, shelf.top + 40 * U)
+                val g = RectF(shelf.left + 32 * U, shelf.top + 62 * U, shelf.right - 32 * U, shelf.bottom - 20 * U)
+                val per = 5; val cw = (g.width() - G * (per - 1)) / per; val ch = (g.height() - G) / 2; val coverH = ch - 52 * U
+                if (m.toons.isEmpty()) text(c, "웹툰을 불러오는 중이에요", g.left, g.top + 60 * U, 26 * U, MUTED, medium)
+                m.toons.take(per * 2).forEachIndexed { i, tn ->
+                    val gx = g.left + (i % per) * (cw + G); val gy = g.top + (i / per) * (ch + G)
+                    val cr = RectF(gx, gy, gx + cw, gy + coverH)
+                    cover(c, tn.img, cr, 12 * U)
+                    val br = RectF(cr.left + 8 * U, cr.top + 8 * U, cr.left + 40 * U, cr.top + 40 * U)
+                    p.color = 0xCC111827.toInt(); c.drawRoundRect(br, 8 * U, 8 * U, p)
+                    text(c, "${tn.rank}", br.centerX(), br.centerY() + 7 * U, 20 * U, Color.WHITE, semi, Paint.Align.CENTER)
+                    text(c, tn.title, cr.left, cr.bottom + 26 * U, 20 * U, FG, medium, maxW = cw)
+                    text(c, "★ %.2f".format(tn.star), cr.left, cr.bottom + 46 * U, 16 * U, FAINT, medium)
+                }
+                val rr = RectF(z.left, z.bottom - 96 * U, z.right, z.bottom)
+                box(c, rr)
+                val t0 = m.toons.firstOrNull()
+                cover(c, t0?.img, RectF(rr.left + 16 * U, rr.top + 12 * U, rr.left + 76 * U, rr.bottom - 12 * U), 8 * U)
+                lab(c, "이어보기 · 예시", rr.left + 96 * U, rr.top + 36 * U)
+                text(c, "${t0?.title ?: "웹툰"} · 128화", rr.left + 96 * U, rr.top + 72 * U, 28 * U, FG, bold)
+                button(c, "이어서 보기", RectF(rr.right - 24 * U - 200 * U, rr.top + 18 * U, rr.right - 24 * U, rr.bottom - 18 * U), true, "noop")
+            }
+            "music" -> {
+                val top = RectF(z.left, z.top, z.right, z.top + min(360 * U, z.height() * 0.58f))
+                box(c, top)
+                val a = top.height() - 48 * U
+                val ar = RectF(top.left + 24 * U, top.top + 24 * U, top.left + 24 * U + a, top.top + 24 * U + a)
+                p.shader = LinearGradient(ar.left, ar.top, ar.right, ar.bottom, ACC, 0xFFC9A27A.toInt(), Shader.TileMode.CLAMP); c.drawRoundRect(ar, 20 * U, 20 * U, p); p.shader = null
+                icon(c, "music", ar.centerX(), ar.centerY(), a * 0.36f, Glass.a(Color.WHITE, 220))
+                val x0 = ar.right + 40 * U; val iw = top.right - 40 * U - x0
+                lab(c, "지금 재생 · 예시(미디어 세션 연동 전)", x0, top.top + 52 * U, iw)
+                text(c, "Morning Drive", x0, top.top + 116 * U, 52 * U, FG, bold, maxW = iw)
+                text(c, "출근길 플레이리스트 · 3/12", x0, top.top + 156 * U, 24 * U, MUTED, medium, maxW = iw)
+                val bar = RectF(x0, top.top + 196 * U, top.right - 40 * U, top.top + 204 * U)
+                p.color = SURF2; c.drawRoundRect(bar, 4 * U, 4 * U, p); p.color = ACC; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * 0.38f, bar.bottom), 4 * U, 4 * U, p)
+                text(c, "1:24", bar.left, bar.bottom + 28 * U, 18 * U, FAINT, medium); text(c, "3:41", bar.right, bar.bottom + 28 * U, 18 * U, FAINT, medium, Paint.Align.RIGHT)
+                val by = top.bottom - 40 * U - 60 * U
+                if (by > bar.bottom + 40 * U) {
+                    button(c, "이전", RectF(x0, by, x0 + 120 * U, by + 60 * U), false, "noop")
+                    button(c, "일시정지", RectF(x0 + 136 * U, by, x0 + 316 * U, by + 60 * U), true, "noop")
+                    button(c, "다음", RectF(x0 + 332 * U, by, x0 + 452 * U, by + 60 * U), false, "noop")
+                }
+                val q = RectF(z.left, top.bottom + G, z.right, z.bottom)
+                if (q.height() > 120 * U) { box(c, q); val qx = q.left + 32 * U; lab(c, "다음 곡", qx, q.top + 40 * U)
+                    listOf(Triple("4", "Golden Hour Highway", "3:58"), Triple("5", "Soft Lights", "4:12"), Triple("6", "뉴스 5분 브리핑(편성)", "5:00")).forEachIndexed { i, (n, tt, d) ->
+                        val y = q.top + 60 * U + i * 56 * U; if (y + 56 * U > q.bottom - 8 * U) return@forEachIndexed
+                        p.color = LINE; c.drawRect(qx, y, q.right - 32 * U, y + max(1f, U), p)
+                        text(c, n, qx, y + 38 * U, 20 * U, FAINT, medium); text(c, tt, qx + 40 * U, y + 38 * U, 24 * U, FG, medium); text(c, d, q.right - 32 * U, y + 38 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT) } }
+            }
+            "sports" -> {
+                val sb = RectF(z.left, z.top, z.right, z.top + min(360 * U, z.height() - 150 * U))
+                box(c, sb); val x0 = sb.left + 32 * U
+                lab(c, "한국시리즈 6차전 · 8회말 · 2사 1,2루 · 예시(스포츠 연동 전)", x0, sb.top + 40 * U, sb.width() - 64 * U)
+                val sc = cols(RectF(x0, sb.top, sb.right - 32 * U, sb.bottom), 1.1f, 1f)
+                val a = sc[0]; val l = a.left + a.width() * 0.22f; val rr = a.left + a.width() * 0.78f
+                text(c, "서울", l, sb.top + 110 * U, 30 * U, MUTED, medium, Paint.Align.CENTER); text(c, "울산", rr, sb.top + 110 * U, 30 * U, MUTED, medium, Paint.Align.CENTER)
+                text(c, "4", l, sb.top + 270 * U, 150 * U, FG, bold, Paint.Align.CENTER); text(c, "2", rr, sb.top + 270 * U, 150 * U, FG, bold, Paint.Align.CENTER)
+                text(c, ":", a.centerX(), sb.top + 230 * U, 60 * U, FAINT, medium, Paint.Align.CENTER)
+                val tb = sc[1]; val heads = listOf("", "1", "2", "3", "4", "5", "6", "7", "8", "9", "R")
+                val rowsT = listOf(listOf("서울", "0", "1", "0", "0", "2", "0", "0", "1", "-", "4"), listOf("울산", "0", "0", "0", "2", "0", "0", "0", "0", "-", "2"))
+                val cw = tb.width() / heads.size; val ty = sb.top + 140 * U
+                heads.forEachIndexed { i, s2 -> text(c, s2, tb.left + cw * (i + 0.5f), ty, 20 * U, FAINT, medium, Paint.Align.CENTER) }
+                rowsT.forEachIndexed { ri, row -> val yy = ty + 52 * U + ri * 48 * U; p.color = LINE; c.drawRect(tb.left, yy - 34 * U, tb.right, yy - 34 * U + max(1f, U), p)
+                    row.forEachIndexed { i, s2 -> text(c, s2, tb.left + cw * (i + 0.5f), yy, 22 * U, if (i == row.size - 1) FG else MUTED, if (i == row.size - 1) bold else medium, Paint.Align.CENTER) } }
+                val o = RectF(z.left, sb.bottom + G, z.right, z.bottom)
+                if (o.height() > 100 * U) { box(c, o); val ox = o.left + 32 * U; lab(c, "다른 경기 · 예시", ox, o.top + 40 * U)
+                    listOf("K리그1 · 울산 2 : 1 서울" to "종료", "NBA · LAL 98 : 101 BOS" to "4Q 2:10").forEachIndexed { i, (a2, b2) -> val y = o.top + 60 * U + i * 56 * U; if (y + 56 * U > o.bottom) return@forEachIndexed
+                        p.color = LINE; c.drawRect(ox, y, o.right - 32 * U, y + max(1f, U), p); text(c, a2, ox, y + 38 * U, 24 * U, FG, medium); text(c, b2, o.right - 32 * U, y + 38 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT) } }
+            }
+            "stock" -> {
+                val cs = cols(z, 1.15f, 1f)
+                val L = cs[0]; box(c, L); val x0 = L.left + 32 * U
+                m.indices.take(2).forEachIndexed { i, q ->
+                    val ix = x0 + i * (L.width() - 64 * U) / 2
+                    lab(c, q.name, ix, L.top + 40 * U)
+                    text(c, q.price, ix, L.top + 104 * U, 52 * U, FG, bold)
+                    text(c, pct(q.ratio), ix, L.top + 140 * U, 24 * U, updown(q.ratio), semi)
+                }
+                if (m.indices.isEmpty()) text(c, "시세를 불러오는 중이에요", x0, L.top + 100 * U, 28 * U, MUTED, medium)
+                val ch = RectF(x0, L.top + 180 * U, L.right - 32 * U, L.bottom - 64 * U)
+                if (ch.height() > 60 * U) {
+                    val r0 = m.indices.firstOrNull()?.ratio ?: 0f
+                    val rnd = java.util.Random(7); val n = 48
+                    val pts = FloatArray(n) { i -> val f = i / (n - 1f); (0.5f + 0.18f * sin(f * 9f) * (1 - f) + (rnd.nextFloat() - 0.5f) * 0.12f) * (1 - f) + (0.5f - r0 * 0.25f) * f }
+                    p.color = LINE; var dx = ch.left; while (dx < ch.right) { c.drawRect(dx, ch.top + ch.height() * 0.5f, dx + 8 * U, ch.top + ch.height() * 0.5f + max(1f, U), p); dx += 16 * U }
+                    path.reset(); pts.forEachIndexed { i, v2 -> val px = ch.left + ch.width() * i / (n - 1); val py = ch.top + ch.height() * v2.coerceIn(0.05f, 0.95f); if (i == 0) path.moveTo(px, py) else path.lineTo(px, py) }
+                    p.style = Paint.Style.STROKE; p.strokeWidth = 3 * U; p.strokeJoin = Paint.Join.ROUND; p.color = updown(r0).let { if (it == MUTED) ACC else it }; c.drawPath(path, p); p.style = Paint.Style.FILL; p.strokeJoin = Paint.Join.MITER
+                    lab(c, "장중 흐름 · 모양 예시(장중 시세 연동 전)", x0, L.bottom - 28 * U, col = FAINT)
+                }
+                val R = cs[1]; box(c, R); val rx = R.left + 32 * U; val rx1 = R.right - 32 * U
+                lab(c, "시가총액 상위 · ${m.stockAsof}", rx, R.top + 40 * U, R.width() - 64 * U)
+                m.stocks.forEachIndexed { i, q ->
+                    val y = R.top + 64 * U + i * 62 * U; if (y + 62 * U > R.bottom - 12 * U) return@forEachIndexed
+                    p.color = LINE; c.drawRect(rx, y, rx1, y + max(1f, U), p)
+                    text(c, "${i + 1}", rx, y + 40 * U, 20 * U, FAINT, medium)
+                    text(c, q.name, rx + 36 * U, y + 40 * U, 24 * U, FG, medium, maxW = (rx1 - rx) * 0.42f)
+                    text(c, "${q.price}원", rx1 - 110 * U, y + 40 * U, 22 * U, FG, medium, Paint.Align.RIGHT)
+                    text(c, pct(q.ratio), rx1, y + 40 * U, 22 * U, updown(q.ratio), semi, Paint.Align.RIGHT)
+                }
+            }
+            "weather" -> stack(c, z, listOf(
+                row(230 * U) { r -> box(c, r); val x0 = r.left + 40 * U
+                    val t2 = m.tempNow?.let { "$it°" } ?: "—"
+                    text(c, t2, x0, r.top + 176 * U, 150 * U, FG, bold)
+                    p.textSize = 150 * U; p.typeface = bold; val tx = x0 + p.measureText(t2) + 40 * U
+                    text(c, m.weatherShort.substringAfter(" ", "").ifBlank { "날씨" }, tx, r.top + 104 * U, 36 * U, FG, medium)
+                    lab(c, "최저 ${m.todayMin ?: "-"}° · 최고 ${m.todayMax ?: "-"}° · 비 확률 ${m.rainMax}% · Open-Meteo", tx, r.top + 146 * U, r.right - tx - 32 * U)
+                    icon(c, "cloud", r.right - 80 * U, r.top + 80 * U, 64 * U, MUTED) },
+                row(160 * U) { r -> box(c, r)
+                    val hs = m.hourly.take(6); if (hs.isEmpty()) text(c, "시간대별 날씨를 불러오는 중이에요", r.left + 32 * U, r.centerY() + 9 * U, 26 * U, MUTED, medium)
+                    val cw = (r.width() - 64 * U) / max(1, hs.size)
+                    hs.forEachIndexed { i, (hh, tt, rp) -> val hx = r.left + 32 * U + cw * (i + 0.5f)
+                        text(c, if (i == 0) "지금" else hh, hx, r.top + 44 * U, 20 * U, MUTED, medium, Paint.Align.CENTER)
+                        text(c, "$tt°", hx, r.top + 98 * U, 36 * U, FG, bold, Paint.Align.CENTER)
+                        text(c, "비 $rp%", hx, r.top + 132 * U, 18 * U, if (rp >= 50) ACC else FAINT, medium, Paint.Align.CENTER) } },
+                row(130 * U) { r -> box(c, r); val x0 = r.left + 32 * U
+                    lab(c, "차림 · 차 안", x0, r.top + 40 * U)
+                    text(c, outfitLine(), x0, r.top + 84 * U, 30 * U, FG, medium, maxW = r.width() - 64 * U)
+                    lab(c, "출발 10분 전 히터 22°로 미리 켜 둘까요 · 와이퍼가 켜지면 비 모드로 바꿔요", x0, r.top + 116 * U, r.width() - 64 * U) }))
+            "local" -> {
+                val qh = min(320 * U, z.height() - 150 * U)
+                val q = RectF(z.left, z.top, z.right, z.top + qh)
+                box(c, q, "say:동네 이야기 들려줘"); val x0 = q.left + 40 * U
+                text(c, "“", x0, q.top + 100 * U, 96 * U, ACC, bold)
+                val g = m.tiles.firstOrNull { it.icon == "chat" }?.value ?: LOCAL[0].first
+                wrap(c, g, x0, q.top + 140 * U, 38 * U, FG, q.width() - 80 * U, 3, medium, lh = 1.3f)
+                lab(c, "소금빵 가게 · 오른쪽 180m · 걸어서 3분", x0, q.bottom - 32 * U)
+                lab(c, "예시 — 카카오 로컬 연동 예정", q.right - 40 * U - 300 * U, q.bottom - 32 * U, 300 * U, FAINT)
+                val l = RectF(z.left, q.bottom + G, z.right, z.bottom)
+                if (l.height() > 100 * U) { box(c, l); val lx = l.left + 32 * U; lab(c, "근처", lx, l.top + 40 * U)
+                    LOCAL.drop(1).forEachIndexed { i, (a, b) -> val y = l.top + 60 * U + i * 56 * U; if (y + 56 * U > l.bottom) return@forEachIndexed
+                        p.color = LINE; c.drawRect(lx, y, l.right - 32 * U, y + max(1f, U), p); text(c, a, lx, y + 38 * U, 24 * U, FG, medium); text(c, b, l.right - 32 * U, y + 38 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT) } }
+            }
+            else -> {   // schedule
+                box(c, z); val x0 = z.left + 32 * U; val x1 = z.right - 32 * U
+                lab(c, "오늘 일정 · 예시(폰 일정·할 일 연동 전)", x0, z.top + 40 * U)
+                val items = listOf(Triple("09:30", "주간 회의", "판교 사옥 3층"), Triple("가는 김에", "세탁물 찾기", "가는 길 0.4km · 5분"), Triple("12:00", "점심 — 민지", "정자동 카페거리"), Triple("17:30", "정비 예약", "블루핸즈 분당점"))
+                items.forEachIndexed { i, (tm, tt, sub) ->
+                    val y = z.top + 64 * U + i * 100 * U; if (y + 100 * U > z.bottom - 8 * U) return@forEachIndexed
+                    val by2 = i == 1
+                    if (by2) { p.color = ACC_SOFT; c.drawRoundRect(RectF(x0 - 12 * U, y + 8 * U, x1 + 12 * U, y + 92 * U), 16 * U, 16 * U, p) }
+                    else { p.color = LINE; c.drawRect(x0, y, x1, y + max(1f, U), p) }
+                    text(c, tm, x0, y + 46 * U, if (by2) 24 * U else 30 * U, if (by2) ACC else FG, if (by2) semi else bold)
+                    text(c, tt, x0 + 200 * U, y + 46 * U, 28 * U, FG, medium, maxW = x1 - x0 - 440 * U)
+                    lab(c, sub, x0 + 200 * U, y + 76 * U)
+                    if (by2) button(c, "경유 추가", RectF(x1 - 170 * U, y + 22 * U, x1, y + 78 * U), true, "say:세탁물 찾으러 들렀다 가자")
+                }
+            }
         }
     }
 
@@ -871,6 +1469,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             "hanok" to listOf("차 한 잔 하고 가세요", "마루에 바람이 드네요"),
             "neon" to listOf("도시는 아직 깨어 있어요", "오늘 밤도 함께 달려요"),
             "arcade" to listOf("코인은 충분해요", "다음 스테이지로 가 볼까요"))
+        /** 취미 레이아웃마다 캐릭터 표정 */
+        val VIEW_FACE = mapOf("music" to "humming", "stock" to "thinking", "local" to "humming", "webtoon" to "happy", "weather" to "happy", "sports" to "happy")
+        /** 동네 이야기(예시 — 카카오 로컬 연동 전) · 거리 */
+        val LOCAL = listOf("이 길 건너 빵집은 아침 일곱 시 소금빵이 십 분 만에 동난대요." to "180m", "탄천 산책로 — 해 질 무렵 자전거 길" to "1.1km", "모퉁이 카페 — 직접 볶은 원두" to "350m", "점심 샐러드 가게 — 줄이 제일 긴 곳" to "600m")
         /** 날씨 옷차림 기호 → 소품 그림 이름(assets/chars/prop_<이름>.webp) */
         val PROPS = mapOf("☂️" to "umbrella", "🧣" to "scarf", "☕" to "mug", "🍵" to "mug", "🧋" to "mug", "🕶️" to "sunglasses")
     }

@@ -35,6 +35,10 @@ data class Tile(val icon: String, val label: String, val value: String, val sub:
 /** 포인트 내역 한 줄 — 안전 주행(+) · 급정거·과속·깜빡이 없이 회전(−) … */
 data class Entry(val icon: String, val why: String, val delta: Int)
 
+/** 웹툰(서버 /hyun/feed?cat=webtoon) · 시세(cat=stock) */
+data class Toon(val rank: Int, val title: String, val author: String, val star: Double, val img: String)
+data class Quote(val name: String, val price: String, val ratio: Float)
+
 /** 꾸미기 상품 — kind theme(배경 조명 색) · face(기본 표정) · acc(소품 스티커) */
 data class Deco(val kind: String, val id: String, val name: String, val price: Int, val color: Int = 0, val glyph: String = "")
 
@@ -95,6 +99,23 @@ class StageModel {
     // 주행 중 길 안내(내비가 없으면 모의 경로)
     var mockRoute = false
     var navTurn = ""; var navTurnType = ""; var navTurnM = 0; var navDest = ""; var navRemain = ""; var navEta = ""
+    var navNextType = ""; var navNextM = 0; var navNext = ""   // 그다음 회전
+    var navMin = 0                            // 남은 시간(분)
+    var simNav = false                        // 모의 경로 안내(SIM nav on) — 내비 목적지가 없을 때 경로 안내 시연
+    var navActive = false                     // 경로 안내 중(내비 목적지 또는 모의) → 모든 화면 위 상시 내비 띠
+    // 화면 — 상황 화면(기본) 위에 취미 레이아웃(view) 하나. docs/hyun-content-plan.md
+    var view: String? = null                  // news · nav · webtoon · music · sports · stock · weather · local · schedule
+    var viewForced = false                    // 허브·SIM 미리보기 — 허용 규칙을 무시하고 "미리보기" 표시
+    var viewAt = 0L
+    var story: Tile? = null                   // 2분 안에 생긴 신호 반응 이야기(상황 화면 맨 위 한 줄)
+    // 취미 데이터 — 서버 정보 통로(/hyun/feed) · Open-Meteo · 연합뉴스 RSS
+    var newsTimes: Map<String, String> = emptyMap()
+    var toons: List<Toon> = emptyList(); var toonSource = ""
+    var indices: List<Quote> = emptyList(); var stocks: List<Quote> = emptyList(); var stockAsof = ""
+    var hourly: List<Triple<String, Int, Int>> = emptyList()   // (시각, 기온, 비 확률)
+    var todayMin: Int? = null; var todayMax: Int? = null; var rainMax = 0; var tomorrowLine = ""
+    // 이번 주행 요약(주차 화면)
+    var tripKm = 0.0; var tripMin = 0; var harshN = 0; var cruiseMin = 0; var avgKmh = 0
     val novice get() = skill == "novice"
     var night = false                         // 시스템 밤 모드(UiModeManager) — 화면이 매 프레임 채운다
     var nightOverride: Boolean? = null        // 시연 --es night on|off
@@ -144,6 +165,16 @@ class StageModel {
         )
         val SLOT_NAMES = mapOf("head" to "머리", "eyes" to "눈", "face" to "얼굴", "neck" to "목", "hair" to "머리핀", "effect" to "효과")
         fun all() = CONCEPTS + FACES + DECOR
+        /** 취미 레이아웃 9 — 키 → 이름 */
+        val CATS = listOf("news" to "뉴스", "nav" to "내비게이션", "webtoon" to "웹툰", "music" to "음악·팟캐스트", "sports" to "스포츠",
+            "stock" to "주식", "weather" to "날씨·차림", "local" to "동네 이야기", "schedule" to "일정·할 일")
+        private val STILL = setOf(Sit.IGNITION, Sit.READY, Sit.PARK, Sit.OFF)
+        /** 상황별 허용(전체 레이아웃) — 주행 중엔 내비만(나머지는 음성), 신호대기는 내비·동네 이야기 한 장, 웹툰은 주차 전용 */
+        val ALLOWED: Map<String, Set<Sit>> = mapOf(
+            "nav" to Sit.values().toSet(), "news" to STILL, "webtoon" to setOf(Sit.PARK), "music" to STILL, "sports" to STILL,
+            "stock" to STILL, "weather" to STILL, "local" to STILL + Sit.STOP, "schedule" to STILL)
+        fun allowed(cat: String, s: Sit) = ALLOWED[cat]?.contains(s) == true
+        fun catName(k: String) = CATS.firstOrNull { it.first == k }?.second ?: k
     }
 }
 
@@ -216,12 +247,12 @@ class StageFeature : Feature {
         if (need.isNotEmpty()) runCatching { hub.act.requestPermissions(need.toTypedArray(), Hyun.REQ_PERMS) }
         if (!pr.getBoolean("stage.onboarded", false)) { hub.holdHello = true; startOnboarding() }
         enter(Sit.IGNITION, why = "앱 시작")
-        fetchWeather(); fetchNews(); fetchRss()
+        fetchWeather(); fetchNews(); fetchRss(); fetchFeeds()
     }
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
-    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
 
     /**
      * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive
@@ -234,6 +265,8 @@ class StageFeature : Feature {
         for (k in SIM_KEYS) b.get(k)?.let { parts += "$k=${it.toString().lowercase().let { v -> if (k == "mode") v.uppercase() else v }}" }
         if (parts.isNotEmpty()) hub.log("stage|SIM|${m.status?.sim(parts.joinToString(","))}")
         b.getString("sit")?.let { apply(Intent().putExtra("sit", it)) }
+        b.get("nav")?.toString()?.let { setNav(it == "on" || it == "true" || it == "1") }
+        b.getString("screen")?.let { setScreen(it) }
         refresh(); hub.render()
     }
 
@@ -262,7 +295,9 @@ class StageFeature : Feature {
             if (k == "auto") { m.forced = false; lastKey = ""; hub.log("stage|auto") }
             else Sit.of(k)?.let { s -> m.forced = true; if (s == Sit.DRIVE) startTripIfNeeded(); enter(s, why = "강제") }
         }
+        i.getStringExtra("nav")?.let { setNav(it == "on" || it == "true") }
         i.getStringExtra("screen")?.let { s ->
+            if (s == "auto" || Sit.values().any { it.key == s } || StageModel.CATS.any { it.first == s }) { setScreen(s); refresh(); hub.render(); return }
             when (s) { "none", "close" -> m.overlay = null; "onboard" -> startOnboarding(); else -> m.overlay = s }
             if (s == "onboard") Unit
         }
@@ -322,6 +357,7 @@ class StageFeature : Feature {
             if (!restSaid && hub.trip.driveS > NOVICE_REST_S) { restSaid = true; hub.say("50분 가까이 달렸어요. 다음 쉼터에서 잠깐 쉬어 가요.", "care", false, 1, tag = "초보·쉼표") }
         }
         if (m.sit == Sit.DRIVE && m.overlay != null && m.overlay != "debug") m.overlay = null   // 주행 중엔 덮개 화면을 닫는다
+        m.view?.let { vw -> if (!m.viewForced && !StageModel.allowed(vw, m.sit)) { m.view = null; hub.log("stage|view|$vw 닫음(${m.sit.key})") } }   // 허용 규칙(미리보기는 예외)
         status?.let { st -> if (pollN++ % 2 == 0) Thread { st.poll() }.start(); st.appTrip(tripS / 60, (tripM / 1000).toFloat()) }
         hub.view.idleFace = if (m.face != "neutral") m.face else m.look().idleFace
         react()
@@ -393,6 +429,27 @@ class StageFeature : Feature {
 
     private fun startTripIfNeeded() { if (!inTrip) { inTrip = true } }
 
+    /** 화면 강제(허브·SIM 미리보기) — 상황 6 · 취미 9 · auto(자동 흐름으로) */
+    fun setScreen(k: String) {
+        hub.log("stage|screen|$k")
+        m.viewAt = SystemClock.elapsedRealtime()
+        when {
+            k == "auto" -> { m.view = null; m.viewForced = false; if (m.forced) { m.forced = false; lastKey = "" }; m.overlay = m.overlay.takeIf { it == "onboard" } }
+            Sit.values().any { it.key == k } -> { val s = Sit.values().first { it.key == k }; m.view = null; m.viewForced = true; m.overlay = null; m.forced = true; if (s == Sit.DRIVE) startTripIfNeeded(); enter(s, why = "미리보기") }
+            StageModel.CATS.any { it.first == k } -> { m.view = k; m.viewForced = true; m.overlay = null }
+        }
+    }
+
+    /** 모의 경로 안내 켜기/끄기 — 켜면 첫 회전(판교역로 우회전 350m)부터 */
+    fun setNav(on: Boolean) {
+        if (on && !m.simNav) navBase = tripM
+        m.simNav = on
+        if (!on && m.view == "nav" && !m.viewForced && hub.view.dest == null) m.view = null
+        hub.log("stage|nav|${if (on) "on" else "off"}")
+        refresh()
+    }
+    private var navBase = 0.0
+
     /** 상황 진입 — 화면 내용 + (필요하면) 한마디. 숙련 운전자는 말을 줄인다 */
     private fun enter(s: Sit, why: String) {
         val prev = m.sit
@@ -410,7 +467,7 @@ class StageFeature : Feature {
             else -> {}
         }
         refresh()
-        if (m.overlay == "onboard" || why == "앱 시작") return
+        if (m.overlay == "onboard" || why == "앱 시작" || why == "미리보기") return
         val line = when (s) {
             Sit.IGNITION -> ignitionLine()
             Sit.READY -> if (m.novice) "출발 순서예요. 브레이크를 꾹 밟고, D로 바꾼 다음, 천천히 발을 떼요." else null
@@ -521,6 +578,16 @@ class StageFeature : Feature {
             a.startsWith("place:") -> a.substringAfter(":").let { id -> m.decor = if (id in m.decor) m.decor - id else m.decor + id; save() }
             a.startsWith("listen:") -> hub.view.onListenMode(a.endsWith("always"))
             a == "card:close" -> hub.view.card = null
+            a.startsWith("view:") -> a.substringAfter(":").let { k -> when {
+                k == "close" -> { m.view = null; m.viewForced = false }
+                k == "auto" -> setScreen("auto")
+                m.view == k -> { m.view = null; m.viewForced = false }
+                m.viewForced || StageModel.allowed(k, m.sit) -> { m.view = k; m.viewAt = SystemClock.elapsedRealtime() }
+                else -> toast(if (m.sit == Sit.DRIVE) "주행 중엔 길 안내만 — ${StageModel.catName(k)}은 말로 들려 드려요" else "${StageModel.catName(k)}은 주차하면 크게 볼 수 있어요")
+            } }
+            a.startsWith("force:") -> setScreen(a.substringAfter(":"))
+            a == "nav:start" -> { setNav(true); hub.say("안내를 시작할게요. 모의 경로예요.", "happy", false, 2, tag = "내비") }
+            a == "nav:toggle" -> setNav(!m.simNav)
         }
         refresh(); hub.render()
     }
@@ -605,6 +672,11 @@ class StageFeature : Feature {
         val who = if (name.isNotBlank()) "${name}님, " else ""
         val soc = st?.soc?.v; val range = st?.rangeKm?.v
         val km = tripM / 1000; val min = max(1, tripS / 60)
+        m.navActive = hub.view.dest != null || m.simNav
+        if (m.navActive || m.view == "nav" || m.sit == Sit.DRIVE || m.sit == Sit.STOP) navState()
+        m.story = reactions.firstOrNull { SystemClock.elapsedRealtime() - it.second < 120_000 }?.first
+        m.tripKm = tripM / 1000; m.tripMin = tripS / 60; m.harshN = harsh; m.cruiseMin = cruiseS / 60
+        m.avgKmh = if (tripS > 0) (tripM / tripS * 3.6).roundToInt() else 0
         val out = mutableListOf<Tile>()
         fun tip(s: String) { if (m.novice) out += Tile("flag", "초보 팁", s, "초보 모드라 알려 드려요", "warn") }
         // 신호 반응이 만든 이야기(비 · 동승자 · 더위 · 배터리 …)를 맨 앞에
@@ -630,9 +702,8 @@ class StageFeature : Feature {
                 out += Tile("music", "출발 편성", "뉴스 5분 듣고, 잔잔한 음악으로 이어 갈게요.", "도착 시간에 맞춰 편성", "info")
                 tip("브레이크 꾹 → D → 주변 확인 → 발을 천천히. 출발할 땐 깜빡이부터 켜요.")
             }
-            Sit.DRIVE -> { navState(); m.headline = m.navTurn }
+            Sit.DRIVE -> { m.headline = m.navTurn }
             Sit.STOP -> {
-                navState()
                 m.headline = "신호 대기 중"
                 val g = gossip()
                 out += Tile("chat", g.first, g.second, "신호 기다리는 동안 동네 이야기", "accent", "예시")
@@ -840,17 +911,22 @@ class StageFeature : Feature {
             m.mockRoute = false
             m.navTurnType = t.type; m.navTurnM = t.m; m.navTurn = t.desc.ifBlank { "다음 안내" }
             m.navDest = v.dest ?: ""; m.navRemain = v.remain; m.navEta = v.eta
+            v.turns.getOrNull(1).let { n -> m.navNextType = n?.type ?: ""; m.navNextM = n?.m ?: 0; m.navNext = n?.desc ?: "" }
+            m.navMin = Regex("(\\d+)분").find(v.remain)?.groupValues?.get(1)?.toIntOrNull() ?: 0
             return
         }
         m.mockRoute = true
         val total = MOCK.sumOf { it.second }
-        var d = (tripM % total).toInt(); var i = 0
+        val prog = ((tripM - (if (m.simNav) navBase else 0.0)).coerceAtLeast(0.0)) % total
+        var d = prog.toInt(); var i = 0
         while (i < MOCK.size - 1 && d >= MOCK[i].second) { d -= MOCK[i].second; i++ }
         val (type, seg, desc) = MOCK[i]
         m.navTurnType = type; m.navTurnM = (seg - d).coerceAtLeast(0); m.navTurn = desc
-        val left = (total - tripM % total).coerceAtLeast(0.0)
+        MOCK.getOrNull(i + 1).let { n -> m.navNextType = n?.first ?: ""; m.navNextM = n?.second ?: 0; m.navNext = n?.third ?: "" }
+        val left = (total - prog).coerceAtLeast(0.0)
+        m.navMin = max(1, (left / 8.3 / 60).roundToInt())
         m.navDest = "코엑스"; m.navRemain = "%.1fkm".format(left / 1000)
-        val eta = Calendar.getInstance().apply { add(Calendar.MINUTE, max(1, (left / 8.3 / 60).roundToInt())) }
+        val eta = Calendar.getInstance().apply { add(Calendar.MINUTE, m.navMin) }
         m.navEta = "도착 %02d:%02d".format(eta.get(Calendar.HOUR_OF_DAY), eta.get(Calendar.MINUTE))
     }
 
@@ -859,16 +935,21 @@ class StageFeature : Feature {
         runCatching {
             val la = hub.lat ?: 37.45; val lo = hub.lng ?: 127.13   // 위치를 아직 모르면 성남(서버 날씨 기본과 같은 곳)
             val j = getJson("https://api.open-meteo.com/v1/forecast?latitude=$la&longitude=$lo&current=temperature_2m,weather_code" +
-                "&hourly=precipitation_probability&forecast_hours=8&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=2&timezone=auto")
+                "&hourly=precipitation_probability,temperature_2m&forecast_hours=8&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&forecast_days=2&timezone=auto")
             val cur = j.getJSONObject("current")
             val pr = j.getJSONObject("hourly").getJSONArray("precipitation_probability")
             val d = j.getJSONObject("daily")
             val tmx = d.getJSONArray("temperature_2m_max").getDouble(1).roundToInt(); val tmn = d.getJSONArray("temperature_2m_min").getDouble(1).roundToInt()
             val trn = d.getJSONArray("precipitation_probability_max").optInt(1, 0)
+            val ht = j.getJSONObject("hourly").getJSONArray("time"); val htemp = j.getJSONObject("hourly").getJSONArray("temperature_2m")
+            val hours = (0 until minOf(8, ht.length())).map { k -> Triple(ht.getString(k).takeLast(5).take(2).trimStart('0').ifBlank { "0" } + "시", htemp.getDouble(k).roundToInt(), pr.optInt(k, 0)) }
+            val t0n = d.getJSONArray("temperature_2m_min").getDouble(0).roundToInt(); val t0x = d.getJSONArray("temperature_2m_max").getDouble(0).roundToInt()
             hub.main.post {
+                m.hourly = hours; m.todayMin = t0n; m.todayMax = t0x
                 tempC = cur.getDouble("temperature_2m").roundToInt(); wcode = cur.optInt("weather_code", -1)
                 rain = (0 until pr.length()).maxOfOrNull { pr.optInt(it, 0) } ?: 0
                 tomorrow = "내일 $tmn~$tmx°" + if (trn >= 40) " · 비 $trn%" else ""
+                m.rainMax = rain; m.tomorrowLine = "$tmn~$tmx° · " + if (trn >= 40) "비 $trn%" else "비 없음"
                 hub.log("stage|weather|${tempC}°|code=$wcode|rain=$rain|$tomorrow")
                 m.weatherShort = "${tempC}° ${wname()}"; m.wcode = wcode; m.tempNow = tempC; m.weatherLine = "지금 ${tempC}° ${wname()} · 비 확률 $rain% · $tomorrow"
                 refresh()
@@ -903,20 +984,40 @@ class StageFeature : Feature {
         runCatching {
             val c = (URL("https://www.yna.co.kr/rss/news.xml").openConnection() as HttpURLConnection).apply { connectTimeout = 5000; readTimeout = 8000 }
             val xml = try { c.inputStream.bufferedReader().use { it.readText() } } finally { c.disconnect() }
+            val times = HashMap<String, String>()
             val items = Regex("<item>([\\s\\S]*?)</item>").findAll(xml).mapNotNull { mi ->
                 val b = mi.groupValues[1]
                 val title = Regex("<title><!\\[CDATA\\[(.*?)]]></title>").find(b)?.groupValues?.get(1) ?: return@mapNotNull null
                 val img = Regex("<media:content url=\"(.*?)\"").find(b)?.groupValues?.get(1)
+                Regex("<pubDate>.*? (\\d\\d:\\d\\d):").find(b)?.groupValues?.get(1)?.let { times[title] = it }
                 title to img
             }.filterNot { it.first.startsWith("[알림]") || it.first.contains("저작권") }.take(12).toList()
             hub.main.post {
-                m.newsImgs = items.filter { it.second != null }.associate { it.first to it.second!! }
+                m.newsImgs = items.filter { it.second != null }.associate { it.first to it.second!! }; m.newsTimes = times
                 if (m.newsList.isEmpty()) { m.newsList = items.map { it.first }.take(8); m.newsSource = "연합뉴스 최신 기사 RSS" }
                 if (news.isEmpty()) news = m.newsList.take(2)
                 hub.log("stage|rss|${items.size}|img=${m.newsImgs.size}")
                 refresh()
             }
         }.onFailure { hub.log("stage|rss|FAIL|${it.message}") }
+    }.start()
+
+    /** 웹툰 · 주식 — 서버 정보 통로(네이버 웹툰 인기 · 네이버 증권) */
+    private fun fetchFeeds() = Thread {
+        runCatching {
+            val w = getJson("${hub.link.base}/hyun/feed?cat=webtoon&top=10")
+            val a = w.optJSONArray("items")
+            val list = (0 until (a?.length() ?: 0)).map { a!!.getJSONObject(it) }.map { o -> Toon(o.optInt("rank"), o.optString("title"), o.optString("author"), o.optDouble("star", 0.0), o.optString("img")) }
+            hub.main.post { m.toons = list; m.toonSource = w.optString("asof"); hub.log("stage|toon|${list.size}") }
+        }.onFailure { hub.log("stage|toon|FAIL|${it.message}") }
+        runCatching {
+            val s = getJson("${hub.link.base}/hyun/feed?cat=stock&top=8")
+            val a = s.optJSONArray("items")
+            val objs = (0 until (a?.length() ?: 0)).map { a!!.getJSONObject(it) }
+            val idx = objs.filter { it.has("index") }.map { Quote(it.optString("index"), it.optString("price"), it.optString("ratio").toFloatOrNull() ?: 0f) }
+            val top = objs.filter { it.has("name") }.map { Quote(it.optString("name"), it.optString("price"), it.optString("ratio").toFloatOrNull() ?: 0f) }
+            hub.main.post { m.indices = idx; m.stocks = top; m.stockAsof = s.optString("asof"); hub.log("stage|stock|${idx.size}+${top.size}") }
+        }.onFailure { hub.log("stage|stock|FAIL|${it.message}") }
     }.start()
 
     private fun getJson(u: String): JSONObject {
