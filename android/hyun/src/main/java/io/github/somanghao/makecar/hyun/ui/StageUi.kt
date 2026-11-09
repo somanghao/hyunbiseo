@@ -134,7 +134,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
         val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
         val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
-        zoneL = if (mirror) 48 * U else w * 0.4f; zoneR = if (mirror) w * 0.6f else w - 48 * U
+        zoneL = if (mirror) 48 * U else w * 0.46f; zoneR = if (mirror) w * 0.54f else w - 48 * U   // 오른쪽 패널 폭 ≈ 52%(칼리 11-09 "조금 더 줄여")
         if (m.sit == Sit.OFF) scrim(c, w, h, ((now - m.sitAt) / 1500f).coerceIn(0f, 0.35f))
         // 캐릭터 — 보통: 화면 높이 33% · 내비 주화면: 14% 배지(왼쪽 위)
         val showLine = !glance() && !intro && m.view == null
@@ -451,6 +451,36 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     private var sceneDark = false
     /** 절제된 하늘 — 채도 낮은 그라데이션 + 은은한 빛 번짐 하나 + 가는 빗줄기/눈. 언덕·달·구름 같은 사물은 없음(프리미엄 차 화면 톤) */
+    /**
+     * 기본 테마 바탕 — 사진 스튜디오 같은 입체 무대(칼리 11-09 "solid 라 밋밋 → 3D 감").
+     * 위는 푸른 회색 벽, 아래 26%는 바닥(경계선 없이 명도로만 꺾임) · 캐릭터 뒤 은은한 역광 · 발밑 하늘색·분홍 빛 웅덩이 · 가장자리 비네트
+     */
+    private fun studio(c: Canvas, w: Float, h: Float, night: Boolean) {
+        val hz = h * 0.74f                                   // 벽과 바닥이 만나는 곳
+        val wallTop = if (night) 0xFF0D1420.toInt() else 0xFFAEBDCC.toInt()
+        val wallBot = if (night) 0xFF1C2A3E.toInt() else 0xFFD9E3EC.toInt()
+        val floorNear = if (night) 0xFF131C2A.toInt() else 0xFFC6D1DC.toInt()
+        p.color = Color.WHITE
+        p.shader = LinearGradient(0f, 0f, 0f, hz, wallTop, wallBot, Shader.TileMode.CLAMP); c.drawRect(0f, 0f, w, hz, p)
+        p.shader = LinearGradient(0f, hz, 0f, h, wallBot, floorNear, Shader.TileMode.CLAMP); c.drawRect(0f, hz, w, h, p)
+        // 벽→바닥 꺾이는 곳의 부드러운 밝은 띠(스튜디오 곡면 느낌)
+        p.shader = LinearGradient(0f, hz - h * 0.08f, 0f, hz + h * 0.06f, intArrayOf(Glass.a(Color.WHITE, 0), Glass.a(Color.WHITE, if (night) 14 else 40), Glass.a(Color.WHITE, 0)), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+        c.drawRect(0f, hz - h * 0.08f, w, hz + h * 0.06f, p)
+        // 캐릭터 뒤 역광(하늘색)
+        val ccx = if (mirror) w * 0.8f else w * 0.2f
+        val back = if (night) 0xFF4C8DFF.toInt() else 0xFFFFFFFF.toInt()
+        p.shader = RadialGradient(ccx, h * 0.48f, h * 0.62f, Glass.a(back, if (night) 70 else 120), Glass.a(back, 0), Shader.TileMode.CLAMP); c.drawCircle(ccx, h * 0.48f, h * 0.62f, p)
+        // 발밑 빛 웅덩이 — 하늘색(왼쪽) · 분홍(오른쪽) 살짝
+        val fy = h * 0.71f
+        c.save(); c.scale(1f, 0.22f, ccx, fy)
+        p.shader = RadialGradient(ccx - h * 0.1f, fy, h * 0.42f, Glass.a(0xFF7CC4FF.toInt(), if (night) 90 else 70), 0x007CC4FF, Shader.TileMode.CLAMP); c.drawCircle(ccx - h * 0.1f, fy, h * 0.42f, p)
+        p.shader = RadialGradient(ccx + h * 0.14f, fy, h * 0.34f, Glass.a(0xFFFFA8C8.toInt(), if (night) 50 else 45), 0x00FFA8C8, Shader.TileMode.CLAMP); c.drawCircle(ccx + h * 0.14f, fy, h * 0.34f, p)
+        c.restore()
+        // 비네트 — 가장자리를 살짝 어둡게
+        p.shader = RadialGradient(w * 0.5f, h * 0.45f, w * 0.75f, intArrayOf(0, 0, Glass.a(Color.BLACK, if (night) 120 else 46)), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, p); p.shader = null
+    }
+
     private fun scene(c: Canvas, w: Float, h: Float, t0: Float, still: Boolean) {
         val t = if (still) t0 * 0.2f else t0
         val hour = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) + it.get(java.util.Calendar.MINUTE) / 60f }
@@ -466,6 +496,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (k.id != "pleos") { top = mixC(top, k.bg[1], 0.55f); bot = mixC(bot, k.bg[2], 0.5f); if (!k.darkCard && !nightSky) { top = mixC(top, Color.WHITE, 0.25f); bot = mixC(bot, Color.WHITE, 0.35f) } }
         if (m.raining || m.snowing) { val g = if (nightSky) 0xFF1E2530.toInt() else 0xFFCDD3DA.toInt(); top = mixC(top, g, 0.35f); bot = mixC(bot, g, 0.2f) }
         p.color = Color.WHITE; p.shader = LinearGradient(0f, 0f, 0f, h, top, bot, Shader.TileMode.CLAMP); c.drawRect(0f, 0f, w, h, p)
+        if (k.id == "pleos" && !m.raining && !m.snowing) { studio(c, w, h, nightSky); p.shader = null; return }
         // 아래쪽 바닥 기운(선 없이 명도만)
         p.shader = LinearGradient(0f, h * 0.7f, 0f, h, Glass.a(Color.BLACK, 0), Glass.a(Color.BLACK, if (nightSky) 60 else 14), Shader.TileMode.CLAMP); c.drawRect(0f, h * 0.7f, w, h, p); p.shader = null
         if (m.raining) {
