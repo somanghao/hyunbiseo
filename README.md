@@ -43,6 +43,28 @@
 - **화면** — 차 가로 2단 · 내비 판(캐릭터 오른쪽 정보창에 다음 회전 · 남은 거리) · 현비서 화면 지키기(내비 명령 뒤 내비 앱이 덮어도 다시 앞으로) · 반반 화면(내비와 나란히 = 네비 모드) · 목록 카드 · 표지 격자 · 소개 카드(왼쪽 사진 · 오른쪽 표, 사진 = 위키미디어 공용) · 캐릭터 3종
 - **Gleo Interface** — `ASK_HYUN` · `HYUN_STATUS` · `HYUN_QUIET` · 폰판 「짭비서」(대중교통·산책·업무중)
 
+## 캐릭터 · 이미지 에셋
+
+![현비서 대표 이미지](design_assets/hyun/hyun_hero_1920x1080.jpg)
+
+| 사람 비서(기본) | 빛 구슬 — 표정 | SD 비서 · 앱 아이콘 |
+|---|---|---|
+| <img src="design_assets/hyun/human/sec_a_main_portrait.png" height="220"> | <img src="design_assets/hyun/faces_dark/hyun_face_sheet_3d_ai.png" height="220"> | <img src="design_assets/hyun/human/sec_a_sd_expressions_sheet_6.png" height="150"><br><img src="design_assets/hyun/hyun_kakao_app_icon_secretary_128.png" height="64"> <img src="design_assets/hyun/hyun_kakao_app_icon_sd_128.png" height="64"> <img src="design_assets/hyun/hyun_kakao_app_icon_orb_128.png" height="64"> |
+
+[`design_assets/hyun/`](design_assets/hyun/) — 파일별 규격·용도는 [`README.md`](design_assets/hyun/README.md)
+
+| 폴더 | 내용 |
+|---|---|
+| `human/` | 사람 비서 — 포트레이트 · 전신 시안 2안 · 턴어라운드 4뷰 · 포즈 6 · SD 표정 6 · 위젯 |
+| `faces_dark/` · `faces_light/` | 빛 구슬 표정 12(어두운 유리 · 파스텔) |
+| `drive/` | 주행용 간소판(256 · 128) |
+| `layers/` | 레이어 분리(몸 · 오로라 · 하이라이트 · 눈 · 입 — 코드 애니메이션용) |
+| `accessories/` · `shop/` · `svg/` | 꾸미기 액세서리 6(3D · 착용 예시 · 벡터) · 상점 썸네일 |
+| `icons/` · 맨 위 | 앱 아이콘(적응형 · 통짜 · 카카오 128) · 스플래시 · 위젯 · 히어로 1920×1080 |
+| `sheets/` | 원본 마스터 시트(잘라 내기 전 — 히어로 · 구슬 · 사람 비서) |
+
+앱에 실제로 들어가는 캐릭터는 `android/hyun/src/main/assets/chars/`(구슬 8 · 사람 비서 12)입니다.
+
 ## 구조
 
 ```
@@ -57,6 +79,7 @@ server/hyun/         중계 서버(8790) — hyun_server.py(진입) · persona.m
   features/            route · traffic · cards · memory · taste · history · briefing · feeds(정보 통로 7) · search · restarea · phone · taste_refine(정리 봇) · login · testaudio
 tools/hyun_e2e/      E2E 시험(시나리오 → 에뮬 · 녹화 · 판정 · 보고서)  ·  tools/hyun_harness/ 질문 하네스
 records/hyun-e2e/    시험 기록
+design_assets/hyun/  이미지 에셋 전부(아래 §캐릭터 · 이미지 에셋)
 docs/                설계·실측 문서(작업 저장소 위키 사본 — [[이름]] 링크는 원본 위키 기준)
 ```
 

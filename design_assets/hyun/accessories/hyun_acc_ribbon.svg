@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="ribPink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFB6C8"/>
+      <stop offset="100%" stop-color="#F47C9B"/>
+    </linearGradient>
+  </defs>
+  <!-- Soft Pink Ribbon Bow on Orb Head -->
+  <g transform="translate(512, 196)">
+    <path d="M-24 14 L-88 86 L-44 74 L-18 96 L-6 22 Z" fill="#E06385" stroke="#5A2233" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M24 14 L88 86 L44 74 L18 96 L6 22 Z" fill="#E06385" stroke="#5A2233" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M-16 0 C-95 -75, -175 -42, -162 24 C-150 78, -75 62, -14 14 Z" fill="url(#ribPink)" stroke="#5A2233" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M16 0 C95 -75, 175 -42, 162 24 C150 78, 75 62, 14 14 Z" fill="url(#ribPink)" stroke="#5A2233" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M-45 -8 C-85 -22, -118 -12, -125 6" fill="none" stroke="#FFDCE5" stroke-width="6" stroke-linecap="round"/>
+    <path d="M45 -8 C85 -22, 118 -12, 125 6" fill="none" stroke="#FFDCE5" stroke-width="6" stroke-linecap="round"/>
+    <rect x="-28" y="-24" width="56" height="52" rx="22" fill="#FF9DB0" stroke="#5A2233" stroke-width="7"/>
+  </g>
+</svg>
