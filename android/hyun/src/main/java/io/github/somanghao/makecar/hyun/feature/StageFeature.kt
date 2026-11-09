@@ -612,6 +612,8 @@ class StageFeature : Feature {
         when (m.sit) {
             Sit.IGNITION -> {
                 m.headline = "${who}${greet()}"
+                // 시간대별 인사 + 온도별 음료 — 시동 화면 첫 카드
+                out.add(0, Tile("cup", "인사", "${who}${greet()}. ${drink().first} 한 잔 어때요?", drink().second, "accent"))
                 out += Tile("cloud", "오늘 날씨", weatherComic(), listOfNotNull(tempC?.let { "지금 ${it}° ${wname()}" }, tomorrow.ifBlank { null }).joinToString(" · "), "info")
                 if (soc != null) out += Tile("battery", "차 컨디션", if (soc >= 80) "배터리 ${soc}% 꽉 찼어요. 오늘은 어디든 거뜬해요." else if (soc >= 30) "배터리 ${soc}%, ${range ?: soc * 5}km는 문제없어요." else "배터리가 ${soc}%예요. 가는 길에 충전하고 가요.",
                     "주행 가능 ${range ?: "-"}km · 타이어는 계기판에서", if (soc < 30) "warn" else "good")
@@ -778,7 +780,7 @@ class StageFeature : Feature {
         if (wcode in 51..67 || wcode in 80..82 || rain >= 60) wear += "우산 챙겼어요"
         if (t >= 26) wear += "선글라스 꼈어요"
         val w = if (wear.isEmpty()) "오늘은 가볍게 나왔어요" else wear.joinToString(" ")
-        return "밖은 ${t}° ${wname()} — 저는 $w. ${drink().first} 어때요?"
+        return "밖은 ${t}° ${wname()} — 저는 $w."
     }
 
     private fun drink(): Pair<String, String> {
@@ -787,7 +789,7 @@ class StageFeature : Feature {
             t <= 5 -> "따끈한 유자차" to "손난로 대신 한 잔 — 가는 길 카페 2곳"
             t <= 15 -> "따뜻한 보리차" to "목이 칼칼한 날엔 따뜻하게"
             t >= 25 -> "시원한 아이스티" to "차 안이 덥기 전에 에어컨 먼저"
-            else -> "향긋한 녹차 한 잔" to "출발 전 여유 한 모금"
+            else -> "향긋한 녹차" to "출발 전 여유 한 모금"
         }
     }
 
@@ -812,7 +814,7 @@ class StageFeature : Feature {
 
     private fun ignitionLine(): String {
         val t = tempC
-        val base = look().greet + "${greet()}. " + (t?.let { "밖이 ${it}도라 " + (if (t <= 8) "목도리 둘렀어요. " else "") + "${drink().first} 한 잔 어때요?" } ?: "오늘도 같이 가요.")
+        val base = look().greet + "${greet()}. " + (t?.let { "밖이 ${it}도라 " + (if (t <= 8) "목도리 둘렀어요. " else "") } ?: "") + "${drink().first} 한 잔 어때요?"
         return if (m.novice) "$base 출발 전에 시트랑 미러부터 맞춰요." else base
     }
 
