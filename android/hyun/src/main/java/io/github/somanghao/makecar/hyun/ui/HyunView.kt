@@ -1,5 +1,8 @@
 package io.github.somanghao.makecar.hyun.ui
 
+import io.github.somanghao.makecar.hyun.ui.skin.Kit
+import io.github.somanghao.makecar.hyun.ui.skin.Skin
+import io.github.somanghao.makecar.hyun.ui.skin.Skins
 import io.github.somanghao.makecar.hyun.voice.Speaker
 import android.content.Context
 import android.graphics.Bitmap
@@ -31,98 +34,90 @@ import kotlin.math.sin
  * 주행 중 대기엔 반복 애니메이션을 멈춘다(주의분산 가이드 · CPU), 정차하면 "현비서가 기억하는 것"까지 펼친다.
  * 가로(차 화면)·세로(폰) 배치 둘 다. 시스템 바 안쪽(padding)에 그린다.
  */
-class HyunView(ctx: Context) : View(ctx) {
+class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx), ScreenData by model {
     enum class Mode(val label: String) { READY("대기"), LISTENING("듣는 중"), THINKING("생각 중"), SPEAKING("말하는 중") }
+    /** 내비 다음 안내(TBT) — m = 내비 값 그대로: [0]은 내 차에서, [1]부터는 앞 안내에서부터의 구간 거리(11-07 실측 — 내비 화면 "700m · 그다음 50m"과 같다) */
+    data class Turn(val type: String, val m: Int, val desc: String)
+    /** 기능 한 줄(아이콘 + 글) — 1칸 = 내비 판 바로 아래 · 반반 = 길 카드 아래. 코어가 render마다 비우고 기능 render가 채운다 */
+    data class Line(val icon: String, val text: String)
+    /** 목록 카드(정차) — kind "" = 목록(images가 있으면 표지 격자) · "info" = 소개(왼쪽 사진 · 오른쪽 "라벨 — 값" 표 — 휴게소·인물) */
+    data class Card(val title: String, val source: String, val items: List<String>, val images: List<String> = emptyList(), val kind: String = "")
+    /** 대화형 말풍선 — me = 운전자 */
+    data class Bubble(val me: Boolean, val text: String)
 
-    var mode = Mode.READY
-    var mood = ""
-    var driving = false
-    var gear = 'P'
-    var kmh = 0
-    var phone = false                   // 폰 모드(차량 API 없음) — 머리줄에 표시
-    var botName = "현비서"               // 차 = 현비서 · 폰 = 짭비서(같은 두뇌, 폰용 동생 캐릭터)
-    // 폰 모드(대중교통·산책·업무중) — 위 카드에 모드 칩 + 다음 일정, 아래에 할 일·알림 칩
-    var modes: List<String> = emptyList()
-    var modeIdx = -1
+    // ---------- 스킨(배치 값 · UI 색·모양 · 글꼴) — 데이터(ScreenData)와 따로. 고르기 = SkinFeature(앱 설정 skin) · 정의 = assets/skins/<id>.json ----------
+    private val kit = Kit()
+    var skin: Skin = Skins.get(ctx, null)
+        set(v) { field = v; invalidate() }
+    var onSkin: () -> Unit = {}
+    private val skinBtn = RectF()
+    private val phoneSkin by lazy { Skins.phone(Skins.get(ctx, "basic")) }
+    /** 지금 그리는 스킨 — 폰(짭비서 흰 화면)은 스킨과 별개 */
+    private val look get() = if (lightTheme) phoneSkin else skin
+    private val C get() = kit.skin.colors
+    private val L get() = kit.skin.layout
+    private val BG get() = C.bg
+    private val CARD get() = C.card
+    private val FG get() = C.fg
+    private val MUTED get() = C.muted
+    private val SUB get() = C.sub
+    private val FAINT get() = C.faint
+    private val LINE get() = C.line
+    private val ACCENT get() = C.accent
+    private val TEAL get() = C.accent
+    private val OK get() = C.ok
+    private val WARN get() = C.warn
+    private val TBT_BG get() = C.tbtBg
+    private val PRIO get() = C.prio
+    private val p get() = kit.p
+    private val body get() = kit.skin.fonts.body
+    private val bold get() = kit.skin.fonts.bold
+    private val medium get() = kit.skin.fonts.medium
+    private val light get() = kit.skin.fonts.light
+
+    // ---------- 화면 이벤트(누르기) — 데이터(ScreenData)는 여기서 바꾸지 않고 코어에 알린다 ----------
     var onMode: (Int) -> Unit = {}
-    var nextUp = ""                     // "15:00 팀 회의 · 32분 뒤"
-    var tasks: List<String> = emptyList()
-    var silent = false                  // 대중교통 + 이어폰 없음 → 소리 대신 자막·진동
-    var note = ""                       // 머리줄 오른쪽 알림 — "회전 앞 180m" · "조용히 모드 9분"
-    /** 흰 배경 테마 — 폰(짭비서)만. 차(현비서)는 야간 눈부심 때문에 어두운 화면 유지 */
-    var lightTheme = false
-    private val BG get() = if (lightTheme) 0xFFFFFFFF.toInt() else 0xFF0B0F14.toInt()
-    private val CARD get() = if (lightTheme) 0xFFF3F5F8.toInt() else 0xFF151B23.toInt()
-    private val FG get() = if (lightTheme) 0xFF111827.toInt() else 0xFFE6EDF3.toInt()
-    private val MUTED get() = if (lightTheme) 0xFF6B7280.toInt() else 0xFF8B949E.toInt()
-    private val SUB get() = if (lightTheme) 0xFF374151.toInt() else 0xFFB8C1CC.toInt()     // 다음 한 줄
-    private val FAINT get() = if (lightTheme) 0xFF9CA3AF.toInt() else 0xFF6E7681.toInt()   // 안내·꺼진 모드
-    private val LINE get() = if (lightTheme) 0xFFE5E7EB.toInt() else 0xFF2A3440.toInt()    // 테두리
-    private val ACCENT get() = if (lightTheme) 0xFF0F9F92.toInt() else TEAL                // 흰 배경에선 진한 청록(글자 대비)
-    var reminderItems: List<String> = emptyList()   // 목록 화면 — "11/2(월) 09:00 세미나 …"
-    var todoItems: List<String> = emptyList()
-    var nextMore = 0                    // 다음 한 줄 말고 더 있는 것 수
+    var onUiMode: (Boolean) -> Unit = {}
+    var onCharacter: () -> Unit = {}
+    var onMic: () -> Unit = {}
+    var onKeyboard: (() -> Unit)? = null   // 폰만 — 글로 묻기(차는 키보드 금지)
+    var onRecentCard: (Card) -> Unit = {}   // 최근 본 정보 다시 열기
+    var onCardClose: () -> Unit = {}          // 카드 누름 = 닫기(코어가 card를 비운다 — 화면은 데이터를 바꾸지 않는다)
+    private val recentHits = mutableListOf<Pair<RectF, Card>>()
     private var listOpen = false
     private val nextHit = RectF()
     private val listBtn = RectF()
-    var brain: Boolean? = null          // null 서버 없음 · false 두뇌 자리 비움(로그인 필요) · true 연결
-    var brainMode = ""                  // session(Claude Code 세션) · api(로그인한 Claude API)
-    var listenAlways = true             // 상시 듣기("현비서야") ↔ 눌러서 말하기 — 차에서만 두 칸 버튼으로 바꾼다
+    // 우리 쪽(dan-emu) — 상시 듣기 토글 · 상황 화면(StageUi) · 표정 덮기. 데이터(목적지·회전·말…)는 위 ScreenData 로 옮겨 갔다(업스트림 11-09)
+    var listenAlways = true             // 상시 듣기("현비서야") ↔ 눌러서 말하기
     var showListenToggle = false
     var onListenMode: (Boolean) -> Unit = {}
     private val segAlways = RectF()
     private val segPtt = RectF()
-    var dest: String? = null
-    var remain = ""                     // "12.3km · 24분"
-    var eta = ""                        // "도착 14:29"
-    var progress = 0.0
-    var via = ""                        // "코엑스 거쳐" — 경유지가 있으면
-    var trafficLine = ""                // 내비 기준 경로 교통 한 줄 — 반반 화면(내비와 나란히)의 길 카드에
-    /** 내비 다음 안내들(TBT) — 내비 화면이 가려져도 현비서 화면에서 회전을 본다(사용자 11-08). m = 내비 값 그대로:
-     *  [0]은 내 차에서, [1]부터는 앞 안내에서부터의 구간 거리(11-07 실측 — 내비 화면 "700m · 그다음 50m"과 같다) */
-    data class Turn(val type: String, val m: Int, val desc: String)
-    var turns: List<Turn> = emptyList()
-    /** 기능 한 줄(아이콘 + 글) — 1칸 = 내비 판 바로 아래 · 반반 = 길 카드 아래(주행 중에도, 글자만). 코어가 render마다 비우고 기능 render가 채운다(도착 추천 11-08 — 모듈의 퀘스트 칩·쉼표 타이머도 이 자리) */
-    data class Line(val icon: String, val text: String)
-    val lines = mutableListOf<Line>()
-    var userLine = ""
-    var hyunLine = ""
-    var prio = -1                       // 지금(마지막) 말의 우선순위 0~3, 없으면 -1
-    var prioReply = false
-    var waiting: List<Int> = emptyList()   // 줄 선 말들의 우선순위
-    var name = ""
-    var memory: List<String> = emptyList()
-    /** 목록 카드 — 순위·여러 개 추천을 정차 화면에 크게(주행 중엔 숨김: 화면 규칙). 두뇌 답의 card */
-    /** kind "" = 목록(images가 있으면 표지 격자) · "info" = 소개(왼쪽 사진 · 오른쪽 "라벨 — 값" 표 — 휴게소·인물) */
-    data class Card(val title: String, val source: String, val items: List<String>, val images: List<String> = emptyList(), val kind: String = "")
-    var card: Card? = null
-    var debug = false                   // 우선순위 배지·줄 선 말 — 개발용(--ez debug true)
-    /** 캐릭터 — human(사람 비서 그림) · orb3d(젤리 구슬 그림) · orb(코드로 그린 구슬). 그림 = assets/chars/(design_assets/hyun에서 복사) */
-    var character = "face"
-        set(v) { field = v; charImages().forEach { bmp(it) } }
-    var onCharacter: () -> Unit = {}
     /** 차 가로 화면의 상황별 추천 화면(StageFeature) — 있으면 drawCar 대신 그린다 */
     var stage: StageUi? = null
     /** 상황 화면이 잠깐 정하는 표정(온보딩 손 흔들기 등) · 대기 기본 표정(꾸미기) */
     var faceOverride: String? = null
     var idleFace = "neutral"
+    private val segChat = RectF()
+    private val segInfo = RectF()
+    private val cardChip = RectF()       // 대화형에서 표가 왔을 때 "정보형에서 보기"
     private val charBtn = RectF()
-    private val bmps = java.util.concurrent.ConcurrentHashMap<String, Bitmap>()
-    private val loading = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private val cardHit = RectF()
-    var onMic: () -> Unit = {}
-    var onKeyboard: (() -> Unit)? = null   // 폰만 — 글로 묻기(차는 키보드 금지)
-
-    private var level = 0f              // 목소리 크기(듣기: 마이크 · 말하기: TTS 어절) — 그릴 때마다 줄어든다
-    fun pulse(l: Float) { level = max(level, l) }
-
-    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val bold = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    private val medium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-    private val light = Typeface.create("sans-serif-light", Typeface.NORMAL)
     private val mic = RectF()
     private val modeHits = mutableListOf<RectF>()
     private val kbd = RectF()
+    private val charFace = RectF()     // 지금 그린 캐릭터 상자 — 만화 말풍선 꼬리가 입 쪽을 향한다
+    private val comic get() = kit.skin.style.bubbleShape == "comic"
+
+    /** 캐릭터 — human(사람 비서 그림) · orb3d(젤리 구슬 그림) · orb(코드로 그린 구슬). 바꾸면 그림을 미리 읽는다 */
+    override var character: String
+        get() = model.character
+        set(v) { model.character = v; charImages().forEach { bmp(it) } }
+    private val bmps = java.util.concurrent.ConcurrentHashMap<String, Bitmap>()
+    private val loading = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private var level = 0f              // 목소리 크기(듣기: 마이크 · 말하기: TTS 어절) — 그릴 때마다 줄어든다
+    fun pulse(l: Float) { level = max(level, l) }
     private val t0 = System.nanoTime()
 
     fun update() = postInvalidate()
@@ -153,8 +148,10 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     override fun onDraw(c: Canvas) {
-        c.drawColor(BG)
+        kit.skin = look
+        recentHits.clear()   // 정보 보드가 그릴 때만 다시 채운다
         val w = (width - paddingLeft - paddingRight).toFloat(); val h = (height - paddingTop - paddingBottom).toFloat()
+        kit.background(c, width.toFloat(), height.toFloat(), min(max(w, 1f), max(h, 1f)))
         if (w <= 0 || h <= 0) return
         val t = (System.nanoTime() - t0) / 1e9f
         val b = box(w, h)
@@ -265,7 +262,7 @@ class HyunView(ctx: Context) : View(ctx) {
         }
         // 진행 막대 + 차 점
         val x0 = r.left + pad; val x1 = r.right - pad
-        p.color = 0xFF2A313C.toInt(); p.strokeWidth = u * 0.01f; p.strokeCap = Paint.Cap.ROUND
+        p.color = C.track; p.strokeWidth = u * 0.01f; p.strokeCap = Paint.Cap.ROUND
         c.drawLine(x0, barY, x1, barY, p)
         val xc = x0 + (x1 - x0) * progress.toFloat()
         p.color = moodColor()
@@ -278,13 +275,7 @@ class HyunView(ctx: Context) : View(ctx) {
     // ---------- 캐릭터: 유리 구슬 + 안에서 흐르는 오로라 + 빛의 눈 (2026-10-31 "고급스럽게") ----------
     // 만화 얼굴·더듬이 대신 — 기분(mood)은 오로라 두 색, 상태는 빛의 움직임(듣기 링 · 생각 혜성 · 말하기 음성 파형)으로.
     // 우선순위 색은 말하는 동안 테두리 빛에 섞인다. 주행 중 대기엔 모두 멈춘다.
-    private fun palette(): IntArray = when (mood) {
-        "happy" -> intArrayOf(0xFFFFC857.toInt(), 0xFFFF8A65.toInt())
-        "fun" -> intArrayOf(0xFFB794F4.toInt(), 0xFFF687B3.toInt())
-        "care" -> intArrayOf(0xFFFF9F43.toInt(), 0xFFFF6B8A.toInt())
-        "alert" -> intArrayOf(0xFFFF5A52.toInt(), 0xFFFF9F43.toInt())
-        else -> intArrayOf(0xFF4FD1C5.toInt(), 0xFF6AA8FF.toInt())
-    }
+    private fun palette(): IntArray = C.mood(mood)
 
     private fun a(col: Int, alpha: Int) = (col and 0x00FFFFFF) or (alpha.coerceIn(0, 255) shl 24)
 
@@ -469,7 +460,7 @@ class HyunView(ctx: Context) : View(ctx) {
         else y += u * 0.035f
         if (prio in 0..3) {
             val lab = "P$prio ${Speaker.LABEL_PHONE[prio]}" + if (prioReply) " · 대답" else ""
-            p.textSize = u * 0.026f; p.typeface = Typeface.DEFAULT
+            p.textSize = u * 0.026f; p.typeface = body
             val tw = p.measureText(lab); val dr = u * 0.008f
             p.style = Paint.Style.FILL; p.color = PRIO[prio]
             c.drawCircle(cx - tw / 2 - dr * 2.2f, y - u * 0.009f, dr, p)
@@ -550,11 +541,11 @@ class HyunView(ctx: Context) : View(ctx) {
         val u = b.u; val x = b.capX; val maxW = b.capW
         if (userLine.isNotEmpty()) {
             text(c, (if (name.isNotEmpty()) name else "나"), x, b.userY, u * 0.028f, MUTED)
-            wrap(c, userLine, x, b.userY + u * 0.05f, u * 0.034f, 0xFFB8C1CC.toInt(), maxW, 2)
+            wrap(c, userLine, x, b.userY + u * 0.05f, u * 0.034f, SUB, maxW, 2)
         }
         text(c, botName, x, b.hyunY, u * 0.028f, moodColor())
         // 우선순위 배지·줄 선 말 — 개발용(사용자: 불필요한 정보 빼기, 2026-11-06). 안전 경고(P0)만 늘 붉은 배지
-        p.textSize = u * 0.028f; p.typeface = Typeface.DEFAULT
+        p.textSize = u * 0.028f; p.typeface = body
         var bx = x + p.measureText(botName) + u * 0.02f
         if (prio == 0) bx = pill(c, "안전", bx, b.hyunY, u * 0.024f, PRIO[0]) + u * 0.015f
         else if (debug && prio in 1..3) {
@@ -657,22 +648,23 @@ class HyunView(ctx: Context) : View(ctx) {
     }
 
     // ---------- 차 화면 (가로) ----------
-    // 왼쪽 24%: 이름·연결 → (조용히 모드 등 알림) → 캐릭터 → 내 질문 → 현비서 답(표가 있을 때) → 작은 마이크 줄
+    // = 정보형(대화형은 drawChat). 왼쪽 24%: 이름·연결 → (조용히 모드 등 알림) → 캐릭터 → 내 질문 → 현비서 답(표가 있을 때) → 작은 조작 줄
     // 오른쪽 76%: 길 안내 중이면 맨 위 **내비 판**(다음 회전 크게 · 그다음 · 목적지·남은 거리·도착·교통 · 이어지는 안내) → 그 아래 표 또는 현비서 답.
     //   표(목록 카드, 정차)가 뜨면 내비 판은 한 줄 띠로 줄인다. 길 안내가 없으면 예전처럼 답이 맨 위
     // 사용자 11-06: "표가 맨 위에 없어 — 내 질문·니 답변 모두 캐릭터 밑에" · 11-08: "캐릭터 오른쪽 정보창에 내비 정보 전체가 보이게 · 마이크·듣기 모드는 작게"
     private fun drawCar(c: Canvas, w: Float, h: Float, t: Float, b: Box) {
         // 앱 영역 2칸(내비와 나란히 — 오른쪽 ⋮ 끌기)이면 폭이 반이라 세로로 쌓는다(11-07 실측: 왼쪽 열이 좁아 도착 시각·버튼이 "…")
+        if (uiChat) { drawChat(c, w, h, t); return }
+        cardChip.setEmpty()
         if (w < h * 1.15f) { drawCarNarrow(c, w, h, t); return }
         stage?.let { if (it.draw(c, w, h, t)) return }
         val u = b.u; val pad = b.pad
-        val leftW = w * 0.24f; val lx0 = pad; val lx1 = leftW; val lcx = (lx0 + lx1) / 2
+        val colW = w * L.infoCharW   // 캐릭터 칸 폭 · 왼쪽/오른쪽 = 스킨 layout
+        val lx0 = if (L.charRight) w - colW else pad; val lx1 = if (L.charRight) w - pad else colW; val lcx = (lx0 + lx1) / 2
         val k = card?.takeIf { !driving }
         // 이름 · 연결 점
         var y = pad + u * 0.04f
-        text(c, botName, lx0, y, u * 0.04f, FG, bold)
-        p.textSize = u * 0.04f; p.typeface = bold
-        val dx = lx0 + p.measureText(botName) + u * 0.025f
+        val dx = nameplate(c, lx0, y, u * 0.04f) + u * 0.025f
         val (label, col) = when (brain) {
             true -> "Claude" to OK; false -> "로그인 필요" to WARN; null -> "서버 없음" to MUTED
         }
@@ -686,16 +678,21 @@ class HyunView(ctx: Context) : View(ctx) {
         if (img != null && character == "human" && !driving) {
             val boxH = min((lx1 - lx0) / 0.78f, (h - y) * 0.5f)
             val box = RectF(lx0, y + u * 0.015f, lx1, y + u * 0.015f + boxH)
+            charDeco(c, box, u, t)
             drawImage(c, img, box, t)
+            mic.set(box); charFace.set(box)   // 캐릭터를 누르면 대화 창(마이크 버튼은 없다 — 사용자 11-09)
             y = box.bottom + u * 0.01f
         } else {
             val r = min((lx1 - lx0) * 0.3f, h * 0.11f)
             val oy = y + r * 1.45f + u * 0.01f
+            charDeco(c, RectF(lcx - r * 1.3f, oy - r * 1.3f, lcx + r * 1.3f, oy + r * 1.3f), u, t)
+            charFace.set(lcx - r * 1.3f, oy - r * 1.3f, lcx + r * 1.3f, oy + r * 1.3f)
             if (img != null) drawImage(c, img, RectF(lcx - r * 1.3f, oy - r * 1.3f, lcx + r * 1.3f, oy + r * 1.3f), t)
             else character(c, lcx, oy, r, t, label = false)
+            mic.set(lcx - r * 1.3f, oy - r * 1.3f, lcx + r * 1.3f, oy + r * 1.3f)
             y = oy + r * 1.3f
         }
-        // 마이크 줄(맨 아래 한 줄 — 작은 마이크 · 듣기 모드 · ⇄)
+        // 조작 줄(맨 아래 한 줄 — [대화형 | 정보형] · ⇄)
         val micR = u * 0.038f
         val micY = h - pad - micR
         val textBottom = micY - micR - u * 0.025f
@@ -705,19 +702,27 @@ class HyunView(ctx: Context) : View(ctx) {
             y += u * 0.045f
         }
         val qs = u * 0.023f
-        if (userLine.isNotEmpty() && !driving) {
+        if (L.answerAtChar) {   // 캐릭터 칸 말풍선 — 내 질문(노랑, 꼬리 = 화면 밖 운전자) → 현비서 답(꼬리 = 캐릭터)
+            val outX = if (L.charRight) w + u * 0.2f else -u * 0.2f
+            if (userLine.isNotEmpty() && !driving)
+                balloonText(c, RectF(lx0, y + u * 0.005f, lx1, min(textBottom, y + u * 0.14f)), userLine, u * 0.026f, u * 0.021f, body, C.bubbleMeText, C.bubbleMe, u,
+                    outX, y + u * 0.2f, 0, anchorRight = !L.charRight, anchorBottom = false, maxLines = 2)?.let { y = it.bottom + u * 0.018f }
+            if (hyunLine.isNotBlank())
+                balloonText(c, RectF(lx0, y, lx1, textBottom), hyunLine, if (driving) u * 0.04f else u * 0.03f, u * 0.022f, bold, FG, C.bubbleHyun, u,
+                    charFace.centerX(), charFace.top, if (prio == 0) 1 else 0, anchorRight = L.charRight, anchorBottom = false, maxLines = if (driving) 3 else 9)
+        } else if (userLine.isNotEmpty() && !driving) {
             text(c, name.ifEmpty { "나" }, lx0, y + qs, u * 0.019f, MUTED)
-            y = wrap(c, userLine, lx0, y + qs * 2.3f, qs, 0xFFB8C1CC.toInt(), lx1 - lx0, 3) + u * 0.012f
+            y = wrap(c, userLine, lx0, y + qs * 2.3f, qs, SUB, lx1 - lx0, 3) + u * 0.012f
         }
-        if (k != null && hyunLine.isNotBlank()) {
+        if (!L.answerAtChar && k != null && hyunLine.isNotBlank()) {
             val hs = u * 0.026f
             val lines = ((textBottom - y - hs) / (hs * 1.42f)).toInt().coerceIn(1, 8)
             text(c, botName, lx0, y + hs * 0.9f, u * 0.019f, moodColor())
             wrap(c, hyunLine, lx0, y + hs * 2.1f, hs, FG, lx1 - lx0, lines, bold)
         }
-        micRow(c, lx0, lx1, micY, micR, u)
+        ctrlRow(c, lx0, lx1, micY, micR, u)
         // 오른쪽 칸 — 길 안내 중이면 내비 판(표가 뜨면 한 줄 띠)
-        val x0 = leftW + pad * 0.7f; val x1 = w - pad
+        val x0 = if (L.charRight) pad else colW + pad * 0.7f; val x1 = if (L.charRight) w - colW - pad * 0.7f else w - pad
         var top = pad
         if (dest != null) top = (if (k != null) naviStrip(c, x0, top, x1, u) else naviPanel(c, x0, top, x1, min(u * 0.44f, h * 0.52f), u)) + u * 0.03f
         top = featureLines(c, x0, top, x1, u * 0.064f, u)
@@ -728,8 +733,12 @@ class HyunView(ctx: Context) : View(ctx) {
         if (prio == 0) tx = pill(c, "안전", x0, top + size * 0.9f, u * 0.026f, PRIO[0]) + u * 0.015f
         val chips = !driving && memory.isNotEmpty()
         val bottom = h - pad - (if (chips) u * 0.1f else 0f)
-        val lines = ((bottom - top - size * 0.3f) / (size * 1.42f)).toInt().coerceIn(1, if (driving) 3 else 7)
-        wrap(c, hyunLine, tx, top + size * 1.1f, size, FG, x1 - tx, lines, bold)
+        if (L.answerAtChar) {   // 답은 캐릭터 칸 말풍선 — 정보 칸은 정보만
+            if (!driving) infoBoard(c, RectF(x0, top, x1, bottom), u)
+        } else {
+            val lines = ((bottom - top - size * 0.3f) / (size * 1.42f)).toInt().coerceIn(1, if (driving) 3 else 7)
+            wrap(c, hyunLine, tx, top + size * 1.1f, size, FG, x1 - tx, lines, bold)
+        }
         if (chips)   // 기억(취향) — 오른쪽 칸 맨 아래
             chipRow(c, b, "${botName}가 아는 것 ${memory.size}", memory.takeLast(8).reversed(), h - pad - u * 0.06f, x0, x1)
     }
@@ -739,8 +748,7 @@ class HyunView(ctx: Context) : View(ctx) {
         var y = y0
         for (ln in lines.take(2)) {
             val r = RectF(x0, y, x1, y + lh)
-            p.shader = null; p.style = Paint.Style.FILL; p.color = CARD
-            c.drawRoundRect(r, lh * 0.3f, lh * 0.3f, p)
+            kit.panel(c, r, lh * 0.3f, CARD, u)
             p.color = moodColor(); c.drawRoundRect(RectF(r.left, r.top, r.left + u * 0.008f, r.bottom), u * 0.004f, u * 0.004f, p)
             val fs = lh * 0.42f
             text(c, ln.icon, r.left + u * 0.022f, r.centerY() + fs * 0.36f, fs, FG)
@@ -755,40 +763,39 @@ class HyunView(ctx: Context) : View(ctx) {
      *  오른쪽 = 목적지 · 남은 거리·시간 · 도착 · 경유지 · 진행선 · 내비 교통 · 이어지는 안내(내 차에서 누적 거리). 반환 = 아래 끝 y */
     private fun naviPanel(c: Canvas, x0: Float, y0: Float, x1: Float, hh: Float, u: Float): Float {
         val r = RectF(x0, y0, x1, y0 + hh)
-        p.shader = null; p.style = Paint.Style.FILL; p.color = CARD
-        c.drawRoundRect(r, u * 0.025f, u * 0.025f, p)
+        kit.panel(c, r, u * 0.025f, CARD, u)
         val gap = u * 0.022f
         var rx = r.left + gap
         val t0 = turns.firstOrNull()
         if (t0 != null) {
             val box = RectF(r.left + gap, r.top + gap, r.left + r.width() * 0.42f, r.bottom - gap)
-            p.color = TBT_BG; c.drawRoundRect(box, u * 0.02f, u * 0.02f, p)
+            kit.panel(c, box, u * 0.02f, TBT_BG, u, deco = false)
             // 위: 화살표 + 거리(칸에 맞게 글자 크기) · 가운데: 회전 이름 + 방면(두 줄까지) · 맨 아래: 그다음
             val s = min(box.height() * 0.34f, u * 0.13f)
             val ix = box.left + gap * 1.1f; val iy = box.top + gap
             val iw = box.right - gap * 1.1f - ix
-            turnIcon(c, t0.type, ix + s / 2, iy + s / 2, s, Color.WHITE)
+            turnIcon(c, t0.type, ix + s / 2, iy + s / 2, s, C.tbtFg)
             val tx = ix + s + gap; val d = dist(t0.m)
             val ds = fitSize(d, u * 0.085f, box.right - gap - tx, bold)
-            text(c, d, tx, iy + s / 2 + ds * 0.36f, ds, if (t0.m in 0..300) TEAL else Color.WHITE, bold)
+            text(c, d, tx, iy + s / 2 + ds * 0.36f, ds, if (t0.m in 0..300) C.near else C.tbtFg, bold)
             var ly = iy + s + gap * 1.3f
             val nm = turnName(t0.type)
-            if (t0.type !in NAMED_TURNS && t0.desc.isNotBlank()) { text(c, nm, ix, ly + u * 0.024f, u * 0.026f, 0xFF8B949E.toInt(), maxW = iw); ly += u * 0.036f }
+            if (t0.type !in NAMED_TURNS && t0.desc.isNotBlank()) { text(c, nm, ix, ly + u * 0.024f, u * 0.026f, C.tbtMuted, maxW = iw); ly += u * 0.036f }
             val nextH = if (turns.size > 1) u * 0.075f else 0f
             val ds2 = u * 0.036f
             val room = ((box.bottom - gap - nextH - ly) / (ds2 * 1.42f)).toInt().coerceIn(1, 2)
-            wrap(c, t0.desc.ifBlank { nm }, ix, ly + ds2, ds2, Color.WHITE, iw, room, bold)
+            wrap(c, t0.desc.ifBlank { nm }, ix, ly + ds2, ds2, C.tbtFg, iw, room, bold)
             turns.getOrNull(1)?.let { n ->   // 그다음 — 회전이 잇달아 오면(내비 화면의 작은 칸과 같은 값, 앞 안내에서부터 m)
                 val top = box.bottom - gap * 0.6f - nextH
                 p.style = Paint.Style.FILL; p.color = 0x33FFFFFF; c.drawRect(ix, top, ix + iw, top + 2f, p)
                 val ms = nextH * 0.56f; val my = top + nextH / 2 + u * 0.002f
-                text(c, "그다음", ix, my + u * 0.009f, u * 0.024f, 0xFF8B949E.toInt())
-                p.textSize = u * 0.024f; p.typeface = Typeface.DEFAULT; val lx = ix + p.measureText("그다음") + gap * 0.7f
-                turnIcon(c, n.type, lx + ms / 2, my, ms, Color.WHITE)
+                text(c, "그다음", ix, my + u * 0.009f, u * 0.024f, C.tbtMuted)
+                p.textSize = u * 0.024f; p.typeface = body; val lx = ix + p.measureText("그다음") + gap * 0.7f
+                turnIcon(c, n.type, lx + ms / 2, my, ms, C.tbtFg)
                 val nx = lx + ms + gap * 0.6f; val nd = "${dist(n.m)} 뒤"
-                text(c, nd, nx, my + u * 0.012f, u * 0.034f, Color.WHITE, bold)
+                text(c, nd, nx, my + u * 0.012f, u * 0.034f, C.tbtFg, bold)
                 p.textSize = u * 0.034f; p.typeface = bold; val dx2 = nx + p.measureText(nd) + gap * 0.6f
-                text(c, n.desc.ifBlank { turnName(n.type) }, dx2, my + u * 0.009f, u * 0.024f, 0xFF8B949E.toInt(), maxW = ix + iw - dx2)
+                text(c, n.desc.ifBlank { turnName(n.type) }, dx2, my + u * 0.009f, u * 0.024f, C.tbtMuted, maxW = ix + iw - dx2)
             }
             rx = box.right + gap
         }
@@ -802,7 +809,7 @@ class HyunView(ctx: Context) : View(ctx) {
         if (via.isNotBlank()) text(c, via, rx + rw, y, u * 0.026f, SUB, align = Paint.Align.RIGHT, maxW = rw * 0.56f)
         y += u * 0.026f
         p.style = Paint.Style.FILL; p.shader = null; p.strokeWidth = u * 0.007f; p.strokeCap = Paint.Cap.ROUND
-        p.color = 0xFF2A313C.toInt(); c.drawLine(rx, y, rx + rw, y, p)
+        p.color = C.track; c.drawLine(rx, y, rx + rw, y, p)
         p.color = moodColor(); c.drawLine(rx, y, rx + rw * progress.toFloat(), y, p)
         y += u * 0.012f
         if (trafficLine.isNotBlank()) y = wrap(c, trafficLine, rx, y + u * 0.035f, u * 0.025f, MUTED, rw, 2)
@@ -831,8 +838,7 @@ class HyunView(ctx: Context) : View(ctx) {
     /** 내비 판 한 줄 띠 — 표(목록 카드)가 오른쪽 칸을 쓸 때: 다음 회전 · 거리 · 방면 | 목적지 · 남은 거리 · 도착. 반환 = 아래 끝 y */
     private fun naviStrip(c: Canvas, x0: Float, y0: Float, x1: Float, u: Float): Float {
         val r = RectF(x0, y0, x1, y0 + u * 0.085f)
-        p.shader = null; p.style = Paint.Style.FILL; p.color = CARD
-        c.drawRoundRect(r, u * 0.02f, u * 0.02f, p)
+        kit.panel(c, r, u * 0.02f, CARD, u)
         val g = u * 0.02f; val cy = r.centerY()
         var x = r.left + g
         turns.firstOrNull()?.let { t0 ->
@@ -851,16 +857,14 @@ class HyunView(ctx: Context) : View(ctx) {
 
     // ---------- 반반 화면(내비와 나란히) — 세로로 쌓기 ----------
     // 머리줄(이름·연결·알림) → 길 카드(다음 회전 한 줄 · 목적지·경유지·남은 거리·시간·도착·진행선·내비 교통 한 줄) → 캐릭터 + 내 말·현비서 답
-    // → (정차) 카드가 남은 자리 전부 → 맨 아래 작은 마이크 줄(마이크 · 듣기 모드 · ⇄)
+    // → (정차) 카드가 남은 자리 전부 → 맨 아래 작은 조작 줄([대화형 | 정보형] · ⇄)
     private fun drawCarNarrow(c: Canvas, w: Float, h: Float, t: Float) {
         val u = max(w, h * 0.75f); val pad = w * 0.045f
         val x0 = pad; val x1 = w - pad; val cw = x1 - x0
         val k = card?.takeIf { !driving }
         // 머리줄
         var y = pad + u * 0.045f
-        text(c, botName, x0, y, u * 0.045f, FG, bold)
-        p.textSize = u * 0.045f; p.typeface = bold
-        val dx = x0 + p.measureText(botName) + u * 0.025f
+        val dx = nameplate(c, x0, y, u * 0.045f) + u * 0.025f
         val (label, col) = when (brain) { true -> "Claude" to OK; false -> "로그인 필요" to WARN; null -> "서버 없음" to MUTED }
         p.style = Paint.Style.FILL; p.shader = null; p.color = col
         c.drawCircle(dx, y - u * 0.012f, u * 0.009f, p)
@@ -874,16 +878,16 @@ class HyunView(ctx: Context) : View(ctx) {
             val turnH = if (t0 != null) u * 0.1f else 0f
             val lines = 2 + (if (via.isNotBlank()) 1 else 0) + (if (trafficLine.isNotBlank()) 1 else 0)
             val bh = turnH + u * (0.06f + lines * 0.042f)
-            p.color = CARD; c.drawRoundRect(RectF(x0, top, x1, top + bh), u * 0.02f, u * 0.02f, p)
+            kit.panel(c, RectF(x0, top, x1, top + bh), u * 0.02f, CARD, u)
             val ix = x0 + u * 0.03f; val iw = cw - u * 0.06f
             if (t0 != null) {
                 val tb = RectF(x0 + u * 0.012f, top + u * 0.012f, x1 - u * 0.012f, top + turnH)
-                p.color = TBT_BG; c.drawRoundRect(tb, u * 0.016f, u * 0.016f, p)
+                kit.panel(c, tb, u * 0.016f, TBT_BG, u, deco = false)
                 val s = tb.height() * 0.74f; val cy = tb.centerY()
-                turnIcon(c, t0.type, ix + s / 2, cy, s, Color.WHITE)
+                turnIcon(c, t0.type, ix + s / 2, cy, s, C.tbtFg)
                 var tx = ix + s + u * 0.02f
                 val d = dist(t0.m)
-                text(c, d, tx, cy + u * 0.018f, u * 0.05f, if (t0.m in 0..300) TEAL else Color.WHITE, bold)
+                text(c, d, tx, cy + u * 0.018f, u * 0.05f, if (t0.m in 0..300) C.near else C.tbtFg, bold)
                 p.textSize = u * 0.05f; p.typeface = bold; tx += p.measureText(d) + u * 0.02f
                 // 오른쪽 끝 = 그다음(구간 거리) — 자리가 남을 때만
                 var right = tb.right - u * 0.02f
@@ -892,12 +896,12 @@ class HyunView(ctx: Context) : View(ctx) {
                     p.textSize = u * 0.028f; p.typeface = bold
                     val need = ns + u * 0.01f + p.measureText(nd)
                     if (right - need - (tx + u * 0.12f) > 0) {
-                        text(c, nd, right, cy + u * 0.01f, u * 0.028f, 0xFFC9D1D9.toInt(), bold, Paint.Align.RIGHT)
-                        turnIcon(c, n.type, right - p.measureText(nd) - u * 0.01f - ns / 2, cy, ns, 0xFFC9D1D9.toInt())
+                        text(c, nd, right, cy + u * 0.01f, u * 0.028f, C.tbtSub, bold, Paint.Align.RIGHT)
+                        turnIcon(c, n.type, right - p.measureText(nd) - u * 0.01f - ns / 2, cy, ns, C.tbtSub)
                         right -= need + u * 0.025f
                     }
                 }
-                text(c, turnLabel(t0), tx, cy + u * 0.01f, u * 0.026f, 0xFFC9D1D9.toInt(), maxW = right - tx)
+                text(c, turnLabel(t0), tx, cy + u * 0.01f, u * 0.026f, C.tbtSub, maxW = right - tx)
             }
             var ty = top + turnH + u * 0.055f
             text(c, dest ?: "", ix, ty, u * 0.04f, FG, bold, maxW = iw * 0.55f)
@@ -907,13 +911,13 @@ class HyunView(ctx: Context) : View(ctx) {
             text(c, eta, ix, ty, u * 0.03f, SUB, bold)
             val ly = ty + u * 0.022f
             p.strokeWidth = u * 0.006f; p.strokeCap = Paint.Cap.ROUND
-            p.color = 0xFF2A313C.toInt(); c.drawLine(ix, ly, ix + iw, ly, p)
+            p.color = C.track; c.drawLine(ix, ly, ix + iw, ly, p)
             p.color = moodColor(); c.drawLine(ix, ly, ix + iw * progress.toFloat(), ly, p)
             if (trafficLine.isNotBlank()) text(c, trafficLine, ix, ly + u * 0.045f, u * 0.026f, MUTED, maxW = iw)
             y = top + bh + u * 0.02f
         }
         y = featureLines(c, x0, y, x1, u * 0.07f, u)
-        // 아래: 작은 마이크 줄(사용자 11-08 "마이크·상시 듣기·눌러서 말하기를 작게")
+        // 아래: 작은 조작 줄([대화형 | 정보형] · ⇄)
         val micR = u * 0.04f
         val micY = h - pad - micR
         val areaBottom = micY - micR - u * 0.02f
@@ -921,9 +925,11 @@ class HyunView(ctx: Context) : View(ctx) {
         val rowH = if (k != null) min(u * 0.26f, (areaBottom - y) * 0.36f) else min(u * 0.5f, (areaBottom - y) * 0.62f)
         val charW = min(cw * 0.36f, rowH * 0.8f)
         val img = charImage()?.let { bmp(it) }
-        val cbox = RectF(x0, y, x0 + charW, y + rowH)
+        val cbox = if (L.charRight) RectF(x1 - charW, y, x1, y + rowH) else RectF(x0, y, x0 + charW, y + rowH)
+        charDeco(c, cbox, u, t)
         if (img != null) drawImage(c, img, cbox, t) else character(c, cbox.centerX(), cbox.centerY(), min(charW, rowH) * 0.36f, t, label = false)
-        val tx = cbox.right + u * 0.025f; val tw = x1 - tx
+        mic.set(cbox); charFace.set(cbox)
+        val tx = if (L.charRight) x0 else cbox.right + u * 0.025f; val tw = (if (L.charRight) cbox.left - u * 0.025f else x1) - tx
         var ty = y + u * 0.035f
         val busy = userLine.startsWith("듣는") || userLine.startsWith("말씀")   // "듣는 중…"이 이미 상태를 말한다
         if ((mode == Mode.LISTENING || mode == Mode.THINKING) && !busy) {
@@ -942,28 +948,30 @@ class HyunView(ctx: Context) : View(ctx) {
             hs *= 0.92f
         }
         val maxLines = ((room - hs * 0.2f) / (hs * 1.42f)).toInt().coerceIn(2, if (driving) 4 else 12)
-        wrap(c, hyunLine, tx, ty + hs * 0.9f, hs, FG, tw, maxLines, bold)
+        if (comic) balloonText(c, RectF(tx, ty - u * 0.01f, tx + tw, y + rowH), hyunLine, if (driving) u * 0.044f else u * 0.034f, u * 0.024f, bold, FG, C.bubbleHyun, u,
+            cbox.centerX(), cbox.top + cbox.height() * 0.3f, if (prio == 0) 1 else 0, anchorRight = L.charRight, anchorBottom = false, maxLines = if (driving) 4 else 8)
+        else wrap(c, hyunLine, tx, ty + hs * 0.9f, hs, FG, tw, maxLines, bold)
         y += rowH + u * 0.02f
         // 카드(정차만) — 남은 자리 전부
         if (k != null && areaBottom - y > u * 0.15f) listCard(c, k, x0, y, x1, areaBottom, u)
         else {
             cardHit.setEmpty()
             val bx = box(w, h)   // 칩은 y 아래로 그려진다 — 마이크 줄과 안 겹치게 칩 높이만큼 위로(11-07 영상: 칩이 마이크에 겹침)
-            if (!driving && memory.isNotEmpty() && areaBottom - y > bx.u * 0.16f)
-                chipRow(c, bx, "${botName}가 아는 것 ${memory.size}", memory.takeLast(6).reversed(), areaBottom - bx.u * 0.075f, x0, x1)
+            val chips = !driving && memory.isNotEmpty() && areaBottom - y > bx.u * 0.16f
+            if (L.answerAtChar && !driving) infoBoard(c, RectF(x0, y + u * 0.01f, x1, areaBottom - (if (chips) bx.u * 0.11f else 0f)), u)
+            if (chips) chipRow(c, bx, "${botName}가 아는 것 ${memory.size}", memory.takeLast(6).reversed(), areaBottom - bx.u * 0.075f, x0, x1)
         }
-        micRow(c, x0, x1, micY, micR, u)
+        ctrlRow(c, x0, x1, micY, micR, u)
     }
 
     /** 소개 카드(휴게소·인물) — 왼쪽 사진(꽉 차게 자름) · 오른쪽 제목 + "라벨 — 값" 표(추천 줄 강조) · 맨 아래 출처·사진 라이선스. 누르면 닫힘 */
     private fun infoCard(c: Canvas, k: Card, x0: Float, y0: Float, x1: Float, y1: Float, u: Float) {
         val r = RectF(x0, y0, x1, y1)
         cardHit.set(r); cardHit.offset(paddingLeft.toFloat(), paddingTop.toFloat())
-        p.shader = null; p.style = Paint.Style.FILL; p.color = CARD
-        c.drawRoundRect(r, u * 0.025f, u * 0.025f, p)
+        kit.panel(c, r, u * 0.025f, CARD, u)
         val gap = u * 0.028f
         val img = RectF(r.left + gap, r.top + gap, r.left + gap + r.width() * 0.4f, r.bottom - gap)
-        p.color = 0xFF222A35.toInt(); c.drawRoundRect(img, u * 0.018f, u * 0.018f, p)
+        p.color = C.card2; c.drawRoundRect(img, u * 0.018f, u * 0.018f, p)
         val bm = k.images.firstOrNull()?.let { urlBmp(it) }
         if (bm != null) {
             val s = max(img.width() / bm.width, img.height() / bm.height)
@@ -971,10 +979,12 @@ class HyunView(ctx: Context) : View(ctx) {
             val src = android.graphics.Rect(((bm.width - sw) / 2).toInt(), ((bm.height - sh) / 2).toInt(), ((bm.width + sw) / 2).toInt(), ((bm.height + sh) / 2).toInt())
             c.save(); clip.reset(); clip.addRoundRect(img, u * 0.018f, u * 0.018f, Path.Direction.CW); c.clipPath(clip)
             p.color = Color.WHITE; p.isFilterBitmap = true; c.drawBitmap(bm, src, img, p); c.restore()
+            if (comic) kit.frame(c, img, u * 0.018f, u)
         } else text(c, if (k.images.isEmpty()) "사진 없음" else "사진 불러오는 중", img.centerX(), img.centerY(), u * 0.024f, MUTED, align = Paint.Align.CENTER)
         // 오른쪽 — 제목 · 표
         val tx = img.right + gap; val tw = r.right - gap - tx
-        var y = wrap(c, k.title.ifBlank { botName }, tx, r.top + gap + u * 0.038f, u * 0.038f, FG, tw, 2, bold) + u * 0.005f
+        var y = if (comic) caption(c, k.title.ifBlank { botName }, tx, r.top + gap + u * 0.038f, u * 0.036f, tw, u) + u * 0.02f
+            else wrap(c, k.title.ifBlank { botName }, tx, r.top + gap + u * 0.038f, u * 0.038f, FG, tw, 2, bold) + u * 0.005f
         val srcH = if (k.source.isNotBlank()) u * 0.06f else 0f
         val bottom = r.bottom - gap - srcH
         val ls = u * 0.024f; val vs = u * 0.03f
@@ -984,11 +994,11 @@ class HyunView(ctx: Context) : View(ctx) {
             val parts = item.split(" — ", ": ", " - ", limit = 2)
             val lab = if (parts.size > 1) parts[0] else ""; val v = parts.last()
             val hot = lab.contains("추천")
-            p.color = 0x14FFFFFF; p.strokeWidth = 1f; c.drawLine(tx, y, tx + tw, y, p)
+            p.color = C.divider; p.strokeWidth = 1f; c.drawLine(tx, y, tx + tw, y, p)
             val base = y + vs * 1.25f
             if (lab.isNotBlank()) text(c, lab, tx, base, ls, if (hot) moodColor() else MUTED, bold, maxW = labelW - u * 0.01f)
             val vx = if (lab.isNotBlank()) tx + labelW else tx
-            y = wrap(c, v, vx, base, vs, if (hot) moodColor() else FG, tx + tw - vx, 2, if (hot) bold else Typeface.DEFAULT) + vs * 0.25f
+            y = wrap(c, v, vx, base, vs, if (hot) moodColor() else FG, tx + tw - vx, 2, if (hot) bold else body) + vs * 0.25f
         }
         if (k.source.isNotBlank()) wrap(c, k.source, tx, r.bottom - gap - srcH + u * 0.025f, u * 0.02f, MUTED, tw, 2)
     }
@@ -1000,62 +1010,280 @@ class HyunView(ctx: Context) : View(ctx) {
         text(c, "$remain   $eta", x1, base, u * 0.032f, moodColor(), bold, Paint.Align.RIGHT)
         val ly = base + u * 0.025f
         p.style = Paint.Style.FILL; p.shader = null; p.strokeWidth = u * 0.006f; p.strokeCap = Paint.Cap.ROUND
-        p.color = 0xFF2A313C.toInt(); c.drawLine(x0, ly, x1, ly, p)
+        p.color = C.track; c.drawLine(x0, ly, x1, ly, p)
         p.color = moodColor(); c.drawLine(x0, ly, x0 + (x1 - x0) * progress.toFloat(), ly, p)
         return ly + u * 0.01f
     }
 
-    /** 마이크 줄(차) — 작은 마이크 · 듣기 모드 두 칸(자리가 좁으면 위아래로 쌓음) · 캐릭터 바꾸기 ⇄. 가운데 맞춤(좁으면 왼쪽부터)
-     *  사용자 11-08: "마이크·상시 듣기·눌러서 말하기를 더 작은 UI로 — 그래야 좌회전·우회전이 보인다" */
-    private fun micRow(c: Canvas, x0: Float, x1: Float, cy: Float, r: Float, u: Float) {
+    /** 아래 조작 줄(차) — [대화형 | 정보형] 두 칸 · 캐릭터 바꾸기 ⇄. 가운데 맞춤(좁으면 왼쪽부터).
+     *  마이크·듣기 모드 버튼은 없다 — 상시 듣기가 기본이라 버튼이 필요 없다(사용자 11-09). 말 걸기 = "현비서야" · 캐릭터를 눌러도 대화 창이 열린다 */
+    private fun ctrlRow(c: Canvas, x0: Float, x1: Float, cy: Float, r: Float, u: Float) {
         val br = r * 0.62f; val gap = u * 0.014f
-        val fs = u * 0.019f
+        val fs = u * 0.021f
         p.textSize = fs; p.typeface = bold
-        val labW = max(p.measureText("눌러서 말하기"), p.measureText("상시 듣기")) + fs * 1.6f
-        val avail = x1 - x0 - r * 2 - br * 2 - gap * 2
-        val horiz = avail >= labW * 2 + gap * 0.5f
-        val segW = if (!showListenToggle) 0f else if (horiz) labW else min(avail, labW * 1.15f)
-        val segsW = if (!showListenToggle) 0f else if (horiz) segW * 2 + gap * 0.5f else segW
-        val groupW = r * 2 + (if (showListenToggle) gap + segsW else 0f) + gap + br * 2
-        var x = max(x0, (x0 + x1) / 2 - groupW / 2)
-        micGlyph(c, x + r, cy, r)
-        x += r * 2 + gap
-        if (showListenToggle) {
-            if (horiz) {
-                val sh = r * 1.05f
-                segAlways.set(x, cy - sh / 2, x + segW, cy + sh / 2)
-                segPtt.set(x + segW + gap * 0.5f, cy - sh / 2, x + segW * 2 + gap * 0.5f, cy + sh / 2)
-            } else {
-                val sh = r * 0.9f; val g2 = r * 0.12f
-                segAlways.set(x, cy - sh - g2 / 2, x + segW, cy - g2 / 2)
-                segPtt.set(x, cy + g2 / 2, x + segW, cy + sh + g2 / 2)
-            }
-            for ((rect, lab, on) in listOf(Triple(segAlways, "상시 듣기", listenAlways), Triple(segPtt, "눌러서 말하기", !listenAlways))) {
-                p.style = Paint.Style.FILL; p.shader = null; p.color = if (on) TEAL else CARD
-                c.drawRoundRect(rect, rect.height() / 2, rect.height() / 2, p)
-                text(c, lab, rect.centerX(), rect.centerY() + fs * 0.36f, fs, if (on) BG else MUTED, if (on) bold else Typeface.DEFAULT, Paint.Align.CENTER, maxW = rect.width() * 0.94f)
-            }
-            x += segsW + gap
-        } else { segAlways.setEmpty(); segPtt.setEmpty() }
+        val labW = p.measureText("대화형") + fs * 2f
+        val segW = min(labW, (x1 - x0 - br * 4 - gap * 2.5f) / 2)
+        val sh = r * 1.15f
+        val groupW = segW * 2 + gap * 0.5f + (gap + br * 2) * 2
+        val sx = max(x0, (x0 + x1) / 2 - groupW / 2)
+        segChat.set(sx, cy - sh / 2, sx + segW, cy + sh / 2)
+        segInfo.set(segChat.right + gap * 0.5f, cy - sh / 2, segChat.right + gap * 0.5f + segW, cy + sh / 2)
+        for ((rect, lab, on) in listOf(Triple(segChat, "대화형", uiChat), Triple(segInfo, "정보형", !uiChat))) {
+            kit.panel(c, rect, rect.height() / 2, if (on) ACCENT else CARD, u)
+            text(c, lab, rect.centerX(), rect.centerY() + fs * 0.36f, fs, if (on) C.onAccent else MUTED, if (on) bold else body, Paint.Align.CENTER, maxW = rect.width() * 0.94f)
+        }
         // 캐릭터 바꾸기 — 누를 때마다 사람 비서 → 젤리 구슬 → 그린 구슬
-        val bx = x + br
+        val bx = segInfo.right + gap + br
         charBtn.set(bx - br, cy - br, bx + br, cy + br)
-        p.style = Paint.Style.FILL; p.color = CARD; c.drawCircle(bx, cy, br, p)
+        kit.circle(c, bx, cy, br, CARD, u)
         text(c, "⇄", bx, cy + br * 0.36f, br, FG, bold, Paint.Align.CENTER)
+        // 스킨 바꾸기 — 팔레트(그 스킨의 기분 색 점 셋), 누를 때마다 다음 스킨
+        val kx = bx + br * 2 + gap
+        skinBtn.set(kx - br, cy - br, kx + br, cy + br)
+        kit.circle(c, kx, cy, br, CARD, u)
+        listOf("calm", "happy", "fun").forEachIndexed { i, m ->
+            val a = Math.toRadians(-90.0 + i * 120.0)
+            p.style = Paint.Style.FILL; p.shader = null; p.color = C.mood(m)[0]
+            c.drawCircle(kx + cos(a).toFloat() * br * 0.38f, cy + sin(a).toFloat() * br * 0.38f, br * 0.2f, p)
+        }
     }
 
-    /** 마이크 동그라미(누르면 듣기) — 듣는 중 초록 · 말하는 중 회색 · 평소 기분 색 */
-    private fun micGlyph(c: Canvas, cx: Float, cy: Float, r: Float) {
-        mic.set(cx - r, cy - r, cx + r, cy + r)
-        p.shader = null; p.style = Paint.Style.FILL
-        p.color = when (mode) { Mode.LISTENING -> 0xFF2EA043.toInt(); Mode.SPEAKING -> 0xFF30363D.toInt(); else -> moodColor() }
-        c.drawCircle(cx, cy, r, p)
-        p.color = if (mode == Mode.LISTENING || mode == Mode.SPEAKING) Color.WHITE else BG
-        c.drawRoundRect(RectF(cx - r * 0.18f, cy - r * 0.48f, cx + r * 0.18f, cy + r * 0.12f), r * 0.18f, r * 0.18f, p)
-        p.style = Paint.Style.STROKE; p.strokeWidth = r * 0.08f
-        c.drawArc(RectF(cx - r * 0.34f, cy - r * 0.3f, cx + r * 0.34f, cy + r * 0.3f), 0f, 180f, false, p)
-        c.drawLine(cx, cy + r * 0.3f, cx, cy + r * 0.5f, p)
-        p.style = Paint.Style.FILL
+    // ---------- 대화형 — 캐릭터와 대화만(사용자 11-09). 큰 캐릭터 + 말풍선(최근 대화) ----------
+    // 1칸(가로) = 왼쪽 42% 캐릭터 · 오른쪽 말풍선 / 반반(좁은 칸) = 위 캐릭터 · 아래 말풍선. 아래 조작 줄은 정보형과 같은 자리(왼쪽 아래).
+    // 길 안내 중이면 맨 위 한 줄 띠(다음 회전 · 목적지) — 1칸이면 내비가 가려져 회전을 볼 데가 여기뿐. 표(목록·소개)는 그리지 않고 "정보형에서 보기" 칩만
+    private fun drawChat(c: Canvas, w: Float, h: Float, t: Float) {
+        val wide = w >= h * 1.15f
+        val u = if (wide) min(w, h) else max(w, h * 0.75f)
+        val pad = if (wide) u * 0.045f else w * 0.045f
+        cardHit.setEmpty()
+        // 머리줄 — 이름 · 연결 점 · (오른쪽) 알림
+        var y = pad + u * 0.04f
+        val dx = nameplate(c, pad, y, u * 0.04f) + u * 0.025f
+        val (label, col) = when (brain) { true -> "Claude" to OK; false -> "로그인 필요" to WARN; null -> "서버 없음" to MUTED }
+        p.style = Paint.Style.FILL; p.shader = null; p.color = col
+        c.drawCircle(dx, y - u * 0.01f, u * 0.009f, p)
+        text(c, label, dx + u * 0.02f, y, u * 0.024f, if (brain == true) MUTED else col, maxW = w * 0.25f)
+        if (note.isNotBlank()) text(c, note, w - pad, y, u * 0.024f, WARN, align = Paint.Align.RIGHT, maxW = w * 0.5f)
+        y += u * 0.03f
+        if (dest != null) y = naviStrip(c, pad, y, w - pad, u) + u * 0.025f
+        val ctrlR = u * 0.038f; val ctrlY = h - pad - ctrlR
+        val charBox: RectF; val chatBox: RectF
+        if (wide) {
+            val cw = w * L.chatCharW
+            charBox = if (L.charRight) RectF(w - cw, y, w - pad, ctrlY - ctrlR - u * 0.025f) else RectF(pad, y, cw, ctrlY - ctrlR - u * 0.025f)
+            chatBox = if (L.charRight) RectF(pad, y, w - cw - pad, h - pad) else RectF(cw + pad, y, w - pad, h - pad)
+            ctrlRow(c, charBox.left, charBox.right, ctrlY, ctrlR, u)
+        } else {
+            charBox = RectF(pad, y, w - pad, y + (ctrlY - ctrlR - y) * 0.42f)
+            chatBox = RectF(pad, charBox.bottom + u * 0.025f, w - pad, ctrlY - ctrlR - u * 0.025f)
+            ctrlRow(c, pad, w - pad, ctrlY, ctrlR, u)
+        }
+        // 캐릭터 크게 — 사람 비서는 상반신 그림을 칸 가득, 구슬은 가운데 정사각형
+        val img = charImage()?.let { bmp(it) }
+        val face = if (character == "human") charBox else {
+            val s = min(charBox.width(), charBox.height()) * 0.82f
+            RectF(charBox.centerX() - s / 2, charBox.centerY() - s / 2, charBox.centerX() + s / 2, charBox.centerY() + s / 2)
+        }
+        charDeco(c, face, u, t)
+        if (img != null) drawImage(c, img, face, t) else character(c, face.centerX(), face.centerY(), face.width() * 0.34f, t, label = false)
+        mic.set(face); charFace.set(face)   // 캐릭터를 누르면 대화 창(버튼은 따로 없다)
+        bubbles(c, chatBox, u, hyunRight = L.charRight)
+    }
+
+
+    // ---------- 만화 말풍선(스킨 bubbleShape = comic) ----------
+    /** 표가 왔을 때 "정보형에서 보기" 칩(대화형) — 반환 = 칩 아래 y */
+    private fun cardChipRow(c: Canvas, box: RectF, u: Float): Float {
+        val k = card?.takeIf { !driving } ?: run { cardChip.setEmpty(); return box.top }
+        val fs = u * 0.026f; val chH = u * 0.064f
+        val s = "▤ ${k.title.ifBlank { "목록" }} · 정보형에서 보기"
+        p.textSize = fs; p.typeface = bold
+        val r = RectF(box.left, box.top, min(box.right, box.left + p.measureText(s) + chH), box.top + chH)
+        kit.panel(c, r, chH / 2, C.card2, u)
+        text(c, s, r.left + chH / 2, r.centerY() + fs * 0.36f, fs, ACCENT, bold, maxW = r.width() - chH)
+        cardChip.set(r)
+        return r.bottom + u * 0.025f
+    }
+
+    /**
+     * 말풍선 하나 — 글이 칸(area)에 들어가게 글자 크기를 maxSize → minSize로 줄여 보고, 그래도 넘치면 줄을 자른다. 반환 = 그린 풍선(없으면 null).
+     * anchorRight = 칸 오른쪽에 붙임 · anchorBottom = 칸 아래에 붙임 · 꼬리 = (tx, ty) 쪽 · kind 0 말 · 1 외침 · 2 생각
+     */
+    private fun balloonText(c: Canvas, area: RectF, s: String, maxSize: Float, minSize: Float, face: Typeface, color: Int, fill: Int, u: Float,
+                            tx: Float, ty: Float, kind: Int, anchorRight: Boolean, anchorBottom: Boolean, maxLines: Int = 12): RectF? {
+        if (s.isBlank() || area.width() < u * 0.1f || area.height() < u * 0.06f) return null
+        var fs = maxSize
+        var ls: List<String>
+        var tw: Float
+        while (true) {
+            ls = lines(s, fs, area.width() * 0.74f - fs, face)
+            p.textSize = fs; p.typeface = face
+            tw = ls.maxOfOrNull { p.measureText(it) } ?: 0f
+            val bh = (ls.size * fs * 1.32f + fs * 0.5f) / 0.7f
+            if ((bh <= area.height() && ls.size <= maxLines) || fs <= minSize) break
+            fs = max(minSize, fs * 0.92f)
+        }
+        val fit = min(maxLines, max(1, ((area.height() * 0.7f - fs * 0.5f) / (fs * 1.32f)).toInt()))
+        if (ls.size > fit) ls = ls.take(fit - 1) + (ls[fit - 1] + "…")
+        val bw = min(area.width(), max((tw + fs * 1.2f) / 0.74f, fs * 5f))
+        val bh = min(area.height(), max((ls.size * fs * 1.32f + fs * 0.5f) / 0.7f, fs * 2.6f))
+        val left = if (anchorRight) area.right - bw else area.left
+        val top = if (anchorBottom) area.bottom - bh else area.top
+        val r = RectF(left, top, left + bw, top + bh)
+        // 꼬리는 캐릭터(또는 화면 밖 운전자) 쪽으로, 위아래로는 풍선 높이 안에서만 — 가파르면 위·아래 풍선을 뚫는다(11-09 화면)
+        kit.balloon(c, r, fill, u, tx, r.centerY() + (ty - r.centerY()).coerceIn(-r.height() * 0.45f, r.height() * 0.45f), kind)
+        val y0 = r.centerY() - (ls.size - 1) * fs * 1.32f / 2 + fs * 0.36f
+        ls.forEachIndexed { i, line -> text(c, line, r.centerX(), y0 + i * fs * 1.32f, fs, color, face, Paint.Align.CENTER, maxW = r.width() * 0.84f) }
+        return r
+    }
+
+    /** 만화 캡션 상자(카드 제목) — 노란 딱지 + 잉크 테두리. 반환 = 아래 끝 y */
+    private fun caption(c: Canvas, s: String, x: Float, base: Float, size: Float, maxW: Float, u: Float): Float {
+        p.textSize = size; p.typeface = kit.skin.fonts.title
+        val tw = min(p.measureText(s), maxW - size * 1.2f)
+        val r = RectF(x - size * 0.4f, base - size * 1.15f, x + tw + size * 0.6f, base + size * 0.4f)
+        kit.panel(c, r, size * 0.2f, C.card2, u)
+        text(c, s, x + size * 0.1f, base, size, FG, kit.skin.fonts.title, maxW = maxW - size * 0.8f)
+        return r.bottom
+    }
+
+    /** 정보 보드(정보형 정보 칸, 카드가 없을 때) — 최근 본 정보(누르면 다시 열림) · 현비서가 아는 것 · 물어볼 거리. 정차 중만 */
+    private fun infoBoard(c: Canvas, box: RectF, u: Float) {
+        recentHits.clear()
+        if (box.height() < u * 0.15f) return
+        var y = box.top + u * 0.01f
+        val rc = recentCards.filter { it.title.isNotBlank() }.asReversed()
+        if (rc.isNotEmpty()) {
+            y = caption(c, "최근 본 정보", box.left + u * 0.012f, y + u * 0.04f, u * 0.026f, box.width(), u) + u * 0.02f
+            val gap = u * 0.018f; val cols = if (box.width() > u * 1.0f) 3 else 2
+            val cw = (box.width() - gap * (cols - 1)) / cols; val chH = u * 0.12f
+            for ((i, k) in rc.take(cols * 2).withIndex()) {
+                val cx = box.left + (i % cols) * (cw + gap); val cy = y + (i / cols) * (chH + gap)
+                if (cy + chH > box.bottom) break
+                val r = RectF(cx, cy, cx + cw, cy + chH)
+                kit.panel(c, r, u * 0.02f, CARD, u)
+                k.images.firstOrNull()?.let { urlBmp(it) }?.let { bm ->   // 표지·사진 한 장(있으면)
+                    val ib = RectF(r.left + u * 0.012f, r.top + u * 0.012f, r.left + u * 0.012f + chH * 0.62f, r.bottom - u * 0.012f)
+                    val s = max(ib.width() / bm.width, ib.height() / bm.height); val sw = ib.width() / s; val sh = ib.height() / s
+                    c.save(); clip.reset(); clip.addRoundRect(ib, u * 0.01f, u * 0.01f, Path.Direction.CW); c.clipPath(clip)
+                    p.color = Color.WHITE; p.isFilterBitmap = true
+                    c.drawBitmap(bm, android.graphics.Rect(((bm.width - sw) / 2).toInt(), ((bm.height - sh) / 2).toInt(), ((bm.width + sw) / 2).toInt(), ((bm.height + sh) / 2).toInt()), ib, p); c.restore()
+                }
+                val tx = if (k.images.isNotEmpty()) r.left + u * 0.024f + chH * 0.62f else r.left + u * 0.022f
+                wrap(c, k.title, tx, r.top + u * 0.045f, u * 0.026f, FG, r.right - u * 0.016f - tx, 2, bold)
+                text(c, "${k.items.size}개 · 다시 보기", tx, r.bottom - u * 0.018f, u * 0.02f, MUTED, maxW = r.right - u * 0.016f - tx)
+                recentHits += RectF(r) to k
+            }
+            y += ((min(rc.size, cols * 2) + cols - 1) / cols) * (chH + gap) + u * 0.02f
+        }
+        if (box.bottom - y > u * 0.12f) {   // 물어볼 거리 — 정보 칸이 비지 않게(누르진 않음 · 말로)
+            y = caption(c, "이렇게 물어보세요", box.left + u * 0.012f, y + u * 0.04f, u * 0.024f, box.width(), u) + u * 0.02f
+            var x = box.left
+            for (q in hints.map { "\"$it\"" }) {
+                p.textSize = u * 0.024f; p.typeface = body
+                val cw = p.measureText(q) + u * 0.04f; val chH = u * 0.058f
+                if (x + cw > box.right) { x = box.left; y += chH + u * 0.014f }
+                if (y + chH > box.bottom) break
+                kit.panel(c, RectF(x, y, x + cw, y + chH), chH / 2, CARD, u)
+                text(c, q, x + u * 0.02f, y + chH * 0.66f, u * 0.024f, SUB)
+                x += cw + u * 0.014f
+            }
+        }
+    }
+
+    /** 대화형(만화) — 아래(최신)부터 위로: 듣는 중·생각 중 풍선 → 대사들. 현비서 대사 꼬리는 캐릭터 입 쪽, 내 말 꼬리는 화면 밖(운전자) 쪽.
+     *  최신 대사는 크게, 지난 대사는 작게 · 지그재그. 주행 중엔 현비서 마지막 대사만 크게 */
+    private fun comicTalk(c: Canvas, box: RectF, u: Float, hyunRight: Boolean) {
+        val top = cardChipRow(c, box, u)
+        var bottom = box.bottom
+        val gap = u * 0.022f; val tail = u * 0.06f
+        val mx = charFace.centerX(); val my = charFace.top + charFace.height() * 0.3f
+        fun area(right: Boolean, inset: Float) = RectF(
+            if (right) box.right - box.width() * L.bubbleMaxW else box.left + tail + inset, top,
+            if (right) box.right - tail - inset else box.left + box.width() * L.bubbleMaxW, bottom)
+        when (mode) {   // 듣는 중 = 내 쪽 옅은 풍선 · 생각 중 = 현비서 쪽 구름
+            Mode.LISTENING -> balloonText(c, area(!hyunRight, 0f), userLine.ifBlank { "말씀하세요…" }, u * 0.03f, u * 0.026f, body, OK, C.card2, u,
+                if (!hyunRight) box.right + u * 0.1f else box.left - u * 0.1f, bottom + u * 0.15f, 0, !hyunRight, true, 2)?.let { bottom = it.top - gap }
+            Mode.THINKING -> balloonText(c, area(hyunRight, 0f), "음" + ".".repeat((((System.nanoTime() - t0) / 400_000_000L) % 4).toInt()), u * 0.036f, u * 0.03f,
+                bold, MUTED, C.bubbleHyun, u, mx, my, 2, hyunRight, true, 1)?.let { bottom = it.top - gap }
+            else -> {}
+        }
+        var items: List<Bubble> = if (driving) chat.filter { !it.me }.takeLast(1) else chat.toList()
+        if (items.isEmpty() && hyunLine.isNotBlank()) items = listOf(Bubble(false, hyunLine))
+        var firstHyun = true
+        for ((i, b) in items.asReversed().withIndex()) {
+            if (bottom - top < u * 0.08f) break
+            val right = if (b.me) !hyunRight else hyunRight
+            val big = i == 0 || driving
+            val size = if (driving) u * 0.05f else if (big) u * 0.04f else u * 0.031f
+            val kind = if (!b.me && firstHyun && prio == 0) 1 else 0
+            if (!b.me) firstHyun = false
+            val ttx = if (b.me) (if (right) box.right + u * 0.1f else box.left - u * 0.1f) else mx
+            val tty = if (b.me) bottom + u * 0.15f else my
+            val r = balloonText(c, area(right, if (i % 2 == 1) u * 0.035f else 0f), b.text, size, size * 0.82f, if (b.me) body else bold,
+                if (b.me) C.bubbleMeText else FG, if (b.me) C.bubbleMe else C.bubbleHyun, u, ttx, tty, kind, right, true, if (big) 8 else 3) ?: break
+            bottom = r.top - gap
+        }
+    }
+
+    /** 말풍선 — 아래(최신)부터 위로 쌓는다. 내 말 = 오른쪽 · 현비서 = 왼쪽(이름은 기분 색). 맨 아래 = 듣는 중·생각 중.
+     *  주행 중엔 현비서 마지막 말만 크게(정보형과 같은 화면 규칙 — 내 말은 정차 때만) */
+    private fun bubbles(c: Canvas, box: RectF, u: Float, hyunRight: Boolean) {
+        if (comic) { comicTalk(c, box, u, hyunRight); return }
+        var bottom = box.bottom
+        val status = when (mode) {
+            Mode.LISTENING -> userLine.ifBlank { "듣는 중…" }
+            Mode.THINKING -> "생각 중" + ".".repeat((((System.nanoTime() - t0) / 400_000_000L) % 4).toInt())
+            else -> ""
+        }
+        if (status.isNotBlank()) {
+            val right = if (mode == Mode.LISTENING) !hyunRight else hyunRight   // 듣는 중 = 내 쪽 · 생각 중 = 현비서 쪽
+            text(c, status, if (right) box.right else box.left, bottom - u * 0.012f, u * 0.03f,
+                if (mode == Mode.LISTENING) OK else MUTED, bold, if (right) Paint.Align.RIGHT else Paint.Align.LEFT, maxW = box.width())
+            bottom -= u * 0.065f
+        }
+        var top = box.top
+        val k = card?.takeIf { !driving }
+        if (k != null) {   // 표는 정보형에서 — 눌러서 바로 바꾸기
+            val fs = u * 0.026f; val chH = u * 0.064f
+            val s = "▤ ${k.title.ifBlank { "목록" }} · 정보형에서 보기"
+            p.textSize = fs; p.typeface = bold
+            val r = RectF(box.left, top, min(box.right, box.left + p.measureText(s) + chH), top + chH)
+            kit.panel(c, r, chH / 2, C.card2, u)
+            text(c, s, r.left + chH / 2, r.centerY() + fs * 0.36f, fs, ACCENT, bold, maxW = r.width() - chH)
+            cardChip.set(r)
+            top = r.bottom + u * 0.025f
+        } else cardChip.setEmpty()
+        var items: List<Bubble> = if (driving) chat.filter { !it.me }.takeLast(1) else chat.toList()
+        if (items.isEmpty() && hyunLine.isNotBlank()) items = listOf(Bubble(false, hyunLine))
+        val fs = if (driving) u * 0.05f else u * 0.034f
+        val padX = fs * 0.8f; val padY = fs * 0.6f; val gap = u * 0.024f; val lh = fs * 1.42f
+        val tailW = if (kit.skin.style.bubbleTail) u * 0.032f else 0f   // 꼬리 자리
+        val maxW = box.width() * L.bubbleMaxW - tailW
+        for (b in items.asReversed()) {
+            val face = if (b.me) body else bold
+            val all = lines(b.text, fs, maxW - padX * 2, face)
+            val nameH = if (b.me) 0f else u * 0.034f
+            val room = kotlin.math.floor((bottom - top - nameH - padY * 2 - fs * 1.1f) / lh).toInt() + 1
+            if (room < 1) break
+            val ls = if (all.size > room) all.take(room - 1) + (all[room - 1] + "…") else all
+            val bh = padY * 2 + fs * 1.1f + (ls.size - 1) * lh
+            p.textSize = fs; p.typeface = face
+            val bw = min(maxW, (ls.maxOfOrNull { p.measureText(it) } ?: 0f) + padX * 2)
+            val onRight = if (b.me) !hyunRight else hyunRight
+            val r = if (onRight) RectF(box.right - tailW - bw, bottom - bh, box.right - tailW, bottom) else RectF(box.left + tailW, bottom - bh, box.left + tailW + bw, bottom)
+            kit.bubble(c, r, fs * 0.7f, if (b.me) C.bubbleMe else C.bubbleHyun, u, if (onRight) 1 else -1, r.top + fs * 0.95f)
+            if (!b.me && !kit.skin.style.bubbleTail) {   // 꼬리가 없으면 캐릭터 쪽 끝에 기분 색 막대
+                val bx = if (onRight) r.right - u * 0.007f else r.left
+                p.style = Paint.Style.FILL; p.shader = null; p.color = moodColor()
+                c.drawRoundRect(RectF(bx, r.top + fs * 0.4f, bx + u * 0.007f, r.bottom - fs * 0.4f), u * 0.004f, u * 0.004f, p)
+            }
+            ls.forEachIndexed { i, s -> text(c, s, r.left + padX, r.top + padY + fs * 0.95f + i * lh, fs, if (b.me) C.bubbleMeText else FG, face, maxW = r.width() - padX * 2 + 1f) }
+            if (!b.me) text(c, botName, if (onRight) r.right - u * 0.004f else r.left + u * 0.004f, r.top - u * 0.01f, u * 0.022f, moodColor(), bold,
+                if (onRight) Paint.Align.RIGHT else Paint.Align.LEFT)
+            bottom = r.top - nameH - gap
+            if (bottom <= top) break
+        }
     }
 
     // ---------- 회전 안내(TBT) 그림·말 ----------
@@ -1172,14 +1400,14 @@ class HyunView(ctx: Context) : View(ctx) {
         if (k.kind == "info") { infoCard(c, k, x0, y0, x1, y1, u); return }
         val r = RectF(x0, y0, x1, y1)
         cardHit.set(r); cardHit.offset(paddingLeft.toFloat(), paddingTop.toFloat())
-        p.shader = null; p.style = Paint.Style.FILL; p.color = CARD
-        c.drawRoundRect(r, u * 0.025f, u * 0.025f, p)
+        kit.panel(c, r, u * 0.025f, CARD, u)
         val ix = r.left + u * 0.035f; val iw = r.width() - u * 0.07f
         var ty = r.top + u * 0.055f
         val narrow = r.width() < u * 0.95f   // 반반 화면 — 제목 한 줄 전부, 출처는 아래 줄
-        text(c, k.title.ifBlank { botName }, ix, ty, u * 0.034f, FG, bold, maxW = if (narrow) iw else iw * 0.6f)
+        if (comic) caption(c, k.title.ifBlank { botName }, ix, ty, u * 0.034f, if (narrow) iw else iw * 0.6f, u)
+        else text(c, k.title.ifBlank { botName }, ix, ty, u * 0.034f, FG, bold, maxW = if (narrow) iw else iw * 0.6f)
         if (k.source.isNotBlank()) {
-            if (narrow) { ty += u * 0.034f; text(c, k.source, ix, ty, u * 0.022f, MUTED, maxW = iw) }
+            if (narrow) { ty += u * (if (comic) 0.05f else 0.034f); text(c, k.source, ix, ty, u * 0.022f, MUTED, maxW = iw) }   // 만화 캡션 상자가 아래로 더 내려온다
             else text(c, k.source, ix + iw, ty, u * 0.022f, MUTED, align = Paint.Align.RIGHT, maxW = iw * 0.38f)
         }
         val items = k.items.take(10)
@@ -1194,14 +1422,14 @@ class HyunView(ctx: Context) : View(ctx) {
             val y = listTop + rowH * i + rowH * 0.66f
             text(c, "${i + 1}", ix + numW - size * 0.8f, y, size, if (i < 3) moodColor() else MUTED, bold, Paint.Align.RIGHT)
             val parts = s.split(" — ", " - ", limit = 2)
-            val face = if (i < 3) bold else Typeface.DEFAULT
+            val face = if (i < 3) bold else body
             val avail = iw - numW
             p.textSize = size; p.typeface = face
             val tw = p.measureText(parts[0])
             text(c, parts[0], ix + numW, y, size, FG, face, maxW = avail)
             if (parts.size > 1 && tw < avail * 0.85f) text(c, parts[1], ix + numW + tw + size * 0.6f, y, size * 0.78f, MUTED, maxW = avail - tw - size * 0.6f)
             if (i < items.size - 1) {
-                p.color = 0x14FFFFFF; p.strokeWidth = 1f
+                p.color = C.divider; p.strokeWidth = 1f
                 c.drawLine(ix, listTop + rowH * (i + 1), ix + iw, listTop + rowH * (i + 1), p)
             }
         }
@@ -1218,7 +1446,7 @@ class HyunView(ctx: Context) : View(ctx) {
         for (i in 0 until n) {
             val cx = x0 + (i % cols) * (cw + gap); val cy = y0 + (i / cols) * (chH + gap)
             val imgBox = RectF(cx, cy, cx + cw, cy + chH - ts * 3.4f)   // 제목 두 줄 자리
-            p.shader = null; p.style = Paint.Style.FILL; p.color = 0xFF222A35.toInt()
+            p.shader = null; p.style = Paint.Style.FILL; p.color = C.card2
             c.drawRoundRect(imgBox, u * 0.012f, u * 0.012f, p)
             k.images.getOrNull(i)?.let { urlBmp(it) }?.let { bm ->   // 표지 — 칸을 채우게 가운데 자르기
                 val s = max(imgBox.width() / bm.width, imgBox.height() / bm.height)
@@ -1226,14 +1454,15 @@ class HyunView(ctx: Context) : View(ctx) {
                 val src = android.graphics.Rect(((bm.width - sw) / 2).toInt(), ((bm.height - sh) / 2).toInt(), ((bm.width + sw) / 2).toInt(), ((bm.height + sh) / 2).toInt())
                 c.save(); clip.reset(); clip.addRoundRect(imgBox, u * 0.012f, u * 0.012f, Path.Direction.CW); c.clipPath(clip)
                 p.color = Color.WHITE; p.isFilterBitmap = true; c.drawBitmap(bm, src, imgBox, p); c.restore()
+                if (comic) kit.frame(c, imgBox, u * 0.012f, u)
             }
             // 순위 배지
             val br = ts * 0.95f
             p.color = if (i < 3) moodColor() else Color.WHITE   // 어두운 표지 위에서도 보이게 — 단색 배지(화면 판정 11-06)
-            c.drawCircle(imgBox.left + br * 1.2f, imgBox.top + br * 1.2f, br, p)
-            text(c, "${i + 1}", imgBox.left + br * 1.2f, imgBox.top + br * 1.55f, ts * 0.95f, BG, bold, Paint.Align.CENTER)
+            if (comic) kit.circle(c, imgBox.left + br * 1.2f, imgBox.top + br * 1.2f, br, p.color, u) else c.drawCircle(imgBox.left + br * 1.2f, imgBox.top + br * 1.2f, br, p)
+            text(c, "${i + 1}", imgBox.left + br * 1.2f, imgBox.top + br * 1.55f, ts * 0.95f, C.tbtBg, bold, Paint.Align.CENTER)
             val title = k.items[i].split(" — ", " - ", limit = 2)[0]
-            wrap(c, title, cx + cw / 2, imgBox.bottom + ts * 1.35f, ts, FG, cw, 2, if (i < 3) bold else Typeface.DEFAULT, center = true)
+            wrap(c, title, cx + cw / 2, imgBox.bottom + ts * 1.35f, ts, FG, cw, 2, if (i < 3) bold else body, center = true)
         }
     }
 
@@ -1271,7 +1500,7 @@ class HyunView(ctx: Context) : View(ctx) {
             text(c, "${i + 1}", x + numW - size * 0.6f, y, size, if (i < 3) moodColor() else MUTED, bold, Paint.Align.RIGHT)
             // "제목 — 작가": 제목을 먼저 다 보이게, 남는 자리에만 작가(옅게)
             val parts = s.split(" — ", " - ", limit = 2)
-            val face = if (i < 3) bold else Typeface.DEFAULT
+            val face = if (i < 3) bold else body
             val avail = colW - numW
             p.textSize = size; p.typeface = face
             val tw = p.measureText(parts[0])
@@ -1280,21 +1509,13 @@ class HyunView(ctx: Context) : View(ctx) {
                 text(c, parts[1], x + numW + tw + size * 0.5f, y, size * 0.8f, MUTED, maxW = avail - tw - size * 0.5f)
             }
             if (row < rows - 1) {   // 줄 사이 옅은 선
-                p.color = 0x14FFFFFF; p.strokeWidth = 1f
+                p.color = C.divider; p.strokeWidth = 1f
                 c.drawLine(x, listTop + rowH * (row + 1), x + colW, listTop + rowH * (row + 1), p)
             }
         }
     }
 
-    /** 색 배지 하나 — 오른쪽 끝 x를 돌려준다 */
-    private fun pill(c: Canvas, s: String, x: Float, base: Float, size: Float, color: Int): Float {
-        p.textSize = size; p.typeface = bold
-        val tw = p.measureText(s); val ph = size * 1.5f; val padX = size * 0.6f
-        p.style = Paint.Style.FILL; p.color = (color and 0x00FFFFFF) or 0x33000000
-        c.drawRoundRect(RectF(x, base - size * 1.12f, x + tw + padX * 2, base - size * 1.12f + ph), ph / 2, ph / 2, p)
-        text(c, s, x + padX, base - size * 0.08f, size, color, bold)
-        return x + tw + padX * 2
-    }
+    private fun pill(c: Canvas, s: String, x: Float, base: Float, size: Float, color: Int): Float = kit.pill(c, s, x, base, size, color)
 
     /** 정차 화면에서만: 대화로 배운 것 — 학습형 비서를 눈으로 보여준다 */
     private fun memoryChips(c: Canvas, b: Box) {
@@ -1311,8 +1532,7 @@ class HyunView(ctx: Context) : View(ctx) {
             p.textSize = size
             val tw = p.measureText(m).coerceAtMost((x1 - x0) * 0.6f) + ch * 0.8f
             if (x + tw > x1) break
-            p.style = Paint.Style.FILL; p.color = CARD
-            c.drawRoundRect(RectF(x, y, x + tw, y + ch), ch / 2, ch / 2, p)
+            kit.panel(c, RectF(x, y, x + tw, y + ch), ch / 2, CARD, u)
             text(c, m, x + ch * 0.4f, y + ch * 0.66f, size, FG, maxW = tw - ch * 0.8f)
             x += tw + b.pad * 0.3f
         }
@@ -1337,59 +1557,31 @@ class HyunView(ctx: Context) : View(ctx) {
             c.drawCircle(kx, cy, kr, p)
             text(c, "글", kx, cy + kr * 0.35f, kr, FG, bold, Paint.Align.CENTER)
         }
-        if (!showListenToggle) {
-            val hint = when (mode) { Mode.SPEAKING -> "눌러서 끊고 말하기"; Mode.LISTENING -> "말씀하세요"; else -> "눌러서 말하기" }
-            text(c, hint, cx - r * 1.35f, cy + b.u * 0.012f, b.u * 0.03f, MUTED, align = Paint.Align.RIGHT)
-            return
-        }
-        // 차: [상시 듣기 | 눌러서 말하기] 두 칸 — 누르면 바뀐다(정차·주행 모두 터치 2개 안: 이 버튼 + 마이크)
-        // 안내 글은 듣는 중에만(나머지는 버튼 이름이 곧 안내)
-        val right = cx - r * 1.35f; val segH = r * 0.62f; val segW = b.u * 0.17f; val top = cy - segH * 0.15f
-        if (mode == Mode.LISTENING) text(c, "말씀하세요", right, top - segH * 0.45f, b.u * 0.027f, OK, align = Paint.Align.RIGHT)
-        segPtt.set(right - segW, top, right, top + segH)
-        segAlways.set(right - segW * 2 - b.u * 0.008f, top, right - segW - b.u * 0.008f, top + segH)
-        for ((rect, label, on) in listOf(Triple(segAlways, "상시 듣기", listenAlways), Triple(segPtt, "눌러서 말하기", !listenAlways))) {
-            p.style = Paint.Style.FILL; p.color = if (on) TEAL else CARD
-            c.drawRoundRect(rect, segH / 2, segH / 2, p)
-            text(c, label, rect.centerX(), rect.centerY() + b.u * 0.009f, b.u * 0.025f, if (on) BG else MUTED, if (on) bold else Typeface.DEFAULT, Paint.Align.CENTER)
-        }
+        val hint = when (mode) { Mode.SPEAKING -> "눌러서 끊고 말하기"; Mode.LISTENING -> "말씀하세요"; else -> "눌러서 말하기" }
+        text(c, hint, cx - r * 1.35f, cy + b.u * 0.012f, b.u * 0.03f, MUTED, align = Paint.Align.RIGHT)
     }
 
-    private fun moodColor() = when (mood) {
-        "happy" -> 0xFFFFC857.toInt(); "fun" -> 0xFFB794F4.toInt(); "care" -> 0xFFFF9F43.toInt()
-        "alert" -> 0xFFFF5A52.toInt(); else -> TEAL
-    }
+    private fun moodColor() = C.mood(mood)[0]
 
-    /** 글자 단위 줄바꿈(한국어는 어절이 길어 단어 단위면 들쭉날쭉) — 공백에서 끊을 수 있으면 공백에서 */
-    /** 반환 = 마지막 줄 다음 줄의 y. center면 x를 가운데로 */
-    private fun wrap(c: Canvas, s: String, x: Float, y: Float, size: Float, color: Int, maxW: Float, maxLines: Int, face: Typeface = Typeface.DEFAULT,
-                     center: Boolean = false): Float {
-        p.textSize = size; p.typeface = face
-        val lines = mutableListOf<String>()
-        var rest = s.trim()
-        while (rest.isNotEmpty()) {
-            var n = p.breakText(rest, true, maxW, null).coerceAtLeast(1)
-            if (n < rest.length) rest.lastIndexOf(' ', n).takeIf { it > n / 2 }?.let { n = it + 1 }
-            lines += rest.substring(0, n).trim(); rest = rest.substring(n).trim()
-        }
-        val shown = lines.take(maxLines)
-        shown.forEachIndexed { i, line ->
-            val last = i == maxLines - 1 && lines.size > maxLines
-            text(c, if (last) "$line…" else line, x, y + i * size * 1.42f, size, color, face, if (center) Paint.Align.CENTER else Paint.Align.LEFT, maxW = maxW)
-        }
-        return y + shown.size * size * 1.42f
-    }
+    // ---------- 글자 · 배지 — 스킨 UI 도구(Kit)에 맡긴다 ----------
+    private fun wrap(c: Canvas, s: String, x: Float, y: Float, size: Float, color: Int, maxW: Float, maxLines: Int, face: Typeface = body,
+                     center: Boolean = false): Float = kit.wrap(c, s, x, y, size, color, maxW, maxLines, face, center)
+    private fun lines(s: String, size: Float, maxW: Float, face: Typeface): List<String> = kit.lines(s, size, maxW, face)
+    private fun text(c: Canvas, s: String, x: Float, y: Float, size: Float, color: Int, face: Typeface = body,
+                     align: Paint.Align = Paint.Align.LEFT, maxW: Float = Float.MAX_VALUE) = kit.text(c, s, x, y, size, color, face, align, maxW)
+    /** 이름표 — 스킨 제목 글꼴(기울기). 반환 = 이름 오른쪽 끝 x */
+    private fun nameplate(c: Canvas, x: Float, y: Float, size: Float): Float = kit.title(c, botName, x, y, size, FG)
 
-    private fun text(c: Canvas, s: String, x: Float, y: Float, size: Float, color: Int, face: Typeface = Typeface.DEFAULT,
-                     align: Paint.Align = Paint.Align.LEFT, maxW: Float = Float.MAX_VALUE) {
-        p.style = Paint.Style.FILL; p.color = color; p.textSize = size; p.typeface = face; p.textAlign = align; p.shader = null
-        var line = s
-        if (p.measureText(line) > maxW) {
-            while (line.isNotEmpty() && p.measureText("$line…") > maxW) line = line.dropLast(1)
-            line += "…"
+    /** 캐릭터 뒤·옆 꾸밈(스킨 style) — 별 터짐 + 효과음 스티커. 주행 중엔 끈다(주의 분산 · 화면 규칙) */
+    private fun charDeco(c: Canvas, box: RectF, u: Float, t: Float) {
+        if (driving) return
+        val st = kit.skin.style
+        if (st.burst) kit.burst(c, box.centerX(), box.top + box.height() * 0.45f, min(box.width(), box.height()) * 0.5f, u, if (mode == Mode.READY) t * 4f else t * 24f)
+        val key = when (mode) { Mode.LISTENING -> "listening"; Mode.THINKING -> "thinking"; Mode.SPEAKING -> "speaking"; else -> moodKey() }
+        st.stickers[key]?.let { word ->
+            val sx = if (L.charRight) box.left + box.width() * 0.16f else box.right - box.width() * 0.16f
+            kit.sticker(c, word, sx, box.top + box.height() * 0.1f, u * 0.03f, if (L.charRight) -9f else 9f, u)
         }
-        c.drawText(line, x, y, p)
-        p.textAlign = Paint.Align.LEFT
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
@@ -1398,16 +1590,19 @@ class HyunView(ctx: Context) : View(ctx) {
         if (listOpen) { listOpen = false; invalidate(); return true }
         if (!phone) stage?.let { if (it.touch(x, y)) { invalidate(); return true } }
         if (!phone && !charBtn.isEmpty && RectF(charBtn).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) { onCharacter(); return true }   // 캐릭터 바꾸기
-        if (!cardHit.isEmpty && cardHit.contains(e.x, e.y)) { card = null; cardHit.setEmpty(); invalidate(); return true }   // 목록 카드 닫기
+        if (!phone && !skinBtn.isEmpty && RectF(skinBtn).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) { onSkin(); return true }   // 스킨 바꾸기
+        if (!cardHit.isEmpty && cardHit.contains(e.x, e.y)) { cardHit.setEmpty(); onCardClose(); return true }   // 목록 카드 닫기(코어가)
         if (phone && (RectF(listBtn).apply { inset(-listBtn.width() * 0.3f, -listBtn.height() * 0.3f) }.contains(x, y) || nextHit.contains(x, y))) {
             listOpen = true; invalidate(); return true
         }
         modeHits.indexOfFirst { RectF(it).apply { inset(-it.height() * 0.2f, -it.height() * 0.3f) }.contains(e.x, e.y) }.takeIf { it >= 0 }?.let { onMode(it); return true }
         if (onKeyboard != null && RectF(kbd).apply { inset(-width() * 0.2f, -height() * 0.2f) }.contains(x, y)) { onKeyboard?.invoke(); return true }
-        if (showListenToggle) {
-            if (RectF(segAlways).apply { inset(0f, -height() * 0.3f) }.contains(x, y)) { onListenMode(true); return true }
-            if (RectF(segPtt).apply { inset(0f, -height() * 0.3f) }.contains(x, y)) { onListenMode(false); return true }
+        if (!phone && !segChat.isEmpty) {   // [대화형 | 정보형]
+            if (RectF(segChat).apply { inset(0f, -height() * 0.35f) }.contains(x, y)) { onUiMode(true); return true }
+            if (RectF(segInfo).apply { inset(0f, -height() * 0.35f) }.contains(x, y)) { onUiMode(false); return true }
         }
+        if (!phone) recentHits.firstOrNull { RectF(it.first).apply { inset(0f, -height() * 0.15f) }.contains(x, y) }?.let { onRecentCard(it.second); return true }   // 최근 본 정보 다시 열기
+        if (!phone && !cardChip.isEmpty && RectF(cardChip).apply { inset(0f, -height() * 0.2f) }.contains(x, y)) { onUiMode(false); return true }   // 대화형 → 표 보기
         if (RectF(mic).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) onMic()
         return true
     }
@@ -1416,14 +1611,7 @@ class HyunView(ctx: Context) : View(ctx) {
         /** 화면이 실제로 쓰는 로봇 표정(미리 읽어 둠) — 나머지 표정도 assets/chars/bot_*.webp 에 있음 */
         private val BOT_USED = listOf("neutral", "happy", "laugh", "excited", "humming", "worried", "alert", "surprised", "thinking", "bored", "driving", "tired",
             "waving", "confused", "thumbs_up", "cool", "cheer", "sparkle", "heart_eyes", "proud")
-        private const val TEAL = 0xFF4FD1C5.toInt()
-        private const val OK = 0xFF3FB950.toInt()
-        private const val WARN = 0xFFF0B429.toInt()
-        private const val FACE = 0xFF1B2733.toInt()
-        private const val TBT_BG = 0xFF000000.toInt()   // 내비 회전 칸 — 내비 화면과 같은 검정
         /** 방면 글이 곧 이름인 안내(대왕판교톨게이트 · ○○휴게소 · 경유지 이름) — 회전 이름을 앞에 붙이지 않는다 */
         private val NAMED_TURNS = setOf("TURN_TOLL", "TURN_TUNNEL", "TURN_ENTER_SERVICEAREA", "TURN_RESTAREA", "TURN_WAY", "TURN_ARRIVE")
-        /** 우선순위 색 — 설계 문서(plan.html --p0~--p3 다크)와 같은 값 */
-        private val PRIO = intArrayOf(0xFFFF6B5A.toInt(), 0xFFF2A64B.toInt(), 0xFF6AA8FF.toInt(), 0xFFB18CFF.toInt())
     }
 }

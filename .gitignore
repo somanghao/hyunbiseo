@@ -11,3 +11,7 @@ __pycache__/
 # 시험 원본(케이스별 영상·PNG — 크다). 이어 붙인 video.mp4·보고서·스크린샷은 올린다
 records/**/raw/
 tools/hyun_harness/runs/
+# 개인 설정(Claude Code) · 하네스 결과
+CLAUDE.local.md
+.claude/settings.local.json
+dashboard/
