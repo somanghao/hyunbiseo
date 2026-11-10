@@ -502,6 +502,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         if (view.mode == Mode.LISTENING) stopListening()
         log("say|P${l.prio}|${if (silent && l.prio > 0) "자막만|" else ""}${l.text}")
         view.hyunLine = l.text; view.mood = l.mood; view.prio = l.prio; view.prioReply = l.reply
+        lastSpoken = l.text
         view.addChat(false, l.text)
         if (isCar && !fg) coveredTalk(l)   // 가려진 동안(내비 전체 화면 등) 말하면 — 반반으로 옆에 나온다
         listenAfter = l.listen
@@ -520,7 +521,8 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         if (view.mode != Mode.SPEAKING) return
         speaker.finished()
         view.mode = if (waitingId != 0) Mode.THINKING else Mode.READY
-        if (listenAfter && speaker.waiting.none { it.prio == 0 }) { listenAfter = false; main.postDelayed(::listen, 300) }
+        // 0.3초 → 0.8초: 스피커 끝소리가 아직 나오는데 마이크를 열면 제 말을 다시 듣는다(11-10 에뮬 실측 — 온보딩 질문 끝 "익숙해"를 듣고 혼자 숙련 모드로)
+        if (listenAfter && speaker.waiting.none { it.prio == 0 }) { listenAfter = false; main.postDelayed(::listen, ECHO_GAP_MS) }
         else { listenAfter = false; pump() }
         render()
     }
@@ -575,6 +577,23 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private var answered = false
     private var reasked = false                   // 못 알아들으면 한 번만 다시 묻는다(대화 창마다)
     private var spoke = false                     // 이번 듣기에서 말소리가 시작됐나(Pleos STT) — 빈 결과면 다시 묻기
+    private var lastSpoken = ""                   // 방금 한 말 — 마이크가 그 끝소리를 다시 들었는지 가린다
+    private var listenAt = 0L                     // 이번 듣기를 연 시각
+    private var hearAt = 0L                       // 이번 듣기에서 받아 적은 글자가 처음 온 시각
+    private var echoRetry = 0
+
+    /** 제 목소리 되듣기(에코) — 받아 적은 말이 방금 한 말의 일부이고, 듣기를 열자마자(1.2초 안) 글자가 들어왔으면 버리고 한 번 다시 듣는다.
+     *  사람이 질문 속 낱말("처음이야")로 답해도 질문을 듣고 말을 시작해 받아 적히기까지 1.2초는 넘으므로 살아남는다(11-10 에뮬 실측) */
+    private fun dropEcho(text: String): Boolean {
+        fun norm(s: String) = s.filter { it.isLetterOrDigit() }
+        val h = norm(text); val said = norm(lastSpoken)
+        val fast = hearAt > 0L && hearAt - listenAt < 1200
+        if (h.length < 2 || said.isEmpty() || !said.contains(h) || !fast) { echoRetry = 0; return false }
+        log("stt|echo|$text")
+        view.userLine = ""
+        if (echoRetry++ < 1) main.postDelayed(::listen, 400) else { echoRetry = 0; endListening() }
+        return true
+    }
     private var greeted = false
     /** 첫 실행 온보딩(StageFeature)이 직접 인사한다 — 시동 인사(hello)를 건너뛴다 */
     var holdHello = false
@@ -614,7 +633,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         val v = voice
         if (v == null || !v.canListen) { view.userLine = "(음성 인식을 준비하고 있어요)"; render(); return }
         if (view.mode == Mode.SPEAKING) { v.stopSpeaking(); speaker.finished() }
-        heardText = ""; answered = false; spoke = false
+        heardText = ""; answered = false; spoke = false; listenAt = SystemClock.elapsedRealtime(); hearAt = 0L
         view.mode = Mode.LISTENING; view.userLine = "…"
         render()
         v.listen()
@@ -680,8 +699,9 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     override fun onHeard(text: String, final: Boolean) {
         main.post {
             if (answered) return@post
+            if (hearAt == 0L) hearAt = SystemClock.elapsedRealtime()
             heardText = text; view.userLine = text
-            if (final) { answered = true; view.mode = Mode.READY; heard(text) } else view.update()
+            if (final) { answered = true; view.mode = Mode.READY; if (!dropEcho(text)) heard(text) } else view.update()
         }
     }
     override fun onHearEnd() {
@@ -689,7 +709,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
             log("stt|end|$heardText")
             if (answered) return@post
             answered = true
-            if (heardText.isNotBlank()) { view.mode = Mode.READY; heard(heardText) }
+            if (heardText.isNotBlank()) { view.mode = Mode.READY; if (!dropEcho(heardText)) heard(heardText) }
             else if (spoke) reask()
             else { view.userLine = "(못 들었어요)"; endListening() }
         }
@@ -806,6 +826,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         private const val WARMUP_MS = 6_000L        // 엔진 준비를 기다리는 여유
         private const val EAR_WINDOW_MS = 10_000L   // 상시 귀: 버튼·질문 뒤 호출어 없이 받는 시간
         private const val SPEAKING_MS = 20_000L     // 말하기 시작한 뒤 최대 길이
+        private const val ECHO_GAP_MS = 800L        // 말이 끝나고 마이크를 열기까지 — 스피커 끝소리가 잦아들 때까지
         private const val FILLER_MS = 3_500L        // 두뇌 답이 이보다 늦으면 맞장구 한 번
         private const val FILLER2_MS = 13_000L      // 검색 질문 — 그래도 안 오면 한 번 더
         private val FILLERS = arrayOf("음, 잠깐만요.", "생각해 볼게요.", "어디 보자.")

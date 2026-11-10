@@ -11,6 +11,21 @@
     <uses-permission android:name="android.car.permission.CAR_EXTERIOR_LIGHTS" />
     <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />
     <uses-permission android:name="pleos.car.permission.CAR_INFO" />
+    <!-- 내 차 상태(drive/CarStatus — Pleos Vehicle SDK 읽기). 없으면 SecurityException "need Permission"으로 와이퍼·문·좌석·누적 거리가 '예시'로 나왔다(11-10).
+         Pleos 권한은 실행 중 승인 창 없이 선언만 — 쓰는 기능의 최소 권한(Vehicle SDK 샘플 앱 가이드) -->
+    <uses-permission android:name="pleos.car.permission.CAR_MILEAGE" />
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <uses-permission android:name="pleos.car.permission.CAR_SPEED" />
+    <uses-permission android:name="pleos.car.permission.CAR_POWERTRAIN" />
+    <uses-permission android:name="pleos.car.permission.CAR_DOORS" />
+    <uses-permission android:name="pleos.car.permission.CAR_WINDOWS" />
+    <uses-permission android:name="pleos.car.permission.CAR_SEATS" />
+    <uses-permission android:name="pleos.car.permission.CAR_SAFETY" />
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <uses-permission android:name="pleos.car.permission.CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
+    <uses-permission android:name="pleos.car.permission.READ_WINDSHIELD_WIPERS" />
+    <uses-permission android:name="pleos.car.permission.READ_CAR_STEERING" />
     <!-- 목적지 설정(requestRoute) · 경로·위치 조회 -->
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />

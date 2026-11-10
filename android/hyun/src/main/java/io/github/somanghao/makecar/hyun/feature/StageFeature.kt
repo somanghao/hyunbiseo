@@ -6,8 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
+import android.view.KeyEvent
 import io.github.somanghao.makecar.hyun.core.Feature
 import io.github.somanghao.makecar.hyun.core.Hyun
 import io.github.somanghao.makecar.hyun.drive.CarCheck
@@ -723,8 +725,29 @@ class StageFeature : Feature {
             a.startsWith("page:") -> page(a.substringAfter(":"))
             a == "skintab" -> if (!movingNow()) { m.overlay = "deco"; m.decoTab = "skin" }
             a.startsWith("skin:") -> setSkin(a.substringAfter(":"))
+            a == "news:read" -> readNews()
+            a == "news:next" -> if (m.newsList.size > 1) m.newsList = m.newsList.drop(1) + m.newsList.first()
+            a.startsWith("media:") -> mediaKey(a.substringAfter(":"))
         }
         refresh(); hub.render()
+    }
+
+    /** 헤드라인 읽기 — 이미 받아 둔 연합뉴스 RSS를 앱이 직접 읽는다(11-10: 두뇌로 보내서 서버가 꺼져 있으면 "생각 회로가 연결이 안 됐어요"로 끝났다) */
+    private fun readNews() {
+        val lead = m.newsList.firstOrNull { m.newsImgs[it] != null } ?: m.newsList.firstOrNull()
+        if (lead == null) { toast("헤드라인을 아직 못 받았어요"); return }
+        val all = listOf(lead) + m.newsList.filter { it != lead }.take(2)
+        hub.say("연합뉴스 헤드라인이에요. " + all.joinToString(". ") { it.trim().trimEnd('.') } + ".", "", false, 1, reply = true, tag = "뉴스")
+    }
+
+    /** 음악 버튼 — 차 미디어 키(이전 · 재생/정지 · 다음). 재생 중인 앱(미디어 세션)이 받는다 */
+    private fun mediaKey(k: String) {
+        val code = when (k) { "prev" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS; "next" -> KeyEvent.KEYCODE_MEDIA_NEXT; else -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE }
+        val am = hub.act.getSystemService(AudioManager::class.java)
+        runCatching { am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code)); am?.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code)) }
+            .onFailure { hub.log("stage|media|FAIL|${it.message}") }
+        hub.log("stage|media|$k|music=${am?.isMusicActive}")
+        toast(when (k) { "prev" -> "이전 곡"; "next" -> "다음 곡"; else -> if (am?.isMusicActive == true) "일시정지" else "재생" })
     }
 
     private fun movingNow() = hub.speedMs > hub.moveMs || m.sit == Sit.DRIVE
@@ -938,10 +961,12 @@ class StageFeature : Feature {
         val st = m.status ?: return
         val driving = m.sit == Sit.DRIVE || m.sit == Sit.STOP
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        st.wiper.v.let { w -> if (changed("wiper", w) && w == true) {
-            event("cloud", "와이퍼 켜짐 — 비가 와요")
-            story(Tile("cloud", "비 오는 날", "비가 오네요. 우산 쓰고 있을게요. 앞차랑 간격은 평소의 두 배로 둬요.", "와이퍼 신호(Pleos Wiper)", "info"))
-            talk(if (m.novice) "비가 오네요. 앞차랑 간격을 평소의 두 배로 두고, 브레이크는 미리미리 밟아요." else "비가 오네요. 간격 넉넉히 가요.", 2, "care")
+        st.wiper.v.let { w -> if (changed("wiper", w)) {
+            if (w == true) {
+                event("cloud", "와이퍼 켜짐 — 비가 와요")
+                story(Tile("cloud", "비 오는 날", "비가 오네요. 우산 쓰고 있을게요. 앞차랑 간격은 평소의 두 배로 둬요.", "와이퍼 신호(Pleos Wiper)", "info"))
+                talk(if (m.novice) "비가 오네요. 앞차랑 간격을 평소의 두 배로 두고, 브레이크는 미리미리 밟아요." else "비가 오네요. 간격 넉넉히 가요.", 2, "care")
+            } else reactions.removeAll { it.first.label == "비 오는 날" }   // 와이퍼를 끄면 '비가 오네요' 카드도 내린다(11-10 — 맑은 날씨 옆에 2분간 남았다)
         } }
         st.doorOpen.v.let { d -> if (changed("door", d) && d == true) {
             if (hub.speedMs > hub.moveMs) { event("warn", "문이 열려 있어요."); hub.say("문이 열려 있어요. 바로 확인해 주세요.", "alert", false, 0, tag = "반응·문") }
@@ -1098,7 +1123,7 @@ class StageFeature : Feature {
         val la = hub.lat; val lo = hub.lng
         if (la != null && lo != null) {
             val km = io.github.somanghao.makecar.hyun.drive.Trip.meters(la, lo, f.lat, f.lng) * 1.3 / 1000
-            if (km < 300) return max(1, (km / 30.0 * 60).roundToInt()) to "거리 %.1fkm 어림".format(km)
+            if (km < 300) return max(1, (km / 30.0 * 60).roundToInt()) to "약 %.1fkm".format(km)
         }
         return if (f.demoMin > 0) f.demoMin to "예시 시간" else null
     }
@@ -1126,7 +1151,7 @@ class StageFeature : Feature {
                 val i = favPick(list); val f = list[i]
                 m.favIdx = i
                 m.goName = f.name
-                m.goSub = favMin(f)?.let { (mn, why) -> "지금 출발하면 약 ${if (mn >= 60) "${mn / 60}시간 ${mn % 60}분" else "${mn}분"} · ${hm(nowMin + mn)} 도착 · $why" }
+                m.goSub = favMin(f)?.let { (mn, why) -> "지금 가면 ${if (mn >= 60) "${mn / 60}시간 ${mn % 60}분" else "${mn}분"} · ${hm(nowMin + mn)} 도착 · $why" }
                     ?: "지금 위치를 읽으면 걸리는 시간을 알려 드려요"
                 m.goTag = "즐겨찾기" + if (list === DEMO_FAVS) " · 예시" else ""
                 m.goAction = "go:$i"

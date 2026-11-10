@@ -659,8 +659,9 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
         // 앱 영역 2칸(내비와 나란히 — 오른쪽 ⋮ 끌기)이면 폭이 반이라 세로로 쌓는다(11-07 실측: 왼쪽 열이 좁아 도착 시각·버튼이 "…")
         if (uiChat) { drawChat(c, w, h, t); return }
         cardChip.setEmpty()
-        if (w < h * 1.15f) { drawCarNarrow(c, w, h, t); return }
+        // 상황 화면은 반반(내비와 나란히)에서도 — 안내를 시작하면 Pleos가 반반으로 바꾸는데, 그때 상황 화면이 사라지고 예전 좁은 화면이 나왔다(11-10)
         stage?.let { if (it.draw(c, w, h, t)) return }
+        if (w < h * 1.15f) { drawCarNarrow(c, w, h, t); return }
         val u = b.u; val pad = b.pad
         val colW = w * L.infoCharW   // 캐릭터 칸 폭 · 왼쪽/오른쪽 = 스킨 layout
         val lx0 = if (L.charRight) w - colW else pad; val lx1 = if (L.charRight) w - pad else colW; val lcx = (lx0 + lx1) / 2

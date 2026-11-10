@@ -144,7 +144,7 @@ class CarStatus(private val ctx: Context) {
         @Volatile var alive = false
         private val driver = SeatArea(SeatValue.ROW_1_LEFT)
         override fun start() { v = Vehicle(ctx).also { it.initialize() } }
-        private fun ok() { alive = true }
+        private fun ok() { if (!alive) log("status|pleos|alive"); alive = true }
         fun setTemp(c: Float): Boolean = runCatching {
             if (!alive) return false
             v?.getHVAC()?.setHvacTemperature(driver, c, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> log("status|hvac.set|${e.message}") }); true
@@ -152,8 +152,10 @@ class CarStatus(private val ctx: Context) {
         override fun poll() {
             val x = v ?: return
             polls++
-            if (fails > 60 || (polls > 15 && !alive)) return   // 표준 AAOS 에뮬 — Pleos 서비스가 없다(30초 동안 한 값도 안 오면 그만 부른다)
-            val err: (Exception) -> Unit = { fails++ }
+            // 표준 AAOS 에뮬 — Pleos 서비스가 없다(30초 동안 한 값도 안 오면 그만 부른다). 한 번이라도 값이 왔으면 계속 —
+            // 지원 안 하는 항목(실내 온도·문 등 ERROR_NOT_SUPPORTED_PROPERTY)의 실패가 쌓여 1분 만에 전체를 멈췄다(11-10 fails=66)
+            if (!alive && (fails > 60 || polls > 15)) { if (polls == 16) log("status|pleos|give-up|fails=$fails"); polls++; return }
+            val err: (Exception) -> Unit = { e -> fails++; if (fails <= 3) log("status|pleos|err|${e.javaClass.simpleName} ${e.message}") }   // 왜 못 읽는지 처음 몇 개만 남긴다(11-10: Pleos 에뮬인데 와이퍼·문·좌석이 '예시'로 나왔다)
             runCatching {
                 x.getOdometer().getTripCurrentDrivingTime({ s -> s?.let { ok(); tripMin.set(it / 60, From.PLEOS) } }, err)
                 x.getOdometer().getTripCurrentDrivingDistance({ d -> d?.let { ok(); tripKm.set(it, From.PLEOS) } }, err)
