@@ -4,6 +4,8 @@ import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.DoorArea
 import ai.pleos.playground.vehicle.api.model.area.SeatArea
 import ai.pleos.playground.vehicle.api.model.area.WindowArea
+import ai.pleos.playground.vehicle.api.model.capability.AreaBounds
+import ai.pleos.playground.vehicle.api.model.capability.CapabilityConfig
 import ai.pleos.playground.vehicle.constant.area.DoorValue
 import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
@@ -43,6 +45,7 @@ class CarStatus(private val ctx: Context) {
     val cruiseKmh = V<Int>()
     val mode = V<String>()        // ECO · NORMAL · SPORT
     val cabinC = V<Float>()       // 운전석 설정 온도
+    val cabinNow = V<Float>()     // 실내 현재 온도(공조 센서)
     val locked = V<Boolean>()
     val steer = V<Float>()        // 조향각(도)
     val brake = V<Boolean>()      // 브레이크 페달
@@ -144,10 +147,23 @@ class CarStatus(private val ctx: Context) {
         @Volatile var alive = false
         private val driver = SeatArea(SeatValue.ROW_1_LEFT)
         override fun start() { v = Vehicle(ctx).also { it.initialize() } }
+        // 지원 자리(capability) — 차·에뮬마다 문 잠금·공조가 받는 자리가 다르다. 운전석 단독(0x1)으로 물으면
+        // "area ID: 0x1 not supported"(11-10 에뮬 · 10-27 프로브)라 실내 온도·문 잠금이 늘 '예시'였다 → 시작 때 물어 그 자리로 읽는다
+        @Volatile private var lockArea: DoorArea? = null
+        @Volatile private var tempArea: SeatArea? = null
+        @Volatile private var nowArea: SeatArea? = null
+        private var capsAsked = false
+        private fun <A> pick(l: Collection<A>): A? = l.firstOrNull { it.toString().contains("ROW_1_LEFT") } ?: l.firstOrNull()
+        private fun askCaps(x: Vehicle) {
+            if (capsAsked) return; capsAsked = true
+            runCatching { x.getDoor().checkDoorLockCapabilities({ l: List<DoorArea> -> lockArea = pick(l); log("status|pleos|cap|lock|$l") }, { e: Exception -> log("status|pleos|cap|lock|FAIL ${e.message}") }) }
+            runCatching { x.getHVAC().checkHvacTemperatureCapabilities({ mp: Map<SeatArea, AreaBounds<Float>> -> tempArea = pick(mp.keys); log("status|pleos|cap|temp|${mp.keys}") }, { e: Exception -> log("status|pleos|cap|temp|FAIL ${e.message}") }) }
+            runCatching { x.getHVAC().checkHvacTemperatureCurrentCapabilities({ _: CapabilityConfig, l: List<SeatArea> -> nowArea = pick(l); log("status|pleos|cap|now|$l") }, { e: Exception -> log("status|pleos|cap|now|FAIL ${e.message}") }) }
+        }
         private fun ok() { if (!alive) log("status|pleos|alive"); alive = true }
         fun setTemp(c: Float): Boolean = runCatching {
             if (!alive) return false
-            v?.getHVAC()?.setHvacTemperature(driver, c, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> log("status|hvac.set|${e.message}") }); true
+            v?.getHVAC()?.setHvacTemperature(tempArea ?: driver, c, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> log("status|hvac.set|${e.message}") }); true
         }.getOrDefault(false)
         override fun poll() {
             val x = v ?: return
@@ -155,11 +171,12 @@ class CarStatus(private val ctx: Context) {
             // 표준 AAOS 에뮬 — Pleos 서비스가 없다(30초 동안 한 값도 안 오면 그만 부른다). 한 번이라도 값이 왔으면 계속 —
             // 지원 안 하는 항목(실내 온도·문 등 ERROR_NOT_SUPPORTED_PROPERTY)의 실패가 쌓여 1분 만에 전체를 멈췄다(11-10 fails=66)
             if (!alive && (fails > 60 || polls > 15)) { if (polls == 16) log("status|pleos|give-up|fails=$fails"); polls++; return }
+            askCaps(x)
             val err: (Exception) -> Unit = { e -> fails++; if (fails <= 3) log("status|pleos|err|${e.javaClass.simpleName} ${e.message}") }   // 왜 못 읽는지 처음 몇 개만 남긴다(11-10: Pleos 에뮬인데 와이퍼·문·좌석이 '예시'로 나왔다)
             runCatching {
                 x.getOdometer().getTripCurrentDrivingTime({ s -> s?.let { ok(); tripMin.set(it / 60, From.PLEOS) } }, err)
                 x.getOdometer().getTripCurrentDrivingDistance({ d -> d?.let { ok(); tripKm.set(it, From.PLEOS) } }, err)
-                x.getOdometer().getRangeRemainingDistance({ d -> d?.let { ok(); rangeKm.set(it.toInt(), From.PLEOS) } }, err)
+                x.getOdometer().getRangeRemainingDistance({ d -> d?.let { ok(); rangeKm.set(if (it > 5000) (it / 1000).toInt() else it.toInt(), From.PLEOS) } }, err)   // 미터로 온다(AAOS RANGE_REMAINING과 같음 — 11-10 실측 500000 = 500km)
                 x.getOdometer().getCurrentDistanceDriven({ d -> d?.let { ok(); odoKm.set(it.toInt(), From.PLEOS) } }, err)
                 x.getTurnSignal().getCurrentTurnSignalState({ t -> ok(); turn.set(when (t) { TurnSignalValue.LEFT -> 1; TurnSignalValue.RIGHT -> 2; else -> 0 }, From.PLEOS) }, err)
                 x.getDrivingMode().getCruiseControlState({ c -> ok(); cruise.set(when (c?.name) { "ACTIVATED" -> "작동"; "ENABLED", "SUSPENDED", "USER_OVERRIDE" -> "대기"; else -> "꺼짐" }, From.PLEOS) }, err)
@@ -168,10 +185,11 @@ class CarStatus(private val ctx: Context) {
                 x.getSteeringWheel().getCurrentSteeringWheelAngle({ a -> a?.let { steer.set(it, From.PLEOS) } }, err)
                 x.getBrake().getCurrentBrakePedalStatus({ b -> b?.let { brake.set(it, From.PLEOS) } }, err)
                 x.getEvBattery().getEvBatteryStateOfCharge({ s -> s?.let { ok(); soc.set(it, From.PLEOS); energyLabel.set("배터리", From.PLEOS) } }, err)
-                x.getHVAC().getHvacTemperature(driver, TemperatureUnit.CELSIUS, { t -> t?.let { cabinC.set(it, From.PLEOS) } }, err)
+                tempArea?.let { a -> x.getHVAC().getHvacTemperature(a, TemperatureUnit.CELSIUS, { t -> t?.let { cabinC.set(it, From.PLEOS) } }, err) }
+                nowArea?.let { a -> x.getHVAC().getHvacTemperatureCurrent(a, TemperatureUnit.CELSIUS, { t -> t?.let { cabinNow.set(it, From.PLEOS) } }, err) }
                 x.getWiper().getCurrentWiperState(WindowArea(WindowValue.FRONT_WINDSHIELD), { w -> w?.let { wiper.set(it.name == "ON", From.PLEOS) } }, err)
                 x.getDoor().getCurrentDoorPosition(DoorArea(DoorValue.ROW_1_LEFT), { p -> p?.let { doorOpen.set(it > 0, From.PLEOS) } }, err)
-                x.getDoor().getDoorLockState(DoorArea(DoorValue.ROW_1_LEFT), { l -> l?.let { locked.set(it, From.PLEOS) } }, err)
+                lockArea?.let { a -> x.getDoor().getDoorLockState(a, { l -> l?.let { locked.set(it, From.PLEOS) } }, err) }
                 x.getWindow().getCurrentWindowPosition(WindowArea(WindowValue.ROW_1_LEFT), { p -> p?.let { windowOpen.set(it > 10, From.PLEOS) } }, err)
                 x.getLight().getCurrentLowBeamLightState({ l -> l?.let { lowBeam.set(it.name == "ON", From.PLEOS) } }, err)
                 x.getSeat().getCurrentSeatOccupancy(SeatArea(SeatValue.ROW_1_RIGHT), { o -> o?.let { passenger.set(it, From.PLEOS) } }, err)

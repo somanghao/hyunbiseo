@@ -27,6 +27,21 @@ WALK = 67             # m/분(시속 4km)
 NEAR_CAR = 500        # 정차 중 고른 곳이 이보다 가까우면 걸어서 안내, 멀면 차로(nav)
 FOOD = ("FD6", "CE7")  # 음식점 · 카페
 # 장소를 찾는 말만 — "나 국밥 좋아해"(취향 말하기)엔 켜지지 않게 음식 이름은 넣지 않는다(11-08 E2E: 취향 말에 엉뚱한 목적지 근처 카드)
+# 경유 요청 — "가는 길에 가까운 세탁소 들렀다가 집으로 가자" · "주유소 들르자" → 그 장소를 지금 위치 근처에서 찾아 경유지 후보로(11-10:
+# 식사·카페만 찾아서 세탁소는 두뇌가 "위치를 몰라요"로 되물었다)
+VIA = re.compile(r"([가-힣A-Za-z0-9]{2,12})\s*(?:에|을|를|좀)?\s*(?:들렀다|들러|들려|들르|경유)")
+
+
+def _via_query(text):
+    m = VIA.search(text or "")
+    if not m:
+        return ""
+    w = re.sub(r"^(가까운|근처|근처의)", "", m.group(1))
+    if len(w) < 2 or re.search(r"(러|고|서|게|면|길에)$", w):   # "찾으러 들렀다" 같은 말 — 장소 이름이 아니다
+        return ""
+    return w
+
+
 TALK = re.compile(r"맛집|식당|먹을\s*(데|곳|만한)|(어디서|뭐)\s*먹|배고|카페|커피\s*(마실|어디|한\s*잔)|(점심|저녁|밥)\s*(어디|뭐|추천|먹으러|먹을)|근처\s*(밥|먹)")
 PICK_MIN = 10 * 60    # 추천 뒤 이 안의 말은 고르기일 수 있다("응" · "두 번째로 가자") — [주변 장소]를 다시 싣는다
 
@@ -140,7 +155,11 @@ def on_in(msg):
             msg["places_want"] = {"mode": text, "meal": meal, "arrive": at, "dest": d}
     elif kind == "talk":
         here = d or ((c.get("addr") or "현재 위치", float(c["lat"]), float(c["lng"])) if c.get("lat") and c.get("lng") else None)
-        if here and TALK.search(text):
+        now = (c.get("addr") or "현재 위치", float(c["lat"]), float(c["lng"])) if c.get("lat") and c.get("lng") else here
+        vq = _via_query(text)
+        if now and vq:
+            msg["places_want"] = {"mode": "via", "query": vq, "meal": "", "arrive": "", "dest": now}
+        elif here and TALK.search(text):
             meal, at = meal_at(c, "talk")
             msg["places_want"] = {"mode": "ask", "meal": meal or "", "arrive": at, "dest": here, "cafe": bool(re.search(r"카페|커피", text))}
         elif d:
@@ -159,6 +178,14 @@ def _ensure(msg):
     if not want or msg.get("places") is not None:
         return msg.get("places")
     name, la, lo = want["dest"]
+    if want["mode"] == "via":   # 경유 요청 — 그 이름으로 지금 위치 근처(5km) 가까운 순
+        docs = kakao({"query": want["query"], "x": lo, "y": la, "sort": "distance", "radius": 5000, "size": SIZE}) if _key() else None
+        items = _items(docs or [], la, lo)
+        print(f"places|kakao|via|q={want['query']}|n={len(items)}", flush=True)
+        t = {"at": time.time(), "day": time.strftime("%Y-%m-%d"), "meal": "", "arrive": "", "query": want["query"], "why": "", "items": items,
+             "dest": name, "lat": la, "lng": lo, "mode": "via", "told": False, "nokey": not _key()}
+        msg["places"] = t
+        return t
     k = _tkey(want["dest"])
     day = time.strftime("%Y-%m-%d")
     with _lock:
@@ -198,6 +225,7 @@ RULES = """- **주변 장소·도착 추천**([주변 장소] 블록이 있을 �
   · near(곧 도착): 도착하면 몇 시 무슨 식사인지 + 1번 장소 이름·목적지에서 거리를 말하고 "바로 거기로 갈까요? 다른 곳은 내리면 보여 드릴게요" — listen=true, prio 1
   · arrived(도착): "도착했어요" + 1번 이름·거리(걸어서 N분) + "화면에 N곳 띄웠어요". [취향] 음식이 없으면 "좋아하는 음식 알려 주시면 다음엔 맞춰 볼게요"
   · 고르기: 운전자가 곧 도착 제안에 "응·그래·가자"면 1번, "두 번째로"면 2번 — **주행 중이면 nav_name·nav_lat·nav_lng에 그 장소**("○○로 안내할게요"). **정차 중이면** 목적지에서 500m 안은 nav를 비우고 "걸어서 N분, ○쪽이에요", 500m 넘거나 "차로 가자"면 nav
+  · via(경유 요청): 운전자가 가는 길에 들를 곳을 말했다 — 1번(가장 가까운 곳)을 via_name·via_lat·via_lng에 넣고 "○○(걸어서/차로 거리) 들렀다 가게 경유지로 넣었어요". 목적지도 말했으면 nav도 채운다([맥락] favs의 이름 — 집·회사 — 은 그 좌표)
   · 장소를 못 찾았으면(블록에 '찾지 못함') 솔직히 말한다"""
 
 
@@ -209,10 +237,11 @@ def block(msg, env):
         return "[주변 장소] 찾지 못함 — 지역 검색 키 없음"
     if not p.get("items"):
         return f"[주변 장소] {p['dest']} 근처 {p['query']} — 찾지 못함"
-    mode = {"near": "곧 도착(near)", "arrived": "도착(arrived)", "ask": "운전자가 물음", "pick": "추천 뒤 운전자 말(고르기일 수 있음)"}[p["mode"]]
+    mode = {"near": "곧 도착(near)", "arrived": "도착(arrived)", "ask": "운전자가 물음", "pick": "추천 뒤 운전자 말(고르기일 수 있음)", "via": "경유 요청(via)"}[p["mode"]]
     head = f"[주변 장소] {mode} · {p['dest']} 근처 · " + (f"{p['meal']}(도착 {p['arrive']}) · " if p.get("meal") else "") + \
            (f"{p['why']}" if p.get("why") else "가까운 순" + ("" if p["query"] == "카페" else " — 취향 음식 모름")) + " · 카카오 로컬 실시간"
-    rows = [f"  {i}. {x['name']} · 목적지에서 {x['m']}m({x['dir']}쪽, 걸어서 {x['walk']}분) · {x['kind']} · 좌표 {x['lat']},{x['lng']}"
+    frm = "지금 위치에서" if p["mode"] == "via" else "목적지에서"
+    rows = [f"  {i}. {x['name']} · {frm} {x['m']}m({x['dir']}쪽, 걸어서 {x['walk']}분) · {x['kind']} · 좌표 {x['lat']},{x['lng']}"
             for i, x in enumerate(p["items"], 1)]
     return "\n".join([head, *rows])
 

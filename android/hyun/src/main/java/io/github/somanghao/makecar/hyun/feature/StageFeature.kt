@@ -854,6 +854,11 @@ class StageFeature : Feature {
         c.put("situation", m.sit.key)
         m.skill?.let { c.put("driverSkill", it) }
         c.put("safePoints", m.points)
+        // 즐겨찾기(이름·좌표) — 두뇌가 "집에 가자"·"세탁소 들렀다 집" 같은 말을 길로 바꿀 수 있게(11-10: "집 위치를 몰라요"라고 되물었다)
+        val fl = favs()
+        c.put("favs", org.json.JSONArray(fl.map { JSONObject().put("name", it.name).put("lat", it.lat).put("lng", it.lng) }))
+        if (fl === DEMO_FAVS) c.put("favsDemo", true)
+        if (m.goName.isNotBlank()) c.put("favNow", m.goName)
     }
 
     override fun fallback(ev: String, extra: JSONObject?): String? = if (ev == "hello") ignitionLine() else null
