@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import io.github.somanghao.makecar.hyun.core.Hyun
 import io.github.somanghao.makecar.hyun.feature.Registry
 import io.github.somanghao.makecar.hyun.ui.HyunView
+import io.github.somanghao.makecar.hyun.ui.SysPanel
 
 /**
  * 현비서 — 목적지까지 조수석에서 함께 가는 대화형 비서(차 = 현비서 · 폰 = 짭비서).
@@ -45,10 +46,14 @@ class HyunActivity : Activity() {
         hyun = Hyun(this, view, Registry.all())
         setTaskDescription(android.app.ActivityManager.TaskDescription(hyun.botName))
         val rootView = FrameLayout(this).apply { addView(view); if (!hyun.isCar) addView(inputRow(), FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM)) }
+        root = rootView
+        applySide(intent)
         rootView.setOnApplyWindowInsetsListener { _, ins ->   // 시스템 바·노치 안쪽에 그린다(targetSdk 35 = edge-to-edge) · 키보드가 뜨면 입력 줄을 올린다
             if (Build.VERSION.SDK_INT >= 30) {
                 val b = ins.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
-                view.setPadding(b.left, b.top, b.right, b.bottom)
+                val side = sidePanel != null
+                view.setPadding(if (side) 0 else b.left, b.top, b.right, b.bottom)
+                sidePanel?.setPadding(b.left, b.top, 0, b.bottom)
                 input?.let { row -> (row.parent as View).translationY = -maxOf(ins.getInsets(WindowInsets.Type.ime()).bottom, b.bottom).toFloat() }
             } else @Suppress("DEPRECATION") view.setPadding(ins.systemWindowInsetLeft, ins.systemWindowInsetTop, ins.systemWindowInsetRight, ins.systemWindowInsetBottom)
             ins
@@ -59,7 +64,30 @@ class HyunActivity : Activity() {
         hyun.start(intent)
     }
 
-    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); hyun.onIntent(intent, first = false) }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); applySide(intent); hyun.onIntent(intent, first = false) }
+
+    // ---------- 왼쪽 시스템 칸 흉내(ui/SysPanel) — 실차 Pleos 홈은 왼쪽 ~1/3이 시스템 화면으로 고정, 앱은 오른쪽 2/3.
+    // 표준 AAOS 에뮬(Pleos 홈 없음)에서만 깔아 같은 비율로 보이게 한다 · `--ei sideL 643`(px) · `--ei sideL 0` 끄기 · -1 기본
+    private var root: FrameLayout? = null
+    private var sidePanel: SysPanel? = null
+    private fun applySide(i: Intent?) {
+        val r = root ?: return
+        if (!hyun.isCar) return
+        val prefs = getSharedPreferences("hyun", MODE_PRIVATE)
+        if (i?.hasExtra("sideL") == true) prefs.edit().putInt("sideL", i.getIntExtra("sideL", -1)).apply()
+        val dm = resources.displayMetrics
+        val want = prefs.getInt("sideL", -1).let { v ->
+            when {
+                v >= 0 -> v
+                SysPanel.pleosHome(this) || dm.widthPixels < dm.heightPixels * 1.4f -> 0   // 실차·반반·세로 화면은 안 깜
+                else -> (dm.widthPixels * SysPanel.DEFAULT_RATIO).toInt()
+            }
+        }
+        sidePanel?.let { r.removeView(it) }; sidePanel = null
+        (view.layoutParams as? FrameLayout.LayoutParams)?.let { it.leftMargin = want; view.layoutParams = it }
+        if (want > 0) sidePanel = SysPanel(this, hyun).also { r.addView(it, 0, FrameLayout.LayoutParams(want, -1, Gravity.START)) }
+        r.requestApplyInsets()
+    }
     override fun onResume() { super.onResume(); hyun.onResume() }
     override fun onPause() { hyun.onPause(); super.onPause() }
     override fun onStop() { hyun.onStop(); super.onStop() }
