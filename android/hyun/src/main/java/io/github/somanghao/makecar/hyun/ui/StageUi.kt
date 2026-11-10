@@ -741,7 +741,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     private val DOCK = listOf("brief" to "브리핑", "todo" to "할 일", "car" to "내 차", "deco" to "테마", "skin" to "스킨", "log" to "기록")
     private fun dock(c: Canvas, w: Float, h: Float) {
-        val dh = 64 * U; val iw = 128 * U
+        // 칸 폭 = 내용 칸에서 마이크(오른쪽 아래 지름 80 + 여유)를 뺀 만큼(내쉬 2ba2fd3 이후 앱 칸이 좁아짐) — 좁으면 글자 줄이고, 더 좁으면 아이콘만
+        val avail = min(zoneR, w - 48 * U - 80 * U - 24 * U) - zoneL   // 마이크 왼쪽까지
+        val dh = 64 * U; val iw = min(128 * U, avail / DOCK.size)
+        val iconOnly = iw < 92 * U; val fs = if (iw >= 120 * U) 22 * U else 19 * U
         val r = RectF(zoneL, h - 48 * U - dh, zoneL + iw * DOCK.size, h - 48 * U)
         glassCard(c, r, 16 * U)
         DOCK.forEachIndexed { i, (key, lab) ->
@@ -749,8 +752,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             val on = m.overlay == key
             if (on) { p.color = SURF2; c.drawRoundRect(RectF(b.left + 6 * U, b.top + 6 * U, b.right - 6 * U, b.bottom - 6 * U), 12 * U, 12 * U, p) }
             val ic = when (key) { "brief" -> "news"; "todo" -> "bag"; "car" -> "battery"; "deco" -> "star"; "skin" -> "palette"; else -> "chart" }
-            icon(c, ic, b.left + 34 * U, b.centerY(), 22 * U, if (on) FG else MUTED)
-            text(c, lab, b.left + 54 * U, b.centerY() + 8 * U, 22 * U, if (on) FG else MUTED, medium, maxW = iw - 60 * U)
+            if (iconOnly) icon(c, ic, b.centerX(), b.centerY(), 24 * U, if (on) FG else MUTED)
+            else { p.textSize = fs; p.typeface = medium; val gw = 22 * U + 10 * U + p.measureText(lab); val gx = b.centerX() - gw / 2   // 아이콘 + 글을 칸 가운데로
+                icon(c, ic, gx + 11 * U, b.centerY(), 22 * U, if (on) FG else MUTED)
+                text(c, lab, gx + 32 * U, b.centerY() + fs * 0.36f, fs, if (on) FG else MUTED, medium, maxW = iw - 40 * U) }
             hits += b to (when (key) { "deco" -> "deco"; "skin" -> "skintab"; else -> "screen:$key" })
         }
     }
