@@ -170,10 +170,14 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 header(c)
                 val card = v.card
                 val sheetOn = m.overlay in setOf("brief", "todo", "car", "log")
-                val bottom = h - 48 * U - 64 * U - 20 * U
+                val pagerOn = !glance() && m.overlay == null && v.card == null && StageModel.pages(m.sit).size > 1
+                val bottom = h - 48 * U - 64 * U - 20 * U - (if (pagerOn) 64 * U else 0f)
                 var top = 96 * U
                 if (m.navActive && !navMain) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }
                 val full = RectF(zoneL, top, zoneR, bottom)
+                // 넘길 때 — 내용 칸만 옆에서 밀려 들어온다(캐릭터·내비 띠·독은 그대로)
+                val sx = ((now - m.pageAt) / 340f).coerceIn(0f, 1f); val se = 1f - (1f - sx) * (1f - sx) * (1f - sx)
+                if (sx < 1f && m.pageDir != 0) { c.saveLayerAlpha(zoneL - 200 * U, 0f, zoneR + 200 * U, h, (90 + 165 * se).toInt()); c.translate(m.pageDir * (1f - se) * 160 * U, 0f) } else c.save()
                 when {
                     sheetOn -> sheet(c, full, m.overlay!!)
                     card != null -> { glassCard(c, full, 24 * U); val lt = v.lightTheme; v.lightTheme = !darkUi; v.listCard(c, card, full.left + 24 * U, full.top + 24 * U, full.right - 24 * U, full.bottom - 24 * U, h); v.lightTheme = lt }
@@ -183,10 +187,14 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                     }
                     !driving -> stateScreen(c, full)
                 }
+                c.restore()
+                if (pagerOn) pagerBar(c, (zoneL + zoneR) / 2, h - 48 * U - 64 * U - 20 * U - 30 * U)
                 if (!glance()) dock(c, w, h)   // 운전 중엔 독도 숨김(한눈 규칙)
                 c.restore()
             }
             if (glance()) micHint(c, w, h) else micButton(c, w, h)
+            if (nk > 0.5f && !glance() && m.overlay == null) pagerBar(c, w / 2, h - 52 * U)   // 정차 중 내비 화면 — 떠 있는 넘기기
+            if (glance()) StageModel.pages(m.sit).let { ps -> if (ps.size > 1) text(c, "${pageNow(ps) + 1} / ${ps.size}", w - 48 * U - 340 * U, h - 52 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT) }   // 운전 중 — 누를 수 없는 작은 표시(넘기기는 말로)
         }
         if (outroX >= 0f && !skinned) themeIntro(c, w, h, outroX, true)
         if (m.unlockAt > 0 && now - m.unlockAt < 1200) doors(c, w, h, (now - m.unlockAt) / 1200f)
@@ -2099,6 +2107,35 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (id in setOf("alert", "dj", "drowsy", "combo", "kidquiz", "parkhunt", "schoolzone", "voicegame")) text(c, "예시", r.right - 24 * U, r.top + 34 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT)
     }
     private data class Quad(val a: String, val b: Int, val c: String, val d: String)
+
+    // ---------- 페이저(상황 안의 화면들) — 정차·시동: 밀기 · ‹ › · 제목 · n/N · 진행선 / 운전 중: 말("다음·이전")만 ----------
+    private fun pageNow(ps: List<StageModel.Companion.Page>): Int = ps.indexOfFirst { (it.kind == "auto" && m.view == null && m.idea == null) || (it.kind == "cat" && it.id == m.view) || (it.kind == "idea" && it.id == m.idea) }.coerceAtLeast(0)
+    /** 가로 밀기 — 운전 중이거나 덮개 화면이면 받지 않는다 */
+    fun swipe(dx: Float): Boolean {
+        if (glance() || m.overlay != null) return false
+        act(if (dx < 0) "page:next" else "page:prev"); return true
+    }
+    private fun pagerBar(c: Canvas, cx: Float, cy: Float) {
+        val ps = StageModel.pages(m.sit); if (ps.size < 2) return
+        val i = pageNow(ps); val title = ps[i].title; val cnt = "${i + 1} / ${ps.size}"
+        p.textSize = 22 * U; p.typeface = medium; val tw = p.measureText(title); p.textSize = 20 * U; val cw = p.measureText(cnt)
+        val inner = max(300 * U, tw + cw + 48 * U)
+        val r = RectF(cx - inner / 2 - 56 * U, cy - 26 * U, cx + inner / 2 + 56 * U, cy + 26 * U)
+        glassCard(c, r, 26 * U)
+        val lb = RectF(r.left + 5 * U, r.top + 5 * U, r.left + 47 * U, r.bottom - 5 * U); val rb = RectF(r.right - 47 * U, r.top + 5 * U, r.right - 5 * U, r.bottom - 5 * U)
+        for ((b, d) in listOf(lb to -1, rb to 1)) {
+            p.shader = null; p.color = SURF2; c.drawOval(b, p)
+            p.style = Paint.Style.STROKE; p.strokeWidth = 3 * U; p.strokeCap = Paint.Cap.ROUND; p.color = FG
+            val ax = b.centerX() - d * 3 * U; c.drawLine(ax + d * 6 * U, b.centerY(), ax - d * 4 * U, b.centerY() - 9 * U, p); c.drawLine(ax + d * 6 * U, b.centerY(), ax - d * 4 * U, b.centerY() + 9 * U, p)
+            p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT
+        }
+        hits += lb to "page:prev"; hits += rb to "page:next"
+        text(c, title, lb.right + 18 * U, cy + 7 * U, 22 * U, FG, medium, maxW = inner - cw - 24 * U)
+        text(c, cnt, rb.left - 18 * U, cy + 7 * U, 20 * U, FAINT, medium, Paint.Align.RIGHT)
+        // 진행선 — 전체 중 어디쯤인지
+        val tr = RectF(lb.right + 18 * U, r.bottom - 8 * U, rb.left - 18 * U, r.bottom - 6 * U)
+        p.color = LINE; c.drawRect(tr, p); p.color = ACC; c.drawRect(tr.left, tr.top, tr.left + tr.width() * (i + 1) / ps.size, tr.bottom, p)
+    }
 
     // ---------- 스킨 그리기 ----------
     /** 스킨 바탕 — 단색 + 무늬(halftone 점 · grid 선). 주행 중에도 정지된 무늬라 그대로 */
