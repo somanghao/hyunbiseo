@@ -95,6 +95,7 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
     private val segPtt = RectF()
     /** 차 가로 화면의 상황별 추천 화면(StageFeature) — 있으면 drawCar 대신 그린다 */
     var stage: StageUi? = null
+    private var swDownX = 0f; private var swDownY = 0f
     /** 상황 화면이 잠깐 정하는 표정(온보딩 손 흔들기 등) · 대기 기본 표정(꾸미기) */
     var faceOverride: String? = null
     var idleFace = "neutral"
@@ -1588,6 +1589,11 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         val x = e.x - paddingLeft; val y = e.y - paddingTop
+        if (e.action == MotionEvent.ACTION_DOWN) { swDownX = e.x; swDownY = e.y }
+        if (e.action == MotionEvent.ACTION_UP && !phone) {   // 가로로 밀기 = 상황 화면 넘기기(정차·시동만 — StageUi 가 판단)
+            val dx = e.x - swDownX; val dy = e.y - swDownY
+            if (kotlin.math.abs(dx) > width * 0.06f && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.5f) stage?.let { if (it.swipe(dx)) { invalidate(); return true } }
+        }
         if (e.action != MotionEvent.ACTION_UP) return true
         if (listOpen) { listOpen = false; invalidate(); return true }
         if (!phone) stage?.let { if (it.touch(x, y)) { invalidate(); return true } }

@@ -101,6 +101,7 @@ class StageModel {
     var mood = 60                             // 0~100 — 부드러우면 오르고 급정거·깜빡이 없는 회전이면 내려간다
     var moodWhy = ""                          // 마지막으로 기분이 바뀐 이유
     var gleoLast = ""                         // 글레오 함수 마지막 호출(2차 gleo3)
+    var pageDir = 0; var pageAt = 0L          // 페이저 — 마지막으로 넘긴 방향(+1 다음 · −1 이전)과 시각(밀어 넘기는 연출)
     val level get() = (1 + kotlin.math.sqrt(xp / 25.0).toInt()).coerceAtMost(10)
     fun xpFor(l: Int) = 25 * (l - 1) * (l - 1)
     val levelTitle get() = LEVELS[level - 1]
@@ -229,6 +230,17 @@ class StageModel {
             Idea("voicegame", Sit.DRIVE, "말 게임", round = 2, theme = "놀이·글레오"), Idea("senior", Sit.IGNITION, "시니어 모드", round = 2, theme = "놀이·글레오"),
             Idea("gleo3", Sit.PARK, "글레오 함수 3개", round = 2, theme = "놀이·글레오"))
         val ALL_IDEAS get() = IDEAS + IDEAS2
+        /** 페이저 한 장 — auto(기본 상황 화면) · cat(취미 레이아웃) · idea(아이디어) */
+        data class Page(val kind: String, val id: String, val title: String)
+        /** 상황마다 넘겨 볼 화면들 — 1장 = 기본 화면, 이어서 그 상황에서 허용된 취미 레이아웃, 그 상황의 아이디어(1차·2차).
+         *  운전 중(출발 준비 D · 주행 · 신호대기)은 한눈 규칙이라 취미 레이아웃은 빼고 기본 + 아이디어만 */
+        fun pages(s: Sit): List<Page> {
+            val out = mutableListOf(Page("auto", "", "${s.label} 기본"))
+            val glance = s == Sit.DRIVE || s == Sit.READY || s == Sit.STOP
+            if (!glance) CATS.filter { allowed(it.first, s) }.forEach { out += Page("cat", it.first, it.second) }
+            ALL_IDEAS.filter { it.sit == s }.forEach { out += Page("idea", it.id, it.name) }
+            return out
+        }
         fun idea(id: String?) = ALL_IDEAS.firstOrNull { it.id == id }
     }
 }
@@ -312,7 +324,7 @@ class StageFeature : Feature {
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
-    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment") || i.hasExtra("page")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
 
     /**
      * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive
@@ -328,6 +340,7 @@ class StageFeature : Feature {
         b.get("nav")?.toString()?.let { setNav(it == "on" || it == "true" || it == "1") }
         b.getString("skin")?.let { setSkin(it) }
         (b.getString("idea") ?: b.getString("moment"))?.let { setIdea(it) }
+        b.get("page")?.toString()?.let { page(it) }
         b.getString("screen")?.let { setScreen(it) }
         b.getString("golog")?.let { if (it == "demo") seedGoLog() else if (it == "clear") hub.prefs.edit().remove(GO_LOG).apply() }   // 시연: 자주 가는 곳 기록
         refresh(); hub.render()
@@ -361,6 +374,7 @@ class StageFeature : Feature {
         i.getStringExtra("nav")?.let { setNav(it == "on" || it == "true") }
         if (i.action == ACTION) i.getStringExtra("skin")?.let { setSkin(it) }
         (i.getStringExtra("idea") ?: i.getStringExtra("moment"))?.let { setIdea(it); refresh(); hub.render(); return }
+        i.getStringExtra("page")?.let { page(it); return }
         i.getStringExtra("screen")?.let { s ->
             if (s == "auto" || Sit.values().any { it.key == s } || StageModel.CATS.any { it.first == s }) { setScreen(s); refresh(); hub.render(); return }
             when (s) { "none", "close" -> m.overlay = null; "onboard" -> startOnboarding(); else -> m.overlay = s }
@@ -528,6 +542,27 @@ class StageFeature : Feature {
         hub.log("stage|idea|$id|${d.sit.key}")
     }
 
+    // ---------- 페이저 — 상황 안의 화면들을 넘겨 본다(정차·시동은 밀기·버튼, 운전 중은 말 "다음/이전"만) ----------
+    fun pageIdx(): Int = StageModel.pages(m.sit).indexOfFirst { (it.kind == "auto" && m.view == null && m.idea == null) || (it.kind == "cat" && it.id == m.view) || (it.kind == "idea" && it.id == m.idea) }.coerceAtLeast(0)
+    private fun clearIdeaFx() { if (m.idea == "night") m.nightOverride = null; m.forceRain = false; m.forceSnow = false }
+    fun goPage(i0: Int, dir: Int) {
+        val ps = StageModel.pages(m.sit); if (ps.isEmpty()) return
+        val pg = ps[((i0 % ps.size) + ps.size) % ps.size]
+        clearIdeaFx(); m.view = null; m.idea = null
+        when (pg.kind) {
+            "cat" -> { m.view = pg.id; m.viewAt = SystemClock.elapsedRealtime() }
+            "idea" -> { m.idea = pg.id; m.forceRain = pg.id == "rain"; m.forceSnow = pg.id == "firstsnow"; if (pg.id == "night") m.nightOverride = true }
+        }
+        m.overlay = m.overlay.takeIf { it == "onboard" }
+        m.pageDir = dir; m.pageAt = SystemClock.elapsedRealtime()
+        hub.log("stage|page|${m.sit.key}|${ps.indexOf(pg) + 1}/${ps.size}|${pg.kind}:${pg.id}")
+        refresh(); hub.render()
+    }
+    fun page(spec: String) = when (spec) {
+        "next" -> goPage(pageIdx() + 1, 1); "prev" -> goPage(pageIdx() - 1, -1)
+        else -> spec.toIntOrNull()?.let { goPage(it - 1, if (it - 1 >= pageIdx()) 1 else -1) } ?: Unit
+    }
+
     /** 모의 경로 안내 켜기/끄기 — 켜면 첫 회전(판교역로 우회전 350m)부터 */
     fun setNav(on: Boolean) {
         if (on && !m.simNav) navBase = tripM
@@ -546,6 +581,7 @@ class StageFeature : Feature {
         m.reactFace = when (s) { Sit.IGNITION -> "waving"; Sit.READY -> "happy"; Sit.DRIVE -> null; Sit.STOP -> "humming"; Sit.PARK -> "cheer"; Sit.OFF -> "tired" }; m.reactAt = m.sitAt
         hub.log("stage|sit|${prev.key}→${s.key}|$why")
         hub.view.faceOverride = null
+        if (why != "미리보기" && !m.viewForced && prev != s) { clearIdeaFx(); m.idea = null; m.view = null; m.pageDir = 0 }   // 상황이 바뀌면 그 상황의 1장부터(허브 미리보기는 예외)
         when (s) {
             Sit.IGNITION -> newTrip()
             Sit.DRIVE -> if (prev == Sit.READY || prev == Sit.IGNITION || prev == Sit.PARK) newTrip()
@@ -684,6 +720,7 @@ class StageFeature : Feature {
             a == "toon:next" -> m.toonPage++
             a == "idea:next" || a == "idea:prev" -> { val l = StageModel.ALL_IDEAS; val i0 = l.indexOfFirst { it.id == m.idea }; val n = if (a.endsWith("next")) (i0 + 1) % l.size else (if (i0 <= 0) l.size - 1 else i0 - 1); setIdea(l[n].id) }
             a == "idea:off" -> setScreen("auto")
+            a.startsWith("page:") -> page(a.substringAfter(":"))
             a == "skintab" -> if (!movingNow()) { m.overlay = "deco"; m.decoTab = "skin" }
             a.startsWith("skin:") -> setSkin(a.substringAfter(":"))
         }
@@ -728,6 +765,7 @@ class StageFeature : Feature {
     // ======================================================================
     override fun onHeard(text: String): Boolean {
         val t = text.replace(" ", "")
+        if (Regex("^(다음|이전|앞)(화면|장|페이지)?(보여줘|으로|넘겨)?$").matches(t)) { page(if (t.startsWith("다음")) "next" else "prev"); hub.say(StageModel.pages(m.sit)[pageIdx()].title, "", false, 2, reply = true, tag = "페이지"); return true }
         // 글레오 함수 3개(Gleo Interface 후보) — 오늘 브리핑 · 안전점수 · 꾸미기
         if (Regex("오늘(뭐있|브리핑|어때)|브리핑해").containsMatchIn(t)) {
             m.gleoLast = "오늘 브리핑"
