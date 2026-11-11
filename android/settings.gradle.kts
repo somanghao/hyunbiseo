@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "hyunbiseo"
 include(":hyun")
+include(":hyunphone")   // 현비서 폰 앱(차 현비서와 동기화) — 차 앱 폰 모드와 별개
