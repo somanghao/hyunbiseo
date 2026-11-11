@@ -13,17 +13,22 @@ from core import config
 SCHEMA = {
     "card": {"type": "object", "description": "화면 카드 — 목록(kind \"\": 순위·여러 개 추천)이나 소개(kind \"info\": 왼쪽 사진·오른쪽 표 — 휴게소·인물 하나), 아니면 title=\"\" items=[]",
              "properties": {
-                 "kind": {"type": "string", "enum": ["", "info"], "description": "\"\" 목록 · info 소개(사진 + 라벨 — 값 표)"},
+                 "kind": {"type": "string", "enum": ["", "info", "schedule", "stock", "picks"],
+                          "description": "\"\" 목록 · info 소개(사진 + 라벨 — 값 표) · schedule 경기·행사 일정 · stock 시세(주식·지수·환율) · picks 골라 주기(영화·드라마·넷플릭스 추천)"},
                  "title": {"type": "string", "description": "짧은 제목(예: 웹소설 인기 TOP 10 · 안성휴게소 부산방향)"},
                  "source": {"type": "string", "description": "출처·기준(예: 네이버 시리즈 · 11-06 일간)"},
                  "items": {"type": "array", "items": {"type": "string"}, "description": "최대 10개, 한 줄씩 짧게(목록 예: 화산귀환 — 비가 · 소개 예: 대표 메뉴 — 안성국밥 9,000원)"},
-                 "image_query": {"type": "string", "description": "kind=info일 때 사진을 찾을 영어 검색어(예: Anseong rest area Korea · Son Heung-min) — 아니면 빈 문자열"}},
+                 "image_query": {"type": "string", "description": "kind=info·schedule일 때 사진을 찾을 영어 검색어(예: Anseong rest area Korea · Son Heung-min · Lee Kang-in) — 아니면 빈 문자열"}},
              "required": ["kind", "title", "source", "items", "image_query"], "additionalProperties": False},
 }
 
 RULES = """- 운전자가 개수를 말하면("세 개만") card도 그 개수만, say도 그 개수만
 - **목록 카드**: 순위·시세·여러 개 추천처럼 목록인 답이면 card에 전체(최대 10, 운전자가 말한 개수만큼)를 한 줄씩 짧게(제목 — 작가/값) 넣고 title·source(출처·기준)를 채운다. say는 앞 3개만 읽고, 정차면 "나머지는 화면에 띄웠어요", 주행 중이면 "정차하면 화면에서 보세요"로 끝낸다. 목록이 아닌 답은 card.title="" · items=[]
-- **소개 카드(card.kind=info)** — 휴게소·인물처럼 '하나'를 소개할 때: title = 이름, source = 출처·기준, items = "라벨 — 값" 4~6줄(예: "위치 — 경부고속도로 부산방향 · 약 12km 앞", "대표 메뉴 — 안성국밥 9,000원", "취향 추천 — 국밥 좋아하시니 안성국밥", "편의 — 주유 · 전기차 충전 · 수유실"), 휴게소면 위치·대표 메뉴·편의·취향 추천 네 줄은 꼭(검색으로 못 찾은 칸은 "확인 못 함") — "확실도" 같은 메타 줄은 쓰지 않고, 추정이면 제목에 "(추정)", image_query = 사진 검색용 영어(휴게소 "Anseong rest area Korea", 인물은 영문 이름). 사진 URL은 쓰지 않는다(서버가 붙인다). say는 핵심 두 문장. 목록 카드는 kind="" image_query="\""""
+- **소개 카드(card.kind=info)** — 휴게소·인물처럼 '하나'를 소개할 때: title = 이름, source = 출처·기준, items = "라벨 — 값" 4~6줄(예: "위치 — 경부고속도로 부산방향 · 약 12km 앞", "대표 메뉴 — 안성국밥 9,000원", "취향 추천 — 국밥 좋아하시니 안성국밥", "편의 — 주유 · 전기차 충전 · 수유실"), 휴게소면 위치·대표 메뉴·편의·취향 추천 네 줄은 꼭(검색으로 못 찾은 칸은 "확인 못 함") — "확실도" 같은 메타 줄은 쓰지 않고, 추정이면 제목에 "(추정)", image_query = 사진 검색용 영어(휴게소 "Anseong rest area Korea", 인물은 영문 이름). 사진 URL은 쓰지 않는다(서버가 붙인다). say는 핵심 두 문장. 목록 카드는 kind="" image_query="\"
+- **일정 카드(card.kind=schedule)** — 경기·대회·행사 일정("이강인 다음 경기 언제야" · "롤 월즈 결승 몇 시야"): title = "이강인 경기 일정"처럼, source = 검색 출처 이름 + 기준일, items = 시간순 한 줄씩 "MM-DD(요일) HH:MM KST — 대진·상대 · 대회"(다가오는 것), 이미 끝난 것은 "MM-DD(요일) 끝남 — 결과(스코어) · 대회". **검색으로 확인한 것만** — 시각을 못 찾으면 "시각 미정", 지어내지 않는다. 한국 시각(KST)으로 바꿔 쓴다
+  일정 카드의 image_query = 선수·팀 영문 이름(예: "Lee Kang-in", "T1 esports") — 사진은 서버가 위키미디어 공용에서 찾는다(없으면 사진 없이)
+- **시세 카드(card.kind=stock)** — 주식·지수·환율: items = "이름 — 값 ▲등락%"(오르면 ▲, 내리면 ▼, 그대로면 -), 값은 [정보 통로]·검색에 있는 그대로
+- **추천 카드(card.kind=picks)** — 영화·드라마·넷플릭스·책처럼 '골라 주기': items 2~5개 = "제목 — 한 줄 이유(취향 반영) · 평점 9.1(왓챠피디아)" — 평점·출처는 검색으로 찾은 것만(없으면 이유만), source = 기준(예: 넷플릭스 한국 TOP 10 · 11-11)"""
 
 NUM_KO = {"한": 1, "하나": 1, "두": 2, "둘": 2, "세": 3, "셋": 3, "네": 4, "넷": 4, "다섯": 5, "여섯": 6, "일곱": 7, "여덟": 8, "아홉": 9, "열": 10}
 
@@ -37,10 +42,12 @@ def trim_card(card, text):
         return card
     n = int(m.group(1)) if m.group(1).isdigit() else NUM_KO[m.group(1)]
     if 0 < n < len(card["items"]):
-        card = dict(card, items=card["items"][:n], **({"images": card["images"][:n]} if card.get("images") else {}))
+        card = dict(card, items=card["items"][:n], **({"images": card["images"][:n]} if card.get("images") else {}),
+                    **({"tels": card["tels"][:n]} if card.get("tels") else {}))   # 가게 [전화] 번호도 같은 개수로
     return card
 
 
+NAVER_IMG = ("https://image-comic.pstatic.net/", "https://shared-comic.pstatic.net/")   # 웹툰 표지(정보 통로) — 폰 앱은 서버를 거쳐 받는다
 IMG_UA = "HyunBiseo/0.1 (makecar-hy contest prototype; https://github.com/somanghao)"   # 위키미디어 정책 — 클라이언트를 밝히는 UA
 _img_cache = {}
 
@@ -75,7 +82,7 @@ def enrich_card(card):
     """카드에 그림 붙이기 — 웹툰이면 정보 통로의 표지 URL을 제목으로 맞춰 images[]에 · 소개 카드(info)면 위키미디어 공용 사진(두뇌는 URL을 다루지 않는다)"""
     if not card or not card.get("items"):
         return None
-    if card.get("kind") == "info":
+    if card.get("kind") in ("info", "schedule") and (card.get("kind") == "info" or card.get("image_query")):   # 일정 카드도 선수·팀 사진(사용자 11-11 "이강인도 선수 이미지")
         q = card.get("image_query") or ""
         # 검색어에 팀·장소가 붙으면 안 나온다("Son Heung-min LAFC" 없음 → "Son Heung-min" 있음, 11-07) — 앞 3·2단어로 다시
         words = q.split()
@@ -110,12 +117,14 @@ def post(rep, msg, b, dry, rec):
 def _img(h, q):
     """카드 사진 중계(위키미디어 공용만) — 앱은 UA·캐시 걱정 없이 여기서 받는다"""
     src = q.get("u", "")
-    if not src.startswith(("https://upload.wikimedia.org/", "https://thumb.wikimedia.org/")):
-        return h.send_json({"error": "commons only"}, 400)
+    naver = src.startswith(NAVER_IMG)
+    if not (naver or src.startswith(("https://upload.wikimedia.org/", "https://thumb.wikimedia.org/"))):
+        return h.send_json({"error": "commons/naver comic only"}, 400)
     path = config.data("img", re.sub(r"[^A-Za-z0-9._-]", "_", urlparse(src).path[-90:]))
     if not os.path.exists(path):
         try:
-            with urllib.request.urlopen(urllib.request.Request(src, headers={"User-Agent": IMG_UA}), timeout=10) as r:
+            hd = {"User-Agent": "Mozilla/5.0", "Referer": "https://comic.naver.com/"} if naver else {"User-Agent": IMG_UA}   # 네이버 표지는 Referer 없으면 403(11-11 실측)
+            with urllib.request.urlopen(urllib.request.Request(src, headers=hd), timeout=10) as r:
                 body = r.read()
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "wb") as f:

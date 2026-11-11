@@ -48,7 +48,7 @@ import kotlin.math.roundToInt
 class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Events, Sense.Out, Ear.Out {
     val main = Handler(Looper.getMainLooper())
     val isCar = act.packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)
-    val botName = if (isCar) "현비서" else "짭비서"   // 폰은 짭비서 — 두뇌는 같고 캐릭터 이름·말투만 다르다(server/hyun/persona.md)
+    val botName = "현비서"   // 차·폰 모두 현비서(11-11 — 폰 앱도 '현비서 휴대폰 앱', 예전 이름 짭비서는 내부 코드명) · 폰 말투·규칙 = server/hyun/persona.md 폰 모드
     /** 이 기기에서 켠 기능들(등록 순서) — 생성자 인자 이름을 따로 둔다: 속성 초기화 안의 익명 객체(1초 루프 등)가 인자(거르기 전 목록)를 잡았다(11-07) */
     val features: List<Feature> = all.filter { it.enabled(isCar) }
     val link = Link(if (isCar) "http://10.0.2.2:8790" else "http://127.0.0.1:8790")
@@ -107,6 +107,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         view.onMic = ::micPressed
         view.onRecentCard = { k -> view.card = k; cardAt = SystemClock.elapsedRealtime(); log("card|reopen|${k.title}"); render() }
         view.onCardClose = { view.card = null; log("card|close|tap"); render() }
+        view.onCardDial = { i -> view.card?.let { k -> dial(k.tels.getOrNull(i).orEmpty(), k.items.getOrNull(i)?.substringBefore(" — ").orEmpty(), "tap") } }
         if (isCar) navi = Navi(act, main, ::log).also { it.listen(naviCore); it.beforeCommand = ::primeFront }
         features.forEach { it.start(this) }
         intent?.let { onIntent(it, first = true) }
@@ -397,13 +398,24 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         refreshMemory()
     }
 
+    /** 가게 [전화] — 전화 앱에 번호만 띄운다(ACTION_DIAL · 통화 버튼은 운전자가 · CALL_PHONE 권한 안 씀).
+     *  차 = Pleos 기본 '전화' 앱(ai.umos.callandmessage)이 번호 입력된 채 열림 → 실차는 블루투스로 연결된 폰으로 발신(에뮬 실측 11-11) */
+    fun dial(tel: String, name: String, by: String): Boolean {
+        val num = tel.filter { it.isDigit() || it == '+' }
+        if (num.isBlank()) return false
+        log("call|dial|$by")   // 번호·가게 이름은 로그에 남기지 않는다(카카오 장소 원문)
+        return runCatching { act.startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$num")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); true }
+            .getOrElse { log("call|fail|${it.javaClass.simpleName}"); false }
+    }
+
     /** 카드(목록 · 표지 격자 · 소개) — 정차 화면에(주행 중엔 화면이 숨기고, 정차하면 보인다). 서버가 중계하는 사진(/hyun/img)은 서버 주소를 붙인다 */
     fun showCard(k: JSONObject) {
         val items = k.optJSONArray("items")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty().filter { it.isNotBlank() }
         if (items.isEmpty()) return
         val imgs = k.optJSONArray("images")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } }.orEmpty()
             .map { if (it.startsWith("/")) link.base + it else it }
-        view.card = HyunView.Card(k.optString("title"), k.optString("source"), items, imgs, k.optString("kind"))
+        val tels = k.optJSONArray("tels")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } }.orEmpty()   // 가게 [전화] — 로그엔 안 남김
+        view.card = HyunView.Card(k.optString("title"), k.optString("source"), items, imgs, k.optString("kind"), tels)
         cardAt = SystemClock.elapsedRealtime()
         log("card|${k.optString("title")}|${items.size}|kind=${k.optString("kind").ifBlank { "list" }}|img=${imgs.count { it.isNotBlank() }}|${items.take(3).joinToString(" / ")}")
     }

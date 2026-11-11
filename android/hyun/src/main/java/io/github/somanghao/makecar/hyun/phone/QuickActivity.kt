@@ -101,13 +101,13 @@ class QuickActivity : Activity(), Voice.Events {
             elevation = dp(8f).toFloat()
             isClickable = true
         }
-        val name = if (packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)) "현비서" else "짭비서"
+        val name = "현비서"
         val mode = PhoneMode.of(prefs.getString("mode", null)) ?: PhoneMode.WORK
         status = TextView(this).apply { text = "● $name · ${mode.label}"; setTextColor(TEAL); textSize = 13f; typeface = Typeface.DEFAULT_BOLD }
         you = TextView(this).apply { setTextColor(0xFF6B7280.toInt()); textSize = 15f; setPadding(0, dp(8f), 0, 0) }
         answer = TextView(this).apply { setTextColor(0xFF111827.toInt()); textSize = 19f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); setPadding(0, dp(6f), 0, dp(10f)); text = "무엇을 도와드릴까요?" }
         input = EditText(this).apply {
-            hint = "짭비서에게 쓰기"; setHintTextColor(0xFF9CA3AF.toInt()); setTextColor(0xFF111827.toInt()); textSize = 16f
+            hint = "현비서에게 쓰기"; setHintTextColor(0xFF9CA3AF.toInt()); setTextColor(0xFF111827.toInt()); textSize = 16f
             imeOptions = EditorInfo.IME_ACTION_SEND; setSingleLine()
             background = GradientDrawable().apply { setColor(0xFFF3F5F8.toInt()); cornerRadius = dp(14f).toFloat() }
             setPadding(dp(14f), dp(10f), dp(14f), dp(10f))
@@ -157,7 +157,7 @@ class QuickActivity : Activity(), Voice.Events {
         main.removeCallbacks(closer)
         you.text = text; answer.text = "…"; micBtn.isEnabled = true
         val mode = prefs.getString("mode", PhoneMode.WORK.key)
-        val ctx = JSONObject().put("t", SimpleDateFormat("HH:mm", Locale.KOREA).format(Date())).put("device", "phone").put("bot", "짭비서")
+        val ctx = JSONObject().put("t", SimpleDateFormat("HH:mm", Locale.KOREA).format(Date())).put("device", "phone").put("bot", "현비서")
             .put("mode", mode).put("via", "quick").put("headset", Desk(this).headset()).put("driving", false)
         runCatching { Desk(this).upcoming().takeIf { it.isNotEmpty() }?.let { ctx.put("schedule", JSONArray(it.map { e -> e.line() })) } }
         Desk(this).battery().first?.let { ctx.put("soc", it) }
@@ -206,14 +206,14 @@ class QuickActivity : Activity(), Voice.Events {
             if (ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)) return
             if (ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
             val nm = ctx.getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(NotificationChannel(CHANNEL, "짭비서 빠른 대화", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, "현비서 빠른 대화", NotificationManager.IMPORTANCE_LOW))
             val replyPi = PendingIntent.getActivity(ctx, 3, Intent(ctx, QuickActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)   // RemoteInput 결과를 받으려면 MUTABLE
             val reply = Notification.Action.Builder(null, "글로 묻기", replyPi)
-                .addRemoteInput(RemoteInput.Builder(KEY_REPLY).setLabel("짭비서에게").build()).build()
+                .addRemoteInput(RemoteInput.Builder(KEY_REPLY).setLabel("현비서에게").build()).build()
             val n = Notification.Builder(ctx, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-                .setContentTitle("짭비서").setContentText("말하기 · 글로 묻기 — 다른 앱을 보면서")
+                .setContentTitle("현비서").setContentText("말하기 · 글로 묻기 — 다른 앱을 보면서")
                 .setOngoing(true).setShowWhen(false)
                 .setContentIntent(PendingIntent.getActivity(ctx, 0, Intent(ctx, HyunActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
                 .addAction(Notification.Action.Builder(null, "🎤 말하기", intent(ctx, "voice")).build())

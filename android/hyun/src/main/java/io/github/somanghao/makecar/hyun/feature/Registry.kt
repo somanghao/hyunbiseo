@@ -15,6 +15,7 @@ object Registry {
         UiModeFeature(),       // 차 화면 대화형 ↔ 정보형 · "대화형으로"(차)
         SkinFeature(),         // 차 화면 스킨(기본 · 내쉬 웹툰 · 팀원) · "내쉬 스킨으로"(차) — assets/skins/<id>.json
         CharacterFeature(),    // 캐릭터 3종 · "캐릭터 바꿔 줘"(차)
+        CallFeature(),         // 말로 전화 — "어머니족발에 전화해 줘" · "두 번째 집 전화" → 목록 카드의 그 가게 번호를 전화 앱에(ACTION_DIAL)
         StageFeature(),        // 상황별 추천 화면 6단계 · 첫 실행 점검·숙련도 · 꾸미기(안전운전 포인트) · 주행 중 내 차 상태(차)
         GleoFeature(),         // Gleo Interface — ASK_HYUN · HYUN_STATUS · HYUN_QUIET(차)
         RouteFeature(),        // 목적지 · 경유지 · 안내 끝 · 주행 이벤트(출발 · 절반 · 곧 도착 · 도착 · 목적지 없이 출발)
@@ -25,5 +26,6 @@ object Registry {
         CarBatteryFeature(),   // 차 배터리(Vehicle SDK) · 20% 아래 알림(차)
         DriveCareFeature(),    // 장시간 운전 · 한동안 조용하면 먼저 말 걸기(차) — 쉼표 모듈의 자리
         PhoneFeature(),        // 짭비서 — 폰 모드 · 일정 · 리마인더 · 할 일 · 산책 · 하차 알림(폰)
+        CarLinkFeature(),      // 폰 연동 — 차 현비서와 연결 표시 · 차에서 보낸 장소 알림 · 차에서 나눈 이야기(폰, 서버 phonelink)
     )
 }

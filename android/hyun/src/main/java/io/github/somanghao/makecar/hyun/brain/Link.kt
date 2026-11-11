@@ -43,6 +43,13 @@ class Link(var base: String) {
     /** 울린 리마인더 끝냄 표시 */
     fun fired(id: Int) = io.execute { http("POST", "/hyun/tasks", JSONObject().put("fired", id)) }
 
+    /** 폰 연동 — 차가 보낸 것(장소 등)을 long-poll로 기다린다(부르는 쪽 스레드에서 막힘). {items:[…], seq, car:{t, ago, q, a}} · 서버 없으면 null */
+    fun pushBlocking(after: Long, timeoutS: Int = 25): JSONObject? =
+        once("GET", "/hyun/push?after=$after&timeout=$timeoutS", null, (timeoutS + 10) * 1000)
+
+    /** 폰 연동 — 차에서 나눈 이야기 {items:[{t, ago, src, who, q, a, card}], phone} */
+    fun history(n: Int, done: (JSONObject?) -> Unit) = io.execute { done(http("GET", "/hyun/history?src=car&n=$n")) }
+
     /** 한 번 실패하면 한 번 더 — 에뮬 → PC 연결에서 "unexpected end of stream"이 가끔 난다(서버를 HTTP/1.1로 바꿔 줄임) */
     private fun http(method: String, path: String, body: JSONObject? = null, readMs: Int = 5000): JSONObject? =
         once(method, path, body, readMs) ?: once(method, path, body, readMs)
