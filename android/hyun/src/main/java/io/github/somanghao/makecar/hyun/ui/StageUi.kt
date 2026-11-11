@@ -140,8 +140,12 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         // 테마 인트로(시동 직후 1.6초) · 마무리(시동 끔)
         val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1800 && !m.viewForced)
         val outroX = if (m.sit == Sit.OFF && now - m.sitAt < 1800) (now - m.sitAt) / 1800f else -1f
-        // 내비가 주화면(내비 레이아웃 · 주행 중) — 캐릭터는 왼쪽 위 작은 배지, 내비가 화면을 넓게(댄 11-09)
-        val navMain = !intro && shownCard == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (m.view == null && (driving || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면
+        // 회전 앞(300m 안)엔 내비가 크게 — 회전 거리가 바뀌는 동안만(실차는 다가가며 계속 바뀜). 에뮬 내비는 GPS를 안 따라 늘 첫 회전 80m라 20초 뒤 접는다(사용자 11-12 "무슨 좌회전만 있어")
+        val tk = "${m.navTurnType}|${m.navTurnM}|${m.navTurn}"
+        if (tk != turnKey) { turnKey = tk; turnAt = now }
+        val turnNear = hasRoute() && m.navTurnType.isNotBlank() && m.navTurnM in 0..300 && now - turnAt < TURN_FOCUS_MS
+        // 내비가 주화면 — 캐릭터는 왼쪽 위 작은 배지(댄 11-09). 주행 중엔 회전 앞에서만, 평소 주행·신호대기 = 대화 + 한눈 정보(11-12)
+        val navMain = !intro && shownCard == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (m.view == null && ((driving && turnNear) || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면
         if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
         val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
         val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
@@ -163,8 +167,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val face = if (celebrate) face0 else calm(face0)
         character(c, cx, feet, chH, t, face, alive = !driving && nc < 0.5f, small = nc > 0.5f)
         if (!intro) {
+            val talkX = if (mirror) zoneR + 64 * U else 64 * U
+            val talkW = if (mirror) w - zoneR - 112 * U else zoneL - 112 * U
             if (nk > 0.5f) speech(c, cx + chH * 0.6f, 16 * U + chH * 0.42f, w * 0.5f, navLine())
             else if (narrow) speech(c, cx + chH * 0.6f, 100 * U, w - 40 * U - (cx + chH * 0.6f))   // 오른쪽 위 별·설정 줄(≤72) 아래로
+            else if ((m.sit == Sit.DRIVE || m.sit == Sit.STOP) && dialog(c, talkX, 150 * U, feet - chH - 30 * U, talkW)) { }   // 주행·신호대기 — 방금 대화 크게(11-12)
             else if (mirror) speech(c, zoneR + 64 * U, feet - chH - 56 * U, w - zoneR - 128 * U, tailX = cx)
             else speech(c, 64 * U, feet - chH - 56 * U, zoneL - 128 * U, tailX = cx)
             if (skinned && !glance() && nc < 0.5f) sticker(c, cx, feet, chH, face)
@@ -203,6 +210,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                         button(c, "닫기", RectF(full.left, full.top, full.left + 110 * U, full.top + 52 * U), false, "view:close")
                         category(c, RectF(full.left, full.top + 68 * U, full.right, full.bottom), m.view!!)
                     }
+                    m.sit == Sit.DRIVE || m.sit == Sit.STOP -> driveGlance(c, full)   // 주행·신호대기 — 한눈 정보(11-12)
                     !driving -> stateScreen(c, full)
                 }
                 c.restore()
@@ -619,11 +627,13 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     // 방금 한 대답 — 말이 끝난 뒤에도 잠깐 캐릭터 옆에 남긴다(장·아이디어 고정 문구보다 먼저). 그사이 운전자가 장을 넘기거나 눌렀으면 그 장 문구로.
     // 11-11 사용자: "대전 안내하라고 했는데 '오늘 소식 정리했어요'가 그대로 — 마지막 메시지를 표시해야"
     private var lastSaid = ""; private var lastSaidAt = 0L; private var touchedAt = 0L
+    private var lastSaidReply = false; private var lastSaidMoving = false   // 대답(질문에 대한)이었나 · 주행 쪽(D·신호대기)에서 한 말인가 — 주차 때 말이 주행 화면에 남지 않게(11-12)
+    private fun movingSide() = m.sit == Sit.DRIVE || m.sit == Sit.STOP || m.sit == Sit.READY
     private fun speech(c: Canvas, cx: Float, headTop: Float, maxW: Float, over: String? = null, tailX: Float? = null) {
         val now = SystemClock.elapsedRealtime()
-        if (v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() && v.hyunLine != lastSaid) { lastSaid = v.hyunLine; lastSaidAt = now }
+        if (v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() && v.hyunLine != lastSaid) { lastSaid = v.hyunLine; lastSaidAt = now; lastSaidReply = v.prioReply; lastSaidMoving = movingSide() }
         val hold = if (m.sit == Sit.DRIVE) 60_000L else 30_000L
-        val recent = lastSaid.isNotBlank() && now - lastSaidAt < hold && max(m.pageAt, touchedAt) < lastSaidAt
+        val recent = lastSaid.isNotBlank() && now - lastSaidAt < hold && max(m.pageAt, touchedAt) < lastSaidAt && lastSaidMoving == movingSide()
         val full = when {
             recent && v.mode == HyunView.Mode.READY -> keySentence(lastSaid)
             ideaNow() != null && v.mode == HyunView.Mode.READY -> ideaLine(ideaNow()!!)
@@ -637,7 +647,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }.let { if (it.length > 34) it.take(33) + "…" else it }
         if (full.isBlank()) return
         if (full != bubbleText) { bubbleText = full; bubbleAt = SystemClock.elapsedRealtime() }
-        val n = if (m.sit == Sit.DRIVE) full.length else ((SystemClock.elapsedRealtime() - bubbleAt) / 38).toInt().coerceIn(0, full.length)   // 주행 중엔 화면을 자주 다시 그리지 않으니 타자 효과 없이
+        val n = if (glance()) full.length else ((SystemClock.elapsedRealtime() - bubbleAt) / 38).toInt().coerceIn(0, full.length)   // 운전 중(출발 준비 D · 주행 · 신호대기)엔 타자 효과 없이 — 한눈 규칙 '움직임 없음'(11-12)
         val shown = full.take(n)
         val fs = 26 * U
         val col = if (sceneDark) 0xF2FFFFFF.toInt() else FG
@@ -1254,6 +1264,169 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             lab(c, "남은 거리", r.left + 40 * U, r.top + 52 * U)
             text(c, m.navRemain, r.left + 40 * U, r.centerY() + 40 * U, fit(m.navRemain, 80 * U, r.width() * 0.6f, bold), FG, bold)
             text(c, m.navDest, r.left + 40 * U, r.bottom - 32 * U, 30 * U, MUTED, medium, maxW = r.width() - 80 * U)
+        }
+    }
+
+    // ================= 주행·신호대기 = 대화 + 한눈 정보(사용자 11-12 "주행 중 화면에 대화하고 정보 보여 줘야 할 거 아냐 — 무슨 좌회전만 있어") =================
+    // 한눈 규칙(명세 hyunbiseo docs/specs · 주행 안전): 항목 ≤5 · 큰 글씨 · 터치 없음(버튼·[전화] 숨김 — 정차 때만) · 움직임 없음 ·
+    // 카드는 처음 보인 뒤 60초 또는 회전 300m 앞이면 접힘(회전 앞엔 내비가 크게). 정차(주차·시동)하면 지금처럼 전체 카드.
+    private var turnKey = ""; private var turnAt = 0L
+    private var glCard: HyunView.Card? = null; private var glCardAt = 0L
+    private val TURN_FOCUS_MS = 20_000L
+    private val GLANCE_CARD_MS = 60_000L
+
+    /** 방금 대화 — 내 질문 한 줄(작게) + 현비서 답 핵심(큰 글씨 3줄까지). 듣는·생각하는·말하는 중이거나 대답 뒤 60초(신호대기 30초). 없으면 false */
+    private fun dialog(c: Canvas, x: Float, top: Float, bottom: Float, w: Float): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        if (v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() && v.hyunLine != lastSaid) { lastSaid = v.hyunLine; lastSaidAt = now; lastSaidReply = v.prioReply; lastSaidMoving = movingSide() }
+        val hold = if (m.sit == Sit.DRIVE) 60_000L else 30_000L
+        val recent = lastSaid.isNotBlank() && now - lastSaidAt < hold && lastSaidMoving == movingSide()
+        val ans = when (v.mode) {
+            HyunView.Mode.LISTENING -> "듣고 있어요…"
+            HyunView.Mode.THINKING -> "음… 찾아보는 중이에요"
+            HyunView.Mode.SPEAKING -> v.hyunLine.ifBlank { lastSaid }
+            else -> if (recent) lastSaid else return false
+        }
+        // 이 대답의 질문 — 마지막 내 말 뒤에 지금 대답이 있을 때(사이에 "거의 다 찾았어요" 같은 중간 말이 낄 수 있다) 또는 아직 생각 중
+        val chat = v.chat; val mi = chat.indexOfLast { it.me }
+        val cur = setOf(lastSaid.trim(), v.hyunLine.trim())
+        val q = chat.getOrNull(mi)?.text?.takeIf { mi >= 0 && (v.mode == HyunView.Mode.THINKING || v.mode == HyunView.Mode.LISTENING || (lastSaidReply && chat.drop(mi + 1).any { b -> !b.me && b.text in cur })) }
+        val sents = Regex("(?<=[.!?])\\s+").split(adult(ans).trim()).filter { it.isNotBlank() }
+        // 물음이 있으면 그 앞 문장 + 물음("대신 백경한우가 가까워요. 거기로 안내할까요?" — '거기'가 가리키는 문장을 같이), 없으면 앞 두 문장
+        val qi = sents.indexOfLast { it.trim().endsWith("?") }
+        val core = when { qi > 0 -> sents.subList(qi - 1, qi + 1).joinToString(" "); qi == 0 -> sents[0]; else -> sents.take(2).joinToString(" ") }
+        val col = if (sceneDark) 0xF2FFFFFF.toInt() else FG
+        var y = top
+        if (q != null) { y = wrap(c, "나: $q", x + 18 * U, y + 26 * U, 26 * U, MUTED, w - 18 * U, 1, medium) + 10 * U }
+        val fs = 38 * U
+        val lines = min(3, max(1, ((bottom - y) / (fs * 1.32f)).toInt()))
+        p.color = ACC; c.drawRect(x, y + fs * 0.1f, x + 4 * U, y + fs * 0.25f + min(lines, splitLines(core, w - 18 * U).size) * fs * 1.32f, p)
+        wrap(c, core, x + 18 * U, y + fs, fs, col, w - 18 * U, lines, bold, lh = 1.32f)
+        return true
+    }
+
+    /** 주행·신호대기 오른쪽 — (경로 없으면 '목적지 없음' 한 줄) + 방금 답의 카드 요약 · 카드 없으면 그다음 회전 + 오늘 주행 */
+    private fun driveGlance(c: Canvas, z: RectF) {
+        val now = SystemClock.elapsedRealtime()
+        val card = v.card
+        if (card !== glCard) { glCard = card; glCardAt = now }
+        var top = z.top
+        if (!m.navActive) {
+            val r = RectF(z.left, top, z.right, top + 84 * U); box(c, r)
+            icon(c, "pin", r.left + 48 * U, r.centerY(), 40 * U, ACC)
+            text(c, "목적지 없음 · \"현비서야, 코엑스 가자\"", r.left + 90 * U, r.centerY() + 12 * U, 32 * U, FG, medium, maxW = r.width() - 120 * U)
+            top = r.bottom + G
+        }
+        val body = RectF(z.left, top, z.right, z.bottom)
+        if (card != null && now - glCardAt < GLANCE_CARD_MS) { glanceCard(c, body, card); return }
+        val tipH = if (m.sit == Sit.STOP && m.novice) 84 * U + G else 0f
+        val rest = RectF(body.left, body.top, body.right, body.bottom - tipH)
+        if (hasRoute()) {
+            val hh = (rest.height() - G) * 0.55f
+            nextTurnTile(c, RectF(rest.left, rest.top, rest.right, rest.top + hh))
+            tripTile(c, RectF(rest.left, rest.top + hh + G, rest.right, rest.bottom))
+        } else tripTile(c, RectF(rest.left, rest.top, rest.right, rest.top + min(rest.height(), 320 * U)))
+        if (tipH > 0f) { val r = RectF(body.left, body.bottom - 84 * U, body.right, body.bottom); box(c, r); text(c, "브레이크를 계속 꾹", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, FG, medium) }
+    }
+
+    /** 오늘 주행 — 이번 주행 거리·시간 · 별 · 오늘의 퀘스트(전부 앱이 잰 실제 값) */
+    private fun tripTile(c: Canvas, r: RectF) {
+        box(c, r)
+        val x0 = r.left + 40 * U
+        lab(c, "이번 주행", x0, r.top + 50 * U)
+        val cs = cols(RectF(x0, r.top, r.right - 40 * U, r.bottom), 1.2f, 1f, 1.2f)
+        val sy = r.top + min(r.height() * 0.62f, 150 * U)
+        stat(c, cs[0].left, sy, "%.1fkm".format(m.tripKm), "${max(1, m.tripMin)}분 · 급정거 ${m.harshN}", FG, cs[0].width(), 52 * U)
+        stat(c, cs[1].left, sy, sgn(m.tripPoints), "별", if (m.tripPoints >= 0) GOOD else RED, cs[1].width(), 52 * U)
+        stat(c, cs[2].left, sy, if (m.questDone) "성공" else "%.1f/10".format(m.questKm), "급정거 없이 10km", if (m.questDone) GOOD else FG, cs[2].width(), 52 * U)
+    }
+
+    /** "04:00" → "새벽 4시"(HyunView·폰 [정보] 탭과 같은 규칙) */
+    private fun easyHm(hm: String): String? {
+        val mt = Regex("""(\d{1,2}):(\d{2})""").find(hm) ?: return null
+        val hh = mt.groupValues[1].toInt(); val mi = mt.groupValues[2].toInt()
+        val part = when (hh) { in 0..5 -> "새벽"; in 6..11 -> "오전"; 12 -> "낮"; in 13..17 -> "오후"; in 18..20 -> "저녁"; else -> "밤" }
+        val h12 = when { hh == 0 -> 12; hh > 12 -> hh - 12; else -> hh }
+        return "$part ${h12}시" + if (mi > 0) " ${mi}분" else ""
+    }
+
+    /** 한눈 카드 — H가 만든 같은 카드 데이터(폰 [정보] 탭과 값 동일)를 주행용으로: 웹툰 상위 5(작은 표지) · 일정(다음 경기 날짜·한국 시각·상대 + 작은 사진)
+     *  · 장소 상위 3(걸어서 N분 강조) · 지수 2~3(등락 색) · 소개(사진 + 3줄) · 그 밖 상위 5. 버튼 없음 */
+    private fun glanceCard(c: Canvas, r: RectF, k: HyunView.Card) {
+        box(c, r)
+        val x0 = r.left + 36 * U; val x1 = r.right - 36 * U
+        text(c, k.title.ifBlank { "현비서" }, x0, r.top + 60 * U, fit(k.title.ifBlank { "현비서" }, 42 * U, x1 - x0, bold), FG, bold)
+        val a = RectF(x0, r.top + 96 * U, x1, r.bottom - 28 * U)
+        val walkRe = Regex("""걸어서\s*(\d+)\s*분""")
+        val pctRe = Regex("""([+\-−▲▼])\s*(\d+(?:\.\d+)?)\s*%""")
+        fun parts(s: String) = s.split(" — ", " - ", limit = 2)
+        when {
+            k.kind == "schedule" -> {
+                val img = k.images.firstOrNull { it.isNotBlank() }
+                var lx = a.left
+                if (img != null) { val ih = min(a.height(), 300 * U); val ir = RectF(a.left, a.top, a.left + ih * 0.78f, a.top + ih); photoFit(c, img, ir, 16 * U); lx = ir.right + 32 * U }
+                val rows = k.items.take(3)
+                val past = { s: String -> Regex("끝남|결과|종료").containsMatchIn(parts(s)[0]) }
+                val next = rows.indexOfFirst { !past(it) }
+                val rh = min(a.height() / max(rows.size, 1), 120 * U)
+                rows.forEachIndexed { i, s ->
+                    val ty = a.top + rh * i
+                    val ps = parts(s); val date = Regex("""\d{1,2}-\d{1,2}(\(.\))?""").find(ps[0])?.value.orEmpty()
+                    val hm = Regex("""\d{1,2}:\d{2}""").find(ps[0])?.value
+                    val big = when { past(s) -> "끝남"; hm != null -> easyHm(hm) ?: hm; else -> "시각 미정" }
+                    if (i == next) { p.shader = null; p.color = Glass.a(ACC, 50); c.drawRoundRect(RectF(lx - 12 * U, ty + 4 * U, a.right, ty + rh - 4 * U), 14 * U, 14 * U, p) }
+                    text(c, date, lx, ty + rh * 0.38f, 26 * U, MUTED, medium, maxW = 200 * U)
+                    text(c, big, lx, ty + rh * 0.82f, 38 * U, if (past(s)) MUTED else FG, bold, maxW = 260 * U)
+                    val vs = ps.getOrNull(1).orEmpty().split(" · ").first()
+                    text(c, vs, lx + 280 * U, ty + rh * 0.66f, fit(vs, 36 * U, a.right - lx - 300 * U, bold), if (past(s)) MUTED else FG, bold, maxW = a.right - lx - 300 * U)
+                }
+            }
+            k.kind == "info" -> {
+                val img = k.images.firstOrNull { it.isNotBlank() }
+                var lx = a.left
+                if (img != null) { val iw = min(a.width() * 0.36f, 320 * U); val ir = RectF(a.left, a.top, a.left + iw, a.top + min(a.height(), iw * 1.1f)); photoFit(c, img, ir, 16 * U); lx = ir.right + 32 * U }
+                val rows = k.items.take(3); val rh = min(a.height() / 3f, 110 * U)
+                rows.forEachIndexed { i, s -> val ps = parts(s); val ty = a.top + rh * i
+                    if (ps.size > 1) { text(c, ps[0], lx, ty + rh * 0.36f, 24 * U, MUTED, medium, maxW = a.right - lx); text(c, ps[1], lx, ty + rh * 0.8f, fit(ps[1], 36 * U, a.right - lx, bold), FG, bold, maxW = a.right - lx) }
+                    else wrap(c, s, lx, ty + rh * 0.6f, 32 * U, FG, a.right - lx, 1, bold) }
+            }
+            k.images.any { it.isNotBlank() } -> {   // 웹툰 순위 — 상위 5 · 작은 표지
+                val rows = k.items.take(5); val rh = min(a.height() / 5f, 96 * U)
+                rows.forEachIndexed { i, s -> val ty = a.top + rh * i
+                    val th = RectF(a.left + 56 * U, ty + rh * 0.08f, a.left + 56 * U + rh * 0.84f * 0.75f, ty + rh * 0.92f)
+                    text(c, "${i + 1}", a.left + 40 * U, ty + rh * 0.66f, 36 * U, if (i < 3) ACC else MUTED, bold, Paint.Align.RIGHT)
+                    k.images.getOrNull(i)?.takeIf { it.isNotBlank() }?.let { photoFit(c, it, th, 8 * U) }
+                    text(c, parts(s)[0], th.right + 24 * U, ty + rh * 0.64f, fit(parts(s)[0], 36 * U, a.right - th.right - 24 * U, bold), FG, bold, maxW = a.right - th.right - 24 * U) }
+            }
+            k.items.any { walkRe.containsMatchIn(it) } -> {   // 장소 — 상위 3 · 걸어서 N분 강조
+                val rows = k.items.take(3); val rh = min(a.height() / 3f, 130 * U)
+                val mins = rows.map { walkRe.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+                val near = mins.withIndex().filter { it.value != null }.minByOrNull { it.value!! }?.index ?: -1
+                rows.forEachIndexed { i, s -> val ty = a.top + rh * i
+                    val wm = mins[i]
+                    val label = wm?.let { "걸어서 ${it}분" } ?: ""
+                    p.textSize = 32 * U; p.typeface = bold; val pw = if (label.isNotBlank()) p.measureText(label) + 44 * U else 0f
+                    if (label.isNotBlank()) { val pr = RectF(a.right - pw, ty + rh * 0.22f, a.right, ty + rh * 0.78f); p.shader = null; p.color = if (i == near) ACC else Glass.a(ACC, 70); c.drawRoundRect(pr, pr.height() / 2, pr.height() / 2, p)
+                        text(c, label, pr.centerX(), pr.centerY() + 11 * U, 32 * U, Color.WHITE, bold, Paint.Align.CENTER) }
+                    text(c, "${i + 1}", a.left + 28 * U, ty + rh * 0.62f, 38 * U, if (i == near) ACC else MUTED, bold, Paint.Align.RIGHT)
+                    text(c, parts(s)[0], a.left + 56 * U, ty + rh * 0.62f, fit(parts(s)[0], 40 * U, a.width() - 80 * U - pw, bold), FG, bold, maxW = a.width() - 80 * U - pw) }
+            }
+            k.items.any { pctRe.containsMatchIn(it) } -> {   // 주식 지수 — 2~3개 · 등락 색
+                val rows = k.items.filter { pctRe.containsMatchIn(it) }.take(3); val rh = min(a.height() / 3f, 130 * U)
+                rows.forEachIndexed { i, s -> val ty = a.top + rh * i
+                    val mt = pctRe.find(s)!!; val up = mt.groupValues[1] == "+" || mt.groupValues[1] == "▲"
+                    val col = updown(if (up) 1f else -1f)
+                    val ps = parts(s)
+                    text(c, ps[0], a.left, ty + rh * 0.62f, 40 * U, FG, bold, maxW = a.width() * 0.4f)
+                    val rest = ps.getOrNull(1).orEmpty()
+                    text(c, rest, a.right, ty + rh * 0.62f, fit(rest, 40 * U, a.width() * 0.58f, bold), col, bold, Paint.Align.RIGHT, maxW = a.width() * 0.58f) }
+            }
+            else -> {   // 그 밖 목록 — 상위 5 제목만
+                val rows = k.items.take(5); val rh = min(a.height() / 5f, 96 * U)
+                rows.forEachIndexed { i, s -> val ty = a.top + rh * i
+                    text(c, "${i + 1}", a.left + 28 * U, ty + rh * 0.64f, 36 * U, if (i < 3) ACC else MUTED, bold, Paint.Align.RIGHT)
+                    text(c, parts(s)[0], a.left + 56 * U, ty + rh * 0.64f, fit(parts(s)[0], 36 * U, a.width() - 56 * U, bold), FG, bold, maxW = a.width() - 56 * U) }
+            }
         }
     }
 
