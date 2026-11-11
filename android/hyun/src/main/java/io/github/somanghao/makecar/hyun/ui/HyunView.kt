@@ -41,7 +41,8 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
     /** 기능 한 줄(아이콘 + 글) — 1칸 = 내비 판 바로 아래 · 반반 = 길 카드 아래. 코어가 render마다 비우고 기능 render가 채운다 */
     data class Line(val icon: String, val text: String)
     /** 목록 카드(정차) — kind "" = 목록(images가 있으면 표지 격자) · "info" = 소개(왼쪽 사진 · 오른쪽 "라벨 — 값" 표 — 휴게소·인물) */
-    data class Card(val title: String, val source: String, val items: List<String>, val images: List<String> = emptyList(), val kind: String = "")
+    data class Card(val title: String, val source: String, val items: List<String>, val images: List<String> = emptyList(), val kind: String = "",
+                    val tels: List<String> = emptyList())   // tels = 가게마다 [전화](장소 카드 — 서버 places, 화면에만)
     /** 대화형 말풍선 — me = 운전자 */
     data class Bubble(val me: Boolean, val text: String)
 
@@ -88,6 +89,8 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
     private val nextHit = RectF()
     private val listBtn = RectF()
     var onCarLink: () -> Unit = {}       // 폰 — '차 현비서' 줄 누름 → 차에서 나눈 이야기 · 보낸 장소(CarLinkFeature)
+    var onCardDial: (Int) -> Unit = {}   // 목록 카드 가게 줄의 [전화] 누름 → 코어가 ACTION_DIAL(번호만 입력 — 통화는 운전자가)
+    private val telHits = mutableListOf<Pair<RectF, Int>>()
     private val carHit = RectF()
     // 우리 쪽(dan-emu) — 상시 듣기 토글 · 상황 화면(StageUi) · 표정 덮기. 데이터(목적지·회전·말…)는 위 ScreenData 로 옮겨 갔다(업스트림 11-09)
     var listenAlways = true             // 상시 듣기("현비서야") ↔ 눌러서 말하기
@@ -1436,12 +1439,22 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
         val size = min(u * 0.034f, rowH * 0.56f)
         p.textSize = size; p.typeface = bold
         val numW = p.measureText("10") + size * 0.8f
+        telHits.clear()
+        val hasTel = k.tels.any { it.isNotBlank() }
+        val chipW = if (hasTel) min(u * 0.15f, iw * 0.22f) else 0f
         items.forEachIndexed { i, s ->
             val y = listTop + rowH * i + rowH * 0.66f
             text(c, "${i + 1}", ix + numW - size * 0.8f, y, size, if (i < 3) moodColor() else MUTED, bold, Paint.Align.RIGHT)
             val parts = s.split(" — ", " - ", limit = 2)
             val face = if (i < 3) bold else body
-            val avail = iw - numW
+            val avail = iw - numW - (if (hasTel) chipW + u * 0.02f else 0f)
+            k.tels.getOrNull(i)?.takeIf { it.isNotBlank() }?.let {   // 가게 줄 오른쪽 [전화] — 누르기 영역은 줄 높이 거의 전부(사용자 11-11 "리스트 아래에 바로 전화하기")
+                val ch = RectF(ix + iw - chipW, listTop + rowH * i + rowH * 0.14f, ix + iw, listTop + rowH * (i + 1) - rowH * 0.14f)
+                p.style = Paint.Style.FILL; p.shader = null; p.color = ACCENT
+                c.drawRoundRect(ch, ch.height() / 2, ch.height() / 2, p)
+                text(c, "전화", ch.centerX(), ch.centerY() + size * 0.36f, size * 0.92f, Color.WHITE, bold, Paint.Align.CENTER)
+                telHits += RectF(ch).apply { inset(-u * 0.01f, -rowH * 0.12f); offset(paddingLeft.toFloat(), paddingTop.toFloat()) } to i
+            }
             p.textSize = size; p.typeface = face
             val tw = p.measureText(parts[0])
             text(c, parts[0], ix + numW, y, size, FG, face, maxW = avail)
@@ -1611,6 +1624,7 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
         }
         if (e.action != MotionEvent.ACTION_UP) return true
         if (listOpen) { listOpen = false; invalidate(); return true }
+        if (card != null && !driving) telHits.firstOrNull { it.first.contains(e.x, e.y) }?.let { onCardDial(it.second); return true }   // 목록 카드 [전화]
         if (!phone) stage?.let { if (it.touch(x, y)) { invalidate(); return true } }
         if (!phone && !charBtn.isEmpty && RectF(charBtn).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) { onCharacter(); return true }   // 캐릭터 바꾸기
         if (!phone && !skinBtn.isEmpty && RectF(skinBtn).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) { onSkin(); return true }   // 스킨 바꾸기

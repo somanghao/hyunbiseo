@@ -236,12 +236,17 @@ def _ensure(msg):
     return t
 
 
+SCHEMA = {"place_notes": {"type": "array", "description": "[주변 장소] 블록이 있을 때만 — 검색으로 찾은 가게 평판 한 줄(평점·리뷰 수·특징, 찾은 것만), 없으면 []",
+                           "items": {"type": "object", "properties": {"name": {"type": "string"}, "note": {"type": "string"}},
+                                     "required": ["name", "note"], "additionalProperties": False}}}
+
 RULES = """- **주변 장소·도착 추천**([주변 장소] 블록이 있을 때만): 장소 이름·거리는 블록에 있는 것만 — 지어내지 않는다. 식사 시간·식당 목적지 판단은 서버가 이미 했다. 카드는 서버가 만든다 — card는 비운다(title="" items=[])
   · near(곧 도착): 도착하면 몇 시 무슨 식사인지 + 1번 장소 이름·목적지에서 거리를 말하고 "바로 거기로 갈까요? 다른 곳은 내리면 보여 드릴게요" — listen=true, prio 1
   · arrived(도착): "도착했어요" + 1번 이름·거리(걸어서 N분) + "화면에 N곳 띄웠어요". [취향] 음식이 없으면 "좋아하는 음식 알려 주시면 다음엔 맞춰 볼게요"
   · 고르기: 운전자가 곧 도착 제안에 "응·그래·가자"면 1번, "두 번째로"면 2번 — **주행 중이면 nav_name·nav_lat·nav_lng에 그 장소**("○○로 안내할게요"). **정차 중이면** 목적지에서 500m 안은 nav를 비우고 "걸어서 N분, ○쪽이에요", 500m 넘거나 "차로 가자"면 nav
   · via(경유 요청): 운전자가 가는 길에 들를 곳을 말했다 — 1번(가장 가까운 곳)을 via_name·via_lat·via_lng에 넣고 "○○(걸어서/차로 거리) 들렀다 가게 경유지로 넣었어요". 목적지도 말했으면 nav도 채운다([맥락] favs의 이름 — 집·회사 — 은 그 좌표)
-  · 장소를 못 찾았으면(블록에 '찾지 못함') 솔직히 말한다"""
+  · 장소를 못 찾았으면(블록에 '찾지 못함') 솔직히 말한다
+  · place_notes: 검색으로 가게 평판을 찾았으면 [{name: 블록의 가게 이름, note: "평점 3.4 · 리뷰 5개 · 밤 9시 반 마감 후기"}] — 찾은 것만, 못 찾은 가게는 넣지 않는다(없으면 [])"""
 
 
 def block(msg, env):
@@ -263,12 +268,21 @@ def block(msg, env):
 
 def post(rep, msg, b, dry, rec):
     p = msg.get("places")
+    if p and p.get("items"):   # 두뇌가 검색으로 찾은 가게 평판 한 줄 → 항목에(메모리 — 폰 [정보] 탭 가게 줄)
+        notes = {re.sub(r"\s+", "", n.get("name", "")): n.get("note", "") for n in (b.get("place_notes") or []) if n.get("note")}
+        for x in p["items"]:
+            k = re.sub(r"\s+", "", x.get("name", ""))
+            hit = notes.get(k) or next((v for nk, v in notes.items() if nk and (nk in k or k in nk)), None)
+            if hit:
+                x["note"] = hit
     if p:
         rec["places"] = f"kakao|{p['mode']}|q={p.get('query', '')}|n={len(p.get('items') or [])}"   # 로그엔 검색 사실·개수만(이름 X)
     if not p or not p.get("items") or p.get("mode") == "pick":
         return
     title = f"{p['dest']} 근처 " + (p["meal"] or p["query"]) + (f" · {p['why']}" if p.get("why") else "")
     rep["card"] = {"kind": "", "title": title.strip(), "source": "카카오 로컬 · 실시간", "nostore": True,
-                   "items": [f"{x['name']} — {x['m']}m · {x['kind']} · 걸어서 {x['walk']}분" for x in p["items"]]}
+                   "items": [f"{x['name']} — {x['m']}m · {x['kind']} · 걸어서 {x['walk']}분" for x in p["items"]],
+                   # 가게마다 [전화](차 화면 목록 카드 · ACTION_DIAL) — nostore라 로그엔 안 남는다(inbox가 제목·개수만 남김)
+                   "tels": [x.get("tel", "") for x in p["items"]]}
     if p["mode"] == "near":
         rep["arrive_line"] = f"도착 {p['arrive']} {p['meal']} · {p['query']} {len(p['items'])}곳 찾아 둠"
