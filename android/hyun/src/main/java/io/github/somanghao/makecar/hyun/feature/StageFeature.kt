@@ -293,7 +293,6 @@ class StageFeature : Feature {
     private var tomorrow = ""
     private var news: List<String> = emptyList()
     private var newsTag = "오늘의 헤드라인"
-    private var gossipIdx = 0
     private var tipIdx = 0
     private var turnWarned = ""
 
@@ -603,7 +602,8 @@ class StageFeature : Feature {
             Sit.IGNITION -> ignitionLine()
             Sit.READY -> if (m.novice) "출발 순서예요. 브레이크를 꾹 밟고, D로 바꾼 다음, 천천히 발을 떼요." else null
             Sit.DRIVE -> if (m.novice) "출발. 앞차와 간격은 넉넉히, 제가 길을 미리미리 말해 줄게요." else null
-            Sit.STOP -> gossip().let { g -> if (m.novice && tipIdx++ % 2 == 0) "신호 대기 중엔 브레이크를 계속 꾹. ${g.second}" else g.second }
+            // 동네 이야기 고정 6문장(위치와 무관 — "판교라는 이름은…")은 뺐다(가짜 감사 #5). 초보에게 팁만 가끔
+            Sit.STOP -> if (m.novice && tipIdx++ % 2 == 0) "신호 대기 중엔 브레이크를 계속 꾹." else null
             Sit.PARK -> parkLine()
             Sit.OFF -> offLine()
         }
@@ -797,10 +797,7 @@ class StageFeature : Feature {
     override fun onHeard(text: String): Boolean {
         val t = text.replace(" ", "")
         if (Regex("^(다음|이전|앞)(화면|장|페이지)?(보여줘|으로|넘겨)?$").matches(t)) { page(if (t.startsWith("다음")) "next" else "prev"); hub.say(StageModel.pages(m.sit)[pageIdx()].title, "", false, 2, reply = true, tag = "페이지"); return true }
-        // 글레오 함수 3개(Gleo Interface 후보) — 오늘 브리핑 · 안전점수 · 꾸미기
-        if (Regex("오늘(뭐있|브리핑|어때)|브리핑해").containsMatchIn(t)) {
-            m.gleoLast = "오늘 브리핑"
-            hub.say("오늘은 ${m.weatherShort.ifBlank { "날씨 확인 중" }}이에요. ${news.firstOrNull()?.let { "주요 소식은 $it." } ?: ""} 첫 일정은 9시 반 주간 회의예요.", "", false, 1, reply = true, tag = "글레오·브리핑"); return true }
+        // 글레오 함수 후보 — 안전점수 · 꾸미기. "브리핑해·오늘 뭐 있어"는 가로채지 않는다(고정 답에 가짜 일정 "첫 일정은 9시 반 주간 회의"가 섞였다 — 가짜 감사 #6) → 코어 브리핑·두뇌가 받는다
         if (Regex("운전(어땠|점수)|안전점수|내점수").containsMatchIn(t)) {
             m.gleoLast = "안전점수"
             hub.say("오늘 급정거 ${harsh}번, 별 ${sign(m.todayPoints)}개예요. 저는 지금 ${m.moodLabel} 기분이고, 레벨 ${m.level} ${m.levelTitle}예요.", "happy", false, 1, reply = true, tag = "글레오·점수"); return true }
@@ -808,6 +805,8 @@ class StageFeature : Feature {
             m.gleoLast = "꾸미기 · ${d.name}"
             if (movingNow()) { hub.say("${d.name}은 차를 세우면 바로 해 드릴게요.", "", false, 1, reply = true, tag = "글레오·꾸미기"); return true }
             wearAcc(d.id); hub.say("${d.name} 했어요. 어때요?", "happy", false, 1, reply = true, tag = "글레오·꾸미기"); refresh(); hub.render(); return true }
+        // "23도로 올려 줘" — 공조 설정 온도(실제로 바뀐다 · 11-11 에뮬 실측). 16~30도만
+        Regex("(\\d{2})도로?(올려|내려|맞춰|낮춰|해)").find(t)?.let { mt -> val c = mt.groupValues[1].toFloat(); if (c in 16f..30f) { pending = null; setCabinSay(c); return true } }
         if (pending != null) {
             if (Regex("^(응|네|예|좋아|그래|오케이|ㅇㅇ|해줘|부탁|어|콜)").containsMatchIn(t)) return doPending()
             if (Regex("^(아니|됐어|괜찮|싫어|안해)").containsMatchIn(t)) { pending = null; hub.say("네, 그대로 둘게요.", "", false, 1, reply = true, tag = "반응"); return true }
@@ -924,9 +923,8 @@ class StageFeature : Feature {
             Sit.DRIVE -> { m.headline = m.navTurn }
             Sit.STOP -> {
                 m.headline = "신호 대기 중"
-                val g = gossip()
-                out += Tile("chat", g.first, g.second, "신호 기다리는 동안 동네 이야기", "accent", "예시")
-                out += Tile("compass", "다음 안내", "다음은 ${hub.view.dist(m.navTurnM)} 앞에서 ${m.navTurn}이에요.", "${m.navEta} · ${m.navDest} ${m.navRemain}", "info", if (m.mockRoute) "모의 경로" else "")
+                // 동네 이야기(고정 문장)는 뺐다 — 다음 안내는 실제 경로(또는 시연 모의 경로)일 때만
+                if (m.navTurnType.isNotBlank()) out += Tile("compass", "다음 안내", "다음은 ${hub.view.dist(m.navTurnM)} 앞에서 ${m.navTurn}이에요.", "${m.navEta} · ${m.navDest} ${m.navRemain}", "info", if (m.mockRoute) "모의 경로" else "")
                 tip("정차 중엔 브레이크를 계속 꾹. 앞차가 출발하면 한 박자 쉬고 천천히.")
             }
             Sit.PARK -> {
@@ -1030,17 +1028,31 @@ class StageFeature : Feature {
         if (changed("min30", tmin >= 30) && tmin >= 30) { event("clock", "벌써 30분 달렸어요"); if (m.novice) talk("벌써 30분 달렸어요. 어깨 힘 빼고 가요.", 3) }
     }
 
+    /** 공조 설정 온도 — 요청 뒤 2초에 차 값을 다시 읽어 맞으면 '맞췄어요', 아니면 '요청했어요'(확인 없이 완료라고 말하지 않기 — 가짜 감사 #8).
+     *  에뮬 실측 11-11: Virtual Console 운전석 20.0° → 23.0°(DDS 활성 때) */
+    private fun setCabinSay(c: Float) {
+        val st = m.status
+        val n = c.toInt()
+        if (st?.setCabin(c) != true) {
+            hub.say("${n}도로 맞추려 했는데, 이 차에선 공조를 바꿀 수 없어서 화면 값만 바꿨어요.", "", false, 1, reply = true, tag = "공조")
+            event("temp", "실내 ${n}° — 화면 값만"); return
+        }
+        hub.main.postDelayed({
+            st.readCabinSet { got -> hub.main.post {
+                val ok = got != null && kotlin.math.abs(got - c) < 0.6f
+                hub.log("stage|hvac|요청 $c → 읽음 ${got ?: "모름"}|${if (ok) "맞음" else "확인 안 됨"}")
+                hub.say(if (ok) "${n}도로 맞췄어요." else "${n}도로 맞춰 달라고 요청했어요.", "happy", false, 1, reply = true, tag = "공조")
+                event("temp", if (ok) "실내 ${n}°로 맞춤" else "실내 ${n}° 요청")
+            } }
+        }, 2000)
+    }
+
     /** "응" — 물어본 일을 한다 */
     private fun doPending(): Boolean {
         val p = pending ?: return false
         pending = null
         when {
-            p.startsWith("cabin:") -> {
-                val c = p.substringAfter(":").toFloat()
-                val real = m.status?.setCabin(c) == true
-                hub.say("${c.toInt()}도로 맞췄어요." + if (real) "" else " (시험 차라 화면 값만 바꿨어요)", "happy", false, 1, reply = true, tag = "공조")
-                event("temp", "실내 ${c.toInt()}°로 맞춤")
-            }
+            p.startsWith("cabin:") -> setCabinSay(p.substringAfter(":").toFloat())
             p == "charge" -> { hub.say("좋아요. 가는 길 충전소를 경유지로 넣을게요.", "happy", false, 1, reply = true, tag = "충전"); hub.heard("가는 길에 전기차 충전소 들렀다 가자") }
         }
         return true
@@ -1242,11 +1254,6 @@ class StageFeature : Feature {
     private fun offLine() = look().greet + "오늘 %.1f킬로미터 달렸어요. 휴대폰이랑 지갑 챙기셨죠? 내일 또 만나요.".format(dayKm)
 
     /** 신호 대기 수다 — 주변 상권·동네 이야기. 카카오 로컬은 서버 도착 추천에만 열려 있어 지금은 예시 이야기(곧 서버 places 로 바꿀 자리) */
-    private fun gossip(): Pair<String, String> {
-        val g = GOSSIP[gossipIdx % GOSSIP.size]
-        return g
-    }
-
     // ---------- 주행 중 길 안내 — 내비(NaviHelper)가 있으면 그 값, 없으면(표준 에뮬) 모의 경로 ----------
     private fun navState() {
         val v = hub.view
@@ -1377,7 +1384,7 @@ class StageFeature : Feature {
     }
 
     override fun render(v: io.github.somanghao.makecar.hyun.ui.HyunView) {
-        if (m.sit == Sit.STOP && SystemClock.elapsedRealtime() - m.sitAt > 25_000) { gossipIdx++; m.sitAt = SystemClock.elapsedRealtime() }
+        // 신호대기 동네 이야기 돌리기(25초마다)는 고정 문장을 뺄 때 함께 뺐다(가짜 감사 #5)
     }
 
     companion object {
@@ -1402,13 +1409,5 @@ class StageFeature : Feature {
             Triple("TURN_ENTER_IC", 1200, "경부고속도로 진입"), Triple("TURN_KEEP_L", 4200, "서울 방면 왼쪽 길"),
             Triple("TURN_EXIT_IC", 2600, "양재IC 나가기"), Triple("TURN_LEFT", 1500, "테헤란로 방면 좌회전"), Triple("TURN_ARRIVE", 800, "코엑스 도착"))
         /** 신호 대기 수다(예시) — 짧게, 말로 듣기 좋게 */
-        private val GOSSIP = listOf(
-            "판교 이야기" to "판교라는 이름은 옛날 이 근처 냇가에 놓인 널빤지 다리, 널다리에서 왔대요.",
-            "근처 가게" to "이 길 건너 빵집은 아침 일곱 시 소금빵이 십 분 만에 동난대요. 다음엔 일찍 와 볼까요?",
-            "동네 상권" to "요즘 이 동네는 점심마다 샐러드 가게 앞 줄이 제일 길어요. 직장인이 많아서 그렇대요.",
-            "숨은 명소" to "조금만 가면 탄천 산책로가 나와요. 해 질 무렵 자전거 타기 좋은 길로 유명해요.",
-            "알쓸신잡" to "신호등 빨간불이 맨 위에 있는 건, 눈이 쌓여도 제일 잘 보이게 하려는 거래요.",
-            "근처 카페" to "모퉁이 카페는 사장님이 직접 볶은 원두를 써서, 고소한 냄새가 길까지 난대요.",
-        )
     }
 }

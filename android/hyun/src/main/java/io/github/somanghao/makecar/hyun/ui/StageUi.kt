@@ -665,10 +665,23 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         for (ln in lines) { val part = ln.take(left.coerceAtLeast(0)); left -= ln.length
             text(c, part, cx + 18 * U, y, fs, col, medium); y += fs * 1.4f }
     }
+    /** 차 컨디션 한 줄 — 읽힌 값만(벨트·문·배터리). 못 읽으면 "차부터 살펴볼게요" */
+    private fun carBubble(): String {
+        val st = m.status ?: return "차부터 살펴볼게요"
+        val soc = st.soc.v?.toInt()
+        return when {
+            st.doorOpen.v == true -> "운전석 문이 열려 있어요"
+            st.belt.v == false -> "벨트부터 매요"
+            soc != null && soc < 30 -> "배터리 $soc% — 충전이 필요해요"
+            soc != null && st.belt.v == true -> "배터리 $soc%, 벨트 OK예요"
+            soc != null -> "배터리 $soc%예요"
+            else -> "차부터 살펴볼게요"
+        }
+    }
     private fun bubbleFor(label: String): String = when (label) {
         "오늘 날씨" -> if (m.raining) "비가 와요. 천천히 가요" else "오늘 날씨를 정리했어요"
         "인사" -> if (m.sit == Sit.IGNITION) "가는 길에 어떤 이야기를 들려 드릴까요?" else label
-        "차 컨디션" -> "차 상태는 괜찮아요"
+        "차 컨디션" -> carBubble()   // 예전 고정 "차 상태는 괜찮아요"(실제 상태와 무관 — 가짜 감사 #11) → 읽은 값으로
         "관심 뉴스", "오늘의 헤드라인" -> "오늘 소식 하나 골라 뒀어요"
         "추천 목적지", "오늘 목적지" -> "어디로 갈까요?"
         "이번 주행" -> "수고하셨어요"
@@ -1512,11 +1525,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 if (low) rows += row(100 * U) { r -> box(c, r, "screen:car"); text(c, "배터리 $soc% — 가는 길에 충전해요", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, WARN, medium, maxW = r.width() - 96 * U) }
                 else if (m.novice) rows += row(100 * U) { r -> box(c, r); text(c, "브레이크 꾹 → 주변 확인 → 깜빡이", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, FG, medium, maxW = r.width() - 96 * U) }
             }
-            Sit.STOP -> {   // 신호대기 — 짧은 이야기 한 장(목록 · 점수 · 라벨 없음)
-                val g = m.tiles.firstOrNull { it.icon == "chat" }?.value ?: LOCAL[0].first
+            Sit.STOP -> {   // 신호대기 — 한 장(목록 · 점수 · 라벨 없음). 예전 '동네 이야기'(위치와 무관한 고정 문장)는 뺐다 → 실제 다음 안내 또는 이번 주행
+                val g = if (hasRoute()) "다음은 ${v.dist(m.navTurnM)} 앞에서 ${shortTurn(m.navTurnType, m.navTurn)}이에요. ${m.navTurn}" else "신호 대기 중이에요. 이번 주행 %.1fkm 달렸어요.".format(m.tripKm)
                 val gl = min(4, lineCount(g, z.width() - 96 * U, 46 * U))
                 rows += row(min(z.height(), 96 * U + gl * 61 * U + 40 * U)) { r ->
-                    box(c, r, "view:local"); val x0 = r.left + 48 * U
+                    box(c, r); val x0 = r.left + 48 * U
                     wrap(c, g, x0, r.top + 100 * U, 46 * U, FG, r.width() - 96 * U, 4, medium, lh = 1.32f)
                 }
                 if (m.novice) rows += row(100 * U) { r -> box(c, r); text(c, "브레이크를 계속 꾹", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, FG, medium) }
@@ -1749,7 +1762,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 row(130 * U) { r -> box(c, r); val x0 = r.left + 32 * U
                     lab(c, "차림 · 차 안", x0, r.top + 40 * U)
                     text(c, outfitLine(), x0, r.top + 84 * U, 30 * U, FG, medium, maxW = r.width() - 64 * U)
-                    lab(c, "출발 10분 전 히터 22°로 미리 켜 둘까요 · 와이퍼가 켜지면 비 모드로 바꿔요", x0, r.top + 116 * U, r.width() - 64 * U) }))
+                    // 예전 "출발 10분 전 히터 22°로 미리 켜 둘까요" — 예약 켜기는 없다(가짜 감사 #21). 설정 온도 바꾸기는 실제로 된다(11-11 에뮬 20→23°)
+                    lab(c, "쌀쌀하면 \"23도로 올려 줘\" · 와이퍼가 켜지면 비 오는 날 안내로", x0, r.top + 116 * U, r.width() - 64 * U) }))
             "local" -> {
                 val qh = min(320 * U, z.height() - 150 * U)
                 val q = RectF(z.left, z.top, z.right, z.top + qh)

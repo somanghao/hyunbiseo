@@ -107,6 +107,9 @@ class CarStatus(private val ctx: Context) {
         return done
     }
 
+    /** 차의 실내 설정 온도를 다시 읽는다 — 공조를 바꾼 뒤 정말 바뀌었는지 확인(가짜 감사 #8). Pleos가 없으면 null */
+    fun readCabinSet(cb: (Float?) -> Unit) { val p = pleos; if (p == null) cb(null) else p.readTemp(cb) }
+
     /** 실내 온도 설정 — Pleos HVAC(실차), 안 되면 false(모의 값만 바꿈) */
     fun setCabin(c: Float): Boolean {
         val ok = pleos?.setTemp(c) == true
@@ -165,6 +168,12 @@ class CarStatus(private val ctx: Context) {
             if (!alive) return false
             v?.getHVAC()?.setHvacTemperature(tempArea ?: driver, c, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> log("status|hvac.set|${e.message}") }); true
         }.getOrDefault(false)
+        /** 설정 온도를 지금 차에서 다시 읽는다(시연 고정 값과 무관) — 실패·모름이면 null */
+        fun readTemp(cb: (Float?) -> Unit) {
+            val x = v
+            if (x == null || !alive) { cb(null); return }
+            runCatching { x.getHVAC().getHvacTemperature(tempArea ?: driver, TemperatureUnit.CELSIUS, { t -> cb(t) }, { e -> log("status|hvac.get|${e.message}"); cb(null) }) }.onFailure { cb(null) }
+        }
         override fun poll() {
             val x = v ?: return
             polls++
