@@ -25,7 +25,7 @@ MODEL = os.environ.get("HYUN_CLI_MODEL", "sonnet")   # 음성 지연: sonnet 5.3
 # 빈 작업 폴더 — 프로젝트 CLAUDE.md·설정을 읽지 않게(시작 시간·토큰 절약)
 CWD = os.environ.get("HYUN_BRAIN_CWD") or os.path.join(os.environ.get("PUBLIC", tempfile.gettempdir()), "hyun-brain")
 TIMEOUT = 40
-SEARCH_TIMEOUT = 42   # 앱이 45초까지 기다린다
+SEARCH_TIMEOUT = 70   # 앱이 말 대답을 75초까지 기다린다(11-11: 45초에선 넷플릭스 순위·경기 일정 검색이 자주 잘림)
 _status = {"at": 0.0, "v": None}
 
 

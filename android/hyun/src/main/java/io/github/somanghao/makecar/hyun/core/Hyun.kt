@@ -367,8 +367,10 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
                     // 두뇌 한 턴은 5~10초 — 조용히 기다리면 못 들은 줄 안다. 3.5초 넘으면 짧게 맞장구(한 번), 검색은 13초에 한 번 더
                     main.postDelayed({ if (waitingId == id) say(FILLERS[id % FILLERS.size], "", false, 1, reply = true, tag = "맞장구") }, FILLER_MS)
                     main.postDelayed({ if (waitingId == id) say("조금만 더 찾아볼게요.", "", false, 1, reply = true, tag = "맞장구2") }, FILLER2_MS)
+                    main.postDelayed({ if (waitingId == id) say("거의 다 찾았어요.", "", false, 1, reply = true, tag = "맞장구3") }, 45_000L)
                 }
-                link.awaitReply(id, if (kind == "talk") 45_000 else 30_000) { r -> main.post { onReply(kind, text, id, r, destAtSend) } }
+                // 말 대답 75초 — 검색 모드(넷플릭스 순위 · 경기 일정)가 30~45초 걸려 45초에서 자주 잘렸다(11-11 녹화). 서버 검색 제한은 70초(brain/cli.SEARCH_TIMEOUT)
+                link.awaitReply(id, if (kind == "talk") 75_000 else 30_000) { r -> main.post { onReply(kind, text, id, r, destAtSend) } }
             }
         }
     }
