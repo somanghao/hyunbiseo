@@ -95,14 +95,18 @@ class Speaker(private val log: (String) -> Unit) {
 
     private fun ttl(l: Line) = if (l.reply) policy.ttl[1] else policy.ttl[l.prio].takeIf { it > 0 } ?: 60_000L
 
+    /** 시연 — 단계별 쿨다운을 비운다(영상에서 몇 분 간격 장면을 이어 찍을 때만, 영상에 '시간 압축'으로 밝힌다) */
+    fun resetCooldown() { lastAt.fill(-3_600_000L); log("prio|demo|쿨다운 초기화") }
+
     companion object {
         val LABEL = arrayOf("안전", "주행", "제안", "수다")
         val LABEL_PHONE = arrayOf("시각", "할 일", "챙김", "수다")
 
-        /** 이벤트별 기본 단계 — 두뇌가 prio를 주면 그걸 따른다 */
+        /** 이벤트별 기본 단계 — 두뇌가 prio를 주면 그걸 따른다.
+         *  휴게소(restarea)는 지나치면 소용없는 길 안내라 P1 — P2였을 땐 다른 제안(P2 쿨다운 3분)에 밀려 수명 3분이 지나 버려졌다(11-11 영상 녹화 2회) */
         fun eventPrio(ev: String) = when (ev) {
-            "depart", "near", "arrived", "traffic", "rerouted", "long_drive", "no_dest", "waypoint" -> 1
-            "hello", "halfway", "mode", "battery_low", "restarea" -> 2
+            "depart", "near", "arrived", "traffic", "rerouted", "long_drive", "no_dest", "waypoint", "restarea" -> 1
+            "hello", "halfway", "mode", "battery_low" -> 2
             "quiet" -> 3
             else -> 2
         }

@@ -16,7 +16,7 @@
 순서가 뜻이 있다 — 질문 블록: 길 → 주변 장소 → 기억 → 취향 → 최근 대화 → 브리핑 → 정보 통로 · 답 등록: 길 → 교통 표 → 주변 장소 → 카드(손질·사진) → 기억 → 취향 → 브리핑 → 폰.
 앱 쪽 짝 = android/hyun/…/feature/ (Registry.kt). 설계 → .claude/docs/wiki/hyun-architecture.md
 """
-from features import (briefing, cards, feeds, history, login, memory, phone, places, restarea, route, search, taste, taste_refine,
+from features import (briefing, cards, chat, feeds, history, login, memory, phone, places, restarea, route, search, taste, taste_refine,
                       testaudio, traffic)
 
 ALL = [
@@ -28,6 +28,7 @@ ALL = [
     taste,          # 취향 누적 · 취향 질문 · [취향] 블록 · /hyun/taste · /hyun/me
     history,        # [최근 대화] 블록
     briefing,       # 시동 브리핑 순서 · [브리핑] 블록
+    chat,           # 말동무 — quiet 이벤트에 취향 맞춤 이야깃거리 하나(영화·웹툰 한 편 → 지나는 곳 이야기 → 요즘 화제)
     feeds,          # 정보 통로 7(영화 · 날씨 · 주식 · 웹툰 · 웹소설 · 뉴스 · 환율) · [정보 통로] 블록 · /hyun/feed
     search,         # 검색 모드(스포츠 · 기사 · 근황) · 인물 기사 카드
     restarea,       # 휴게소 소개(검색 모드 + 소개 카드)

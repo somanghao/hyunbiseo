@@ -251,6 +251,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         i.getStringExtra("server")?.let { link.base = it }
         if (i.hasExtra("hun")) { hunMode = i.getBooleanExtra("hun", false); log("front|hunMode=$hunMode") }
         if (i.hasExtra("navisplit")) { naviSplit = i.getBooleanExtra("navisplit", true); prefs.edit().putBoolean("naviSplit", naviSplit).apply(); log("front|naviSplit=$naviSplit") }
+        if (i.getBooleanExtra("cooldownreset", false)) speaker.resetCooldown()   // 시연 — 영상에서 시간 압축(몇 분 간격 장면을 이어 찍기)
         i.getStringExtra("line")?.let { l ->       // "P3|말" — 스케줄러 시험
             val pr = l.substringBefore("|").removePrefix("P").toIntOrNull()?.coerceIn(0, 3) ?: 2
             main.postDelayed({ say(l.substringAfter("|"), if (pr == 0) "alert" else "", false, pr, tag = "demo") }, if (first) 6000 else i.getIntExtra("after", 0).toLong())   // --ei after ms(가려진 뒤 말 — 헤드업 알림 시험)

@@ -43,6 +43,17 @@ def _via_query(text):
 
 
 TALK = re.compile(r"맛집|식당|먹을\s*(데|곳|만한)|(어디서|뭐)\s*먹|배고|카페|커피\s*(마실|어디|한\s*잔)|(점심|저녁|밥)\s*(어디|뭐|추천|먹으러|먹을)|근처\s*(밥|먹)")
+# 운전자가 음식을 콕 집어 물음 — "도착지 근처 맛난 족발집 알려 줘" → "족발"로(취향 음식 대신, 11-11 어필 영상)
+FOODQ = re.compile(r"([가-힣]{2,6}?)\s*(?:집|맛집|가게)\s*(?:좀\s*|하나\s*)?(?:알려|추천|찾아|어디|있어|있나)")
+_NOT_FOOD = {"근처", "주변", "가까운", "도착지", "목적지", "맛있는", "맛난", "유명한", "좋은", "괜찮은", "동네", "우리", "저희", "단골"}
+
+
+def _food_query(text):
+    m = FOODQ.search(text or "")
+    w = m.group(1) if m else ""
+    return "" if not w or w in _NOT_FOOD else w
+
+
 PICK_MIN = 10 * 60    # 추천 뒤 이 안의 말은 고르기일 수 있다("응" · "두 번째로 가자") — [주변 장소]를 다시 싣는다
 
 _lock = threading.Lock()
@@ -109,7 +120,7 @@ def _is_food(dest, la, lo):
     return bool(docs) and docs[0].get("category_group_code") in FOOD
 
 
-def find_places(la, lo, likes, cafe=False):   # ⚠ search는 기능 훅 이름(검색 모드) — 다른 뜻으로 쓰지 않는다(11-08 두뇌 스레드가 죽음)
+def find_places(la, lo, likes, cafe=False, need=3):   # ⚠ search는 기능 훅 이름(검색 모드) — 다른 뜻으로 쓰지 않는다(11-08 두뇌 스레드가 죽음)
     """취향 음식 → 반경 500m → 1km → 음식점 전체 순으로 3곳 넘게 찾는다. 반환 (검색어, 이유, 장소들)"""
     cat = "CE7" if cafe else "FD6"
     tries = [(q, r) for q in ([] if cafe else likes) for r in (RADIUS, 1000)]
@@ -118,8 +129,8 @@ def find_places(la, lo, likes, cafe=False):   # ⚠ search는 기능 훅 이름(
         # 키워드 검색은 느슨하다(국밥 → 베트남음식·순대도, 11-08 실측) — 이름·분류에 검색어가 든 곳을 앞으로
         hit = [d for d in docs if q in (d.get("place_name", "") + d.get("category_name", ""))]
         docs = hit + [d for d in docs if d not in hit]
-        if len(hit) >= 3:
-            return q, f"{q} 취향", docs
+        if len(hit) >= need:   # 운전자가 콕 집은 음식(need=1)이면 한 곳이라도 맞으면 그걸로 — 아무 음식점으로 넘어가지 않게
+            return q, (f"{q} 취향" if need >= 3 else ""), (docs if need >= 3 else hit)
     docs = kakao({"category_group_code": cat, "x": lo, "y": la, "radius": RADIUS, "size": SIZE, "sort": "distance"}, "category")
     return ("카페" if cafe else "음식점"), "", docs or []
 
@@ -159,9 +170,10 @@ def on_in(msg):
         vq = _via_query(text)
         if now and vq:
             msg["places_want"] = {"mode": "via", "query": vq, "meal": "", "arrive": "", "dest": now}
-        elif here and TALK.search(text):
+        elif here and (TALK.search(text) or _food_query(text)):
             meal, at = meal_at(c, "talk")
-            msg["places_want"] = {"mode": "ask", "meal": meal or "", "arrive": at, "dest": here, "cafe": bool(re.search(r"카페|커피", text))}
+            msg["places_want"] = {"mode": "ask", "meal": meal or "", "arrive": at, "dest": here, "cafe": bool(re.search(r"카페|커피", text)),
+                                  "food": _food_query(text)}
         elif d:
             t = _trips.get(_tkey(d))
             if t and time.time() - t["at"] < PICK_MIN and t.get("items"):
@@ -207,8 +219,8 @@ def _ensure(msg):
             print(f"places|skip|목적지가 식당·카페|{name}", flush=True)
             msg["places"] = None
             return None
-    likes = _food_likes()
-    q, why, docs = find_places(la, lo, likes, cafe=want.get("cafe", False))
+    likes = [want["food"]] if want.get("food") else _food_likes()
+    q, why, docs = find_places(la, lo, likes, cafe=want.get("cafe", False), need=1 if want.get("food") else 3)
     items = _items(docs, la, lo)
     print(f"places|kakao|{want['mode']}|q={q}|n={len(items)}", flush=True)
     t = {"at": time.time(), "day": day, "meal": want["meal"], "arrive": want["arrive"], "query": q, "why": why, "items": items,
