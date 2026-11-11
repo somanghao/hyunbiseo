@@ -1368,7 +1368,10 @@ class StageFeature : Feature {
         private const val HARSH_MS = 3.5f          // 1초에 이만큼(약 12.6km/h) 넘게 줄면 급정거
         private const val NOVICE_REST_S = 50 * 60.0
         private const val WELCOME = 100
-        private val CAR_PERMS = listOf("android.car.permission.CAR_ENERGY", "android.car.permission.CAR_SPEED", "android.car.permission.CAR_MILEAGE")
+        // 런타임 요청은 사용자가 허용할 수 있는 권한만. CAR_MILEAGE는 signature|privileged라 일반 앱엔 늘 거부 →
+        // 켤 때마다 시스템 권한 화면이 앱 task 맨 위에 남아, 주행 중 Pleos 홈이 앱 칸 전체를 '주행 중에는 사용할 수 없습니다'로 덮었다(11-11 에뮬 A/B).
+        // 누적 주행은 Pleos 쪽 권한(pleos.car.permission.CAR_MILEAGE — 매니페스트 선언만)으로 읽는다.
+        private val CAR_PERMS = listOf("android.car.permission.CAR_ENERGY", "android.car.permission.CAR_SPEED")
         /** 모의 경로(판교 → 코엑스) — 내비가 없는 표준 에뮬레이터에서 주행 화면 구조를 보이려고 */
         private val LIMITS = listOf(50, 60, 80, 100, 80, 60, 30)   // 모의 경로 구간별 제한속도
         private val MOCK = listOf(
