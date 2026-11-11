@@ -474,6 +474,9 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         pump()
     }
 
+    /** 줄 선(아직 안 한) 말 중 태그가 맞는 것을 버린다 — 상황이 바뀌면 지난 상황의 팁이 뒤늦게 나오지 않게(11-11: 주차 중 '신호 대기 중엔…') */
+    fun dropQueued(why: String, pred: (tag: String) -> Boolean) = speaker.drop(why) { pred(it.tag) }
+
     // "조용히" — 이 시각까지 P2·P3(대답 제외)를 말하지 않는다
     private var quietUntil = 0L
     fun quiet() = SystemClock.elapsedRealtime() < quietUntil

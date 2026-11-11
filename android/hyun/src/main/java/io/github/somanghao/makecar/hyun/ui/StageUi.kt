@@ -134,11 +134,13 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
         val driving = m.sit == Sit.DRIVE
         val now = SystemClock.elapsedRealtime()
+        // 목록·소개 카드는 주행·신호대기엔 그리지 않는다(main HyunView와 같은 안전 규칙 — 11-11 영상: 국밥집 5곳이 60km/h에서 보였다). 말은 그대로, 카드는 정차하면
+        val shownCard = v.card?.takeIf { m.sit != Sit.DRIVE && m.sit != Sit.STOP }
         // 테마 인트로(시동 직후 1.6초) · 마무리(시동 끔)
         val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1800 && !m.viewForced)
         val outroX = if (m.sit == Sit.OFF && now - m.sitAt < 1800) (now - m.sitAt) / 1800f else -1f
         // 내비가 주화면(내비 레이아웃 · 주행 중) — 캐릭터는 왼쪽 위 작은 배지, 내비가 화면을 넓게(댄 11-09)
-        val navMain = !intro && v.card == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (m.view == null && (driving || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면
+        val navMain = !intro && shownCard == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (m.view == null && (driving || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면
         if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
         val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
         val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
@@ -183,9 +185,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             if (nk < 0.99f) {
                 if (nk > 0f) c.saveLayerAlpha(0f, 0f, w, h, ((1f - nk) * 255).toInt()) else c.save()
                 if (narrow) viewChips(c, cx + chH * 0.6f, 16 * U + chH + 2 * U) else header(c)
-                val card = v.card
+                val card = shownCard
                 val sheetOn = m.overlay in setOf("brief", "todo", "car", "log")
-                val pagerOn = !glance() && m.overlay == null && v.card == null && StageModel.pages(m.sit).size > 1
+                val pagerOn = !glance() && m.overlay == null && card == null && StageModel.pages(m.sit).size > 1
                 val bottom = h - 48 * U - 64 * U - 20 * U - (if (pagerOn) 64 * U else 0f)
                 var top = if (narrow) 16 * U + smH + 40 * U else 96 * U
                 if (m.navActive && !navMain) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }

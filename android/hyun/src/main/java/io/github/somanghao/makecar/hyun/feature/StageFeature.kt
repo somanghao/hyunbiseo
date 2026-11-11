@@ -582,6 +582,10 @@ class StageFeature : Feature {
         m.heroIdx = 0; m.heroAt = m.sitAt
         m.reactFace = when (s) { Sit.IGNITION -> "waving"; Sit.READY -> "happy"; Sit.DRIVE -> null; Sit.STOP -> "humming"; Sit.PARK -> "cheer"; Sit.OFF -> "tired" }; m.reactAt = m.sitAt
         hub.log("stage|sit|${prev.key}→${s.key}|$why")
+        // 지난 상황의 팁·말이 줄에 남아 뒤늦게 나오지 않게(11-11 영상: 주차 중 '신호 대기 중엔…', 주행 중 '출발 순서예요')
+        if (prev != s) hub.dropQueued("상황 바뀜 ${prev.key}→${s.key}") { t ->
+            (t.startsWith("상황·") && t != "상황·${s.key}") || (s != Sit.DRIVE && s != Sit.STOP && (t == "초보·차로" || t == "초보·과속"))
+        }
         hub.view.faceOverride = null
         if (why != "미리보기" && !m.viewForced && prev != s) { clearIdeaFx(); m.idea = null; m.view = null; m.pageDir = 0 }   // 상황이 바뀌면 그 상황의 1장부터(허브 미리보기는 예외)
         when (s) {
@@ -640,8 +644,11 @@ class StageFeature : Feature {
                 hub.view.faceOverride = "thinking"
                 val e = items.firstOrNull { it.key == "energy" && it.state != CarCheck.State.NA }
                 val r = items.firstOrNull { it.key == "range" && it.state != CarCheck.State.NA }
-                val sum = listOfNotNull(e?.let { "${it.label} ${it.value}" }, r?.let { "${it.label} ${it.value}" }).joinToString(", ")
-                hub.say("안녕하세요, 현비서예요. 차부터 살펴볼게요. " + (if (sum.isNotBlank()) "$sum, 좋아요. " else "") + "타이어 공기압은 계기판에서 한 번 봐 주세요.", "happy", false, 1, tag = "온보딩·점검")
+                // 괜찮은 값만 '좋아요' — 주의 값(배터리 낮음 등)은 확인하라고(11-11: "주행 가능 0km, 좋아요")
+                val ok = listOfNotNull(e, r).filter { it.state == CarCheck.State.OK }.joinToString(", ") { "${it.label} ${it.value}" }
+                val warn = listOfNotNull(e, r).filter { it.state == CarCheck.State.WARN }.joinToString(", ") { "${it.label} ${it.value}" }
+                val sum = (if (ok.isNotBlank()) "$ok, 좋아요. " else "") + (if (warn.isNotBlank()) "$warn, 한 번 확인해 주세요. " else "")
+                hub.say("안녕하세요, 현비서예요. 차부터 살펴볼게요. " + sum + "타이어 공기압은 계기판에서 한 번 봐 주세요.", "happy", false, 1, tag = "온보딩·점검")
                 hub.main.postDelayed({ if (gen == onboardGen && m.overlay == "onboard" && m.onboardStep == 0) askSkill() }, 9000)
             }
         }.start()
@@ -956,7 +963,12 @@ class StageFeature : Feature {
     private var pending: String? = null                         // "응"이면 할 일(cabin:23 · charge)
     private var kmMark = 0
 
-    private fun changed(k: String, v: Any?): Boolean { val c = prev.containsKey(k) && prev[k] != v; prev[k] = v; return c }
+    // 첫 값 도착(모름 → 값)은 변화로 세지 않는다 — 앱 켜자마자 "옆자리에 친구가 탔네요"(A 체크리스트 ④-6 · 11-11 영상). 잠깐 못 읽은 순간(null)은 이전 값을 지우지 않는다
+    private fun changed(k: String, v: Any?): Boolean {
+        if (v == null) return false
+        val p = prev[k]; prev[k] = v
+        return p != null && p != v
+    }
     private fun event(icon: String, text: String) { m.carEvent = icon to text; m.carEventAt = SystemClock.elapsedRealtime() }
     private fun story(t: Tile) {
         reactions.removeAll { it.first.label == t.label }; reactions.add(0, t to SystemClock.elapsedRealtime()); m.heroIdx = 0

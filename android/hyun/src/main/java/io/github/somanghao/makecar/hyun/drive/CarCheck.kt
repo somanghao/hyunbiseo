@@ -35,7 +35,8 @@ object CarCheck {
         }
         out += pct?.let { (v, l) -> Item("energy", l, "$v%", if (v < 20) State.WARN else State.OK, if (v < 20) "충전·주유가 필요해요" else "") }
             ?: Item("energy", "배터리·연료", "확인 불가", State.NA, "권한 없음")
-        val range = get<Float>(VehiclePropertyIds.RANGE_REMAINING)
+        // 0은 아직 안 채워진 값(배터리 100%인데 0km — 11-11 에뮬) → 확인 불가로
+        val range = get<Float>(VehiclePropertyIds.RANGE_REMAINING)?.takeIf { it > 0f }
         out += range?.let { Item("range", "주행 가능", "${(it / 1000).toInt()}km", if (it < 50_000) State.WARN else State.OK) } ?: Item("range", "주행 가능", "확인 불가", State.NA)
         val odo = get<Float>(VehiclePropertyIds.PERF_ODOMETER)
         out += odo?.let { Item("odo", "누적 주행", "${"%,d".format(it.toInt())}km", State.OK) } ?: Item("odo", "누적 주행", "확인 불가", State.NA, "권한 없음")
