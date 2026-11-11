@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.SystemClock
 import android.view.KeyEvent
 import io.github.somanghao.makecar.hyun.core.Feature
+import io.github.somanghao.makecar.hyun.core.Fmt
 import io.github.somanghao.makecar.hyun.core.Hyun
 import io.github.somanghao.makecar.hyun.drive.CarCheck
 import io.github.somanghao.makecar.hyun.drive.CarStatus
@@ -109,6 +110,7 @@ class StageModel {
     val levelTitle get() = LEVELS[level - 1]
     val moodLabel get() = when { mood >= 75 -> "콧노래"; mood >= 40 -> "편안"; else -> "긴장" }
     var dayStartAt = 0L; var stopsToday = 0; var dayKmShown = 0.0
+    var questKm = 0.0; var questDone = false   // 오늘의 퀘스트 "급정거 없이 10km" — 급정거하면 처음부터 · 성공하면 별 +20 실제 지급(가짜 감사 #7)
     var todayPoints = 0
     var preview: String? = null               // 상점에서 미리보기 중인 컨셉
     var owned: Set<String> = setOf("concept:pleos", "face:neutral", "acc:")
@@ -311,6 +313,7 @@ class StageFeature : Feature {
         pr.edit().remove("stage.avatar").apply()   // 시험용 아바타 선택(robo/puff) 흔적 지우기
         pr.getString("stage.equip", "")!!.split(',').filter { ':' in it }.forEach { m.equipped[it.substringBefore(':')] = it.substringAfter(':') }
         if (pr.getInt("stage.weekNo", -1) == Calendar.getInstance().get(Calendar.WEEK_OF_YEAR)) m.weekPoints = pr.getInt("stage.week", 0)
+        if (pr.getString("stage.questDay", "") == dayKey(Calendar.getInstance())) { m.questDone = pr.getBoolean("stage.questDone", false); m.questKm = pr.getFloat("stage.questKm", 0f).toDouble() }   // 오늘 퀘스트만 이어 간다
         status = CarStatus(hub.act).also { runCatching { it.start() }; m.status = it }
         ui = StageUi(hub.view, m, ::act).also { hub.view.stage = it }
         val f = IntentFilter(ACTION).apply { addAction(SIM_ACTION) }
@@ -351,6 +354,7 @@ class StageFeature : Feature {
     private fun apply(i: Intent) {
         if (i.getBooleanExtra("reset", false)) {
             hub.prefs.edit().remove("stage.onboarded").remove("stage.skill").remove("stage.points").remove("stage.owned").remove("stage.concept").remove("stage.face").remove("stage.acc").remove("stage.decor").remove("stage.equip").apply()
+            m.questKm = 0.0; m.questDone = false
             m.skill = null; m.points = 0; m.concept = "pleos"; m.preview = null; m.face = "neutral"; m.acc = ""; m.owned = setOf("concept:pleos", "face:neutral", "acc:"); m.ledger.clear(); m.dayLedger.clear(); m.decor = emptySet(); m.equipped.clear()
             startOnboarding()
         }
@@ -399,6 +403,13 @@ class StageFeature : Feature {
         if (moving) {
             inTrip = true
             tripM += v; tripS += 1; pointM += v; dayKm += v / 1000.0; m.dayKmShown = dayKm
+            if (!m.questDone) {
+                m.questKm += v / 1000.0
+                if (m.questKm >= QUEST_KM) {
+                    m.questDone = true; award("🎯", "퀘스트 · 급정거 없이 10km", QUEST_STARS)
+                    hub.say("오늘의 퀘스트 성공! 급정거 없이 10킬로미터, 별 ${QUEST_STARS}개 드렸어요.", "happy", false, 2, tag = "퀘스트")
+                }
+            }
             if (m.dayStartAt == 0L) m.dayStartAt = System.currentTimeMillis()
             if (pointM >= 100) { pointM -= 100; m.tripPoints += 1; addPoints(1); smoothM += 100; if (smoothM >= 1000) { smoothM = 0; moodBy(3, "부드럽게 1km") } }
             settled = false
@@ -408,6 +419,7 @@ class StageFeature : Feature {
         brakeOn = brk
         if (lastSpeed - v > HARSH_MS && lastSpeed > 4f) {
             harsh++; hub.log("stage|harsh|${"%.1f".format(lastSpeed)}→${"%.1f".format(v)}")
+            if (!m.questDone && m.questKm > 0.0) { hub.log("stage|quest|급정거 → 처음부터(${"%.1f".format(m.questKm)}km)"); m.questKm = 0.0 }
             penalty("⚠️", "급정거", if (m.novice) 2 else 5); moodBy(-15, "급정거")
             if (m.novice) hub.say("조금 부드럽게 멈춰 볼까요. 브레이크는 미리, 천천히요.", "care", false, 2, tag = "초보·급정거")
         }
@@ -789,6 +801,7 @@ class StageFeature : Feature {
 
     private fun moodBy(d: Int, why: String) { val o = m.mood; m.mood = (m.mood + d).coerceIn(0, 100); m.moodWhy = why; if (o != m.mood) hub.log("stage|mood|$o→${m.mood}|$why") }
     private fun save() = hub.prefs.edit().putInt("stage.xp", m.xp).putInt("stage.mood", m.mood).putInt("stage.points", m.points).putStringSet("stage.owned", m.owned)
+        .putString("stage.questDay", dayKey(Calendar.getInstance())).putBoolean("stage.questDone", m.questDone).putFloat("stage.questKm", m.questKm.toFloat())
         .putString("stage.concept", m.concept).putString("stage.face", m.face).putString("stage.acc", m.acc).putStringSet("stage.decor", m.decor).putString("stage.equip", m.equipped.entries.joinToString(",") { "${it.key}:${it.value}" }).apply()
 
     // ======================================================================
@@ -849,7 +862,8 @@ class StageFeature : Feature {
             }
             Regex("퀘스트|미션").containsMatchIn(t) -> {
                 m.overlay = "log"; refresh(); hub.render()
-                say("오늘의 운전 퀘스트는 급정거 없이 10킬로미터예요. 지금 %.1f킬로미터 왔어요. 성공하면 별 20개를 드려요.".format(m.dayKmShown))
+                say(if (m.questDone) "오늘 퀘스트는 벌써 성공했어요. 별 ${QUEST_STARS}개 드렸어요."
+                    else "오늘의 운전 퀘스트는 급정거 없이 10킬로미터예요. 지금 %.1f킬로미터째예요. 급정거하면 처음부터고, 성공하면 별 ${QUEST_STARS}개를 드려요.".format(m.questKm))
                 true
             }
             Regex("뉴스|소식").containsMatchIn(t) -> { act("view:news"); false }   // 화면만 열고 읽기는 두뇌에게
@@ -914,10 +928,10 @@ class StageFeature : Feature {
                 m.headline = "어디로 갈까요?"
                 val dest = hub.view.dest
                 out += if (dest != null) Tile("pin", "오늘 목적지", "${dest}까지 같이 가요. ${hub.view.remain.ifBlank { "길을 찾는 중이에요." }}", hub.view.eta, "accent")
-                       else Tile("pin", "추천 목적지", recommendDest().let { "이 시간엔 보통 ${it.first}에 가죠? ${it.second}" }, "말로 \"집으로 가자\"", "accent", "추천")
-                if (soc != null && soc < 30) out += Tile("battery", "가는 김에 충전", "배터리가 ${soc}%라, 가는 길 충전소에 들렀다 가요. 20분이면 80%까지 돼요.", "가는 김에 · 경유지 추가", "warn", action = "say:충전소 들렀다 가자")
-                out += Tile("bag", "가는 김에", "가는 길에 세탁물 찾을까요? 5분이면 돼요.", "할 일 1건 · 가는 길 0.4km", "good", "예시")
-                out += Tile("music", "출발 편성", "뉴스 5분 듣고, 잔잔한 음악으로 이어 갈게요.", "도착 시간에 맞춰 편성", "info")
+                       else recommendDest()?.let { (n, sub, habit) -> Tile("pin", "추천 목적지", if (habit) "이 시간엔 보통 ${n}에 가죠? $sub" else "${n} — $sub", "말로 \"${n} 가자\"", "accent", if (habit) "기록" else "즐겨찾기") }
+                           ?: Tile("pin", "어디로 갈까요?", "\"코엑스 가자\"처럼 말하면 길을 안내해요.", "목적지는 말로", "accent")
+                if (soc != null && soc < 30) out += Tile("battery", "가는 김에 충전", "배터리가 ${soc}%라, 가는 길 충전소에 들렀다 가면 좋아요.", "가는 김에 · 경유지 추가", "warn", action = "say:충전소 들렀다 가자")
+                // '가는 김에(세탁물 · 예시)' · '출발 편성(뉴스 5분 → 음악 — 그런 편성 기능 없음)'은 뺐다(가짜 감사 #9 묶음) — 오늘 할 일·브리핑 모듈이 붙으면 그 자리
                 tip("브레이크 꾹 → D → 주변 확인 → 발을 천천히. 출발할 땐 깜빡이부터 켜요.")
             }
             Sit.DRIVE -> { m.headline = m.navTurn }
@@ -1018,7 +1032,7 @@ class StageFeature : Feature {
         st.turn.v.let { t -> if (changed("turn", t) && t != null && t != 0) event("signal", when (t) { 1 -> "왼쪽 깜빡이"; 2 -> "오른쪽 깜빡이"; else -> "비상등" }) }
         st.soc.v.let { s -> val low = s != null && s <= 20; if (changed("lowSoc", low) && low) {
             pending = "charge"; event("battery", "배터리 ${s}%")
-            story(Tile("battery", "가는 김에 충전", "배터리가 ${s}%예요. 가는 길 충전소에 들렀다 갈까요? 20분이면 80%까지 돼요.", "주행 가능 ${st.rangeKm.v ?: "-"}km(Pleos EvBattery)", "warn", action = "say:충전소 들렀다 가자"))
+            story(Tile("battery", "가는 김에 충전", "배터리가 ${s}%예요. 가는 길 충전소에 들렀다 갈까요?", "주행 가능 ${st.rangeKm.v ?: "-"}km(Pleos EvBattery)", "warn", action = "say:충전소 들렀다 가자"))
             talk("배터리가 ${s}퍼센트예요. 가는 길 충전소에 들렀다 갈까요?", 1, "care", listen = !driving)
         } }
         // 주행 이정표 — 10km마다 칭찬 +3, 30분·60분 쉼표 안내
@@ -1150,13 +1164,14 @@ class StageFeature : Feature {
     }
     private fun saveFavs(l: List<Fav>) = hub.prefs.edit().putString(FAVS, l.take(6).joinToString("\n") { "${it.name}|${it.lat}|${it.lng}|${it.demoMin}" }).apply()
 
+    private fun favKm(f: Fav): Double? { val la = hub.lat ?: return null; val lo = hub.lng ?: return null; return io.github.somanghao.makecar.hyun.drive.Trip.meters(la, lo, f.lat, f.lng) / 1000 }
     /** 지금 출발하면 걸리는 분 — 지난 주행 평균 → 현재 위치 직선거리 어림(×1.3 · 시내 30km/h) → 예시 값. (분, 근거) */
     private fun favMin(f: Fav): Pair<Int, String>? {
         goLog().filter { it.name == f.name }.takeIf { it.isNotEmpty() }?.let { l -> return l.map { it.travelMin }.average().roundToInt() to "지난 ${l.size}번 평균" }
         val la = hub.lat; val lo = hub.lng
         if (la != null && lo != null) {
             val km = io.github.somanghao.makecar.hyun.drive.Trip.meters(la, lo, f.lat, f.lng) * 1.3 / 1000
-            if (km < 300) return max(1, (km / 30.0 * 60).roundToInt()) to "약 %.1fkm".format(km)
+            if (km <= 30) return max(1, (km / 30.0 * 60).roundToInt()) to "약 %.1fkm".format(km)   // 시내 어림만 — 장거리는 직선×시내 속도로 크게 틀린다(대전역 5시간 22분 vs 내비 1시간 53분)
         }
         return if (f.demoMin > 0) f.demoMin to "예시 시간" else null
     }
@@ -1185,6 +1200,7 @@ class StageFeature : Feature {
                 m.favIdx = i
                 m.goName = f.name
                 m.goSub = favMin(f)?.let { (mn, why) -> "지금 가면 ${if (mn >= 60) "${mn / 60}시간 ${mn % 60}분" else "${mn}분"} · ${hm(nowMin + mn)} 도착 · $why" }
+                    ?: favKm(f)?.let { "약 %.0fkm · 출발하면 내비가 걸리는 시간을 알려 줘요".format(it) }
                     ?: "지금 위치를 읽으면 걸리는 시간을 알려 드려요"
                 m.goTag = "즐겨찾기" + if (list === DEMO_FAVS) " · 예시" else ""
                 m.goAction = "go:$i"
@@ -1221,9 +1237,13 @@ class StageFeature : Feature {
         saveGoLog(goLog() + seed)
     }
 
-    private fun recommendDest(): Pair<String, String> {
-        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return when (h) { in 6..10 -> "회사" to "평소 출근 시간이에요 · 약 25분"; in 17..21 -> "집" to "퇴근길 · 약 30분"; else -> "자주 가는 카페" to "지난주 두 번 갔어요" }
+    /** 추천 목적지 — 이 시간에 자주 간 곳(실제 주행 기록 goLog · 2일 이상) → 저장한 즐겨찾기. 없으면 null
+     *  (예전엔 시간대 고정값 "회사 · 평소 출근 시간이에요 · 약 25분" · "자주 가는 카페 · 지난주 두 번 갔어요" — 가짜 감사 #9). (이름, 설명, 기록 기반?) */
+    private fun recommendDest(): Triple<String, String, Boolean>? {
+        habitGo()?.let { (g, days, _) -> return Triple(g.name, "최근 ${days}일 이 시간쯤 갔어요 · 평균 ${Fmt.dur(g.travelMin)}", true) }
+        val list = favs().takeIf { it !== DEMO_FAVS && it.isNotEmpty() } ?: return null
+        val f = list[favPick(list)]
+        return Triple(f.name, favMin(f)?.let { (mn, why) -> "지금 가면 ${Fmt.dur(mn)} · $why" } ?: "즐겨찾기", false)
     }
 
     private fun nextUnlock(): String {
@@ -1398,6 +1418,7 @@ class StageFeature : Feature {
         private const val HARSH_MS = 3.5f          // 1초에 이만큼(약 12.6km/h) 넘게 줄면 급정거
         private const val NOVICE_REST_S = 50 * 60.0
         private const val WELCOME = 100
+        private const val QUEST_KM = 10.0; private const val QUEST_STARS = 20
         // 런타임 요청은 사용자가 허용할 수 있는 권한만. CAR_MILEAGE는 signature|privileged라 일반 앱엔 늘 거부 →
         // 켤 때마다 시스템 권한 화면이 앱 task 맨 위에 남아, 주행 중 Pleos 홈이 앱 칸 전체를 '주행 중에는 사용할 수 없습니다'로 덮었다(11-11 에뮬 A/B).
         // 누적 주행은 Pleos 쪽 권한(pleos.car.permission.CAR_MILEAGE — 매니페스트 선언만)으로 읽는다.

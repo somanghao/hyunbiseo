@@ -1470,11 +1470,12 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val x0 = r.left + 28 * U
         lab(c, "오늘의 운전 퀘스트", x0, r.top + 38 * U)
         text(c, "급정거 없이 10km", x0, r.top + 78 * U, 28 * U, FG, medium)
-        val pr = (m.dayKmShown / 10.0).toFloat().coerceIn(0f, 1f)
+        // 진행 = 마지막 급정거 뒤 달린 거리(예전엔 오늘 거리만 보고 급정거 조건·지급이 없었다 — 가짜 감사 #7). 성공하면 별 +20 실제 지급
+        val pr = if (m.questDone) 1f else (m.questKm / 10.0).toFloat().coerceIn(0f, 1f)
         val bar = RectF(x0 + 300 * U, r.top + 66 * U, r.right - 280 * U, r.top + 76 * U)
         p.shader = null; p.color = SURF2; c.drawRoundRect(bar, 5 * U, 5 * U, p)
-        p.color = WARN; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + max(10 * U, bar.width() * pr), bar.bottom), 5 * U, 5 * U, p)
-        text(c, "%.1f / 10km · +20".format(m.dayKmShown), r.right - 28 * U, r.top + 78 * U, 24 * U, MUTED, medium, Paint.Align.RIGHT)
+        p.color = if (m.questDone) GOOD else WARN; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + max(10 * U, bar.width() * pr), bar.bottom), 5 * U, 5 * U, p)
+        text(c, if (m.questDone) "성공 · +20 받음" else "%.1f / 10km · +20".format(m.questKm), r.right - 28 * U, r.top + 78 * U, 24 * U, if (m.questDone) GOOD else MUTED, medium, Paint.Align.RIGHT)
     }
 
     private fun stateScreen(c: Canvas, z: RectF) {
@@ -1508,18 +1509,18 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             Sit.READY -> {   // 기어 D(경로 없을 때) — 한눈: 목적지 · 도착 시각 · 말로 하라는 글 (+ 보조 한 줄). 버튼 없음
                 rows += row(320 * U) { r ->
                     box(c, r); val x0 = r.left + 48 * U
-                    val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                    // 예전엔 시간대 고정값("회사 · 23분" · "집 · 30분" · "자주 가는 카페 · 9분" — 가짜 감사 #9) → 실제 안내 · 저장한 즐겨찾기(예시 즐겨찾기 제외) · 없으면 "어디로 갈까요?"
+                    val fav = m.goName.isNotBlank() && !m.goTag.contains("예시")
                     val (name, sub) = when {
                         m.navActive -> m.navDest to "${m.navEta} · ${Fmt.dur(m.navMin)}"
-                        hr in 6..10 -> "회사" to "도착 ${etaIn(23)} · 23분"
-                        hr in 17..21 -> "집" to "도착 ${etaIn(30)} · 30분"
-                        else -> "자주 가는 카페" to "도착 ${etaIn(9)} · 9분"
+                        fav -> m.goName to m.goSub
+                        else -> "어디로 갈까요?" to "목적지는 말로 정해요"
                     }
                     text(c, name, x0, r.top + 120 * U, fit(name, 72 * U, r.width() - 96 * U, bold), FG, bold, maxW = r.width() - 96 * U)
                     text(c, sub, x0, r.top + 180 * U, 36 * U, MUTED, medium, maxW = r.width() - 96 * U)
                     // 버튼 없음 — 경로가 생기면 저절로 내비 화면, 안내는 말로
                     micGlyph(c, x0 + 18 * U, r.bottom - 74 * U, 34 * U, MUTED)
-                    text(c, "\"${name}${ro(name)} 안내해 줘\" 하고 말하세요", x0 + 48 * U, r.bottom - 62 * U, 32 * U, MUTED, medium, maxW = r.width() - 140 * U)
+                    text(c, if (m.navActive || fav) "\"${name}${ro(name)} 안내해 줘\" 하고 말하세요" else "\"코엑스 가자\"처럼 말하세요", x0 + 48 * U, r.bottom - 62 * U, 32 * U, MUTED, medium, maxW = r.width() - 140 * U)
                 }
                 val low = soc != null && soc < 30
                 if (low) rows += row(100 * U) { r -> box(c, r, "screen:car"); text(c, "배터리 $soc% — 가는 길에 충전해요", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, WARN, medium, maxW = r.width() - 96 * U) }
@@ -1546,7 +1547,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 }
                 rows += row(200 * U) { r ->
                     box(c, r, "view:webtoon"); val x0 = r.left + 32 * U
-                    lab(c, "쉬는 동안 · 웹툰 이어보기", x0, r.top + 40 * U)
+                    lab(c, "쉬는 동안 · 오늘 인기 웹툰", x0, r.top + 40 * U)   // 예전 "웹툰 이어보기" — 인기 순위를 개인 이어보기처럼 보였다(가짜 감사 #10)
                     val items = m.toons.take(3)   // 넷이면 제목이 두 글자("괴력...")만 보였다 → 셋 · 제목 두 줄(11-10)
                     if (items.isEmpty()) text(c, "웹툰을 불러오는 중이에요", x0, r.top + 110 * U, 26 * U, MUTED, medium)
                     val cw = (r.width() - 64 * U) / 3
@@ -1556,7 +1557,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                         photoFit(c, tn.img, th, 10 * U)
                         val tw = cw - th.width() - 32 * U
                         wrap(c, tn.title, th.right + 14 * U, th.top + 30 * U, 22 * U, FG, tw, 2, medium, lh = 1.3f)
-                        lab(c, "이어보기", th.right + 14 * U, th.top + 94 * U, tw)
+                        lab(c, "인기 ${i + 1}위", th.right + 14 * U, th.top + 94 * U, tw)
                     }
                 }
                 rows += row(140 * U) { r ->
@@ -1590,7 +1591,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 }
                 rows += row(130 * U) { r ->
                     val cs = cols(r, 1f, 1f)
-                    mini(c, cs[0], "내일", m.tomorrowLine.ifBlank { "불러오는 중" }, "09:30 주간 회의 · 예시", "view:weather")
+                    mini(c, cs[0], "내일", m.tomorrowLine.ifBlank { "불러오는 중" }, "내일 날씨 · Open-Meteo", "view:weather")   // 예시 일정("09:30 주간 회의")은 뺐다 — 일정 연동 전
                     val next = StageModel.CONCEPTS.filter { "concept:${it.id}" !in m.owned }.minByOrNull { it.price }
                     mini(c, cs[1], "꾸미기", next?.let { if (m.points >= it.price) "${it.name} 열 수 있어요" else "${it.name}까지 ${it.price - m.points}★" } ?: "전부 열었어요", "테마 · 소품 보기", "deco")
                 }
@@ -1833,7 +1834,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 text(c, "38", cx, cy + 14 * U, 52 * U, FG, bold, Paint.Align.CENTER); text(c, "㎍/㎥", cx, cy + 44 * U, 18 * U, MUTED, medium, Paint.Align.CENTER)
                 val x0 = r.left + 220 * U
                 text(c, "초미세먼지 나쁨", x0, r.top + 92 * U, 40 * U, FG, bold)
-                text(c, "내기 순환 · ${(st?.cabinC?.v ?: 23f).toInt()}°로 출발할게요", x0, r.top + 136 * U, 28 * U, MUTED, medium, maxW = r.right - x0 - 40 * U)
+                text(c, "내기 순환 · ${st?.cabinC?.v?.toInt()?.let { "$it°" } ?: "—"}로 출발할게요", x0, r.top + 136 * U, 28 * U, MUTED, medium, maxW = r.right - x0 - 40 * U)
                 text(c, "\"응\" 하면 공조를 맞춰요 · 에어코리아", x0, r.top + 176 * U, 22 * U, FAINT, medium) }
             "fortune" -> row(240 * U) { r -> box(c, r)
                 val d = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
@@ -1852,12 +1853,13 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 text(c, "0번이면 ★ +5", r.right - 40 * U, r.top + 140 * U, 40 * U, ACC, bold, Paint.Align.RIGHT) }
             "routine" -> row(220 * U) { r -> box(c, r)
                 lab(c, "출발 전 30초 루틴", r.left + 32 * U, r.top + 40 * U)
-                val steps = listOf("시트" to true, "미러" to true, "벨트" to (st?.belt?.v != false))
+                val steps = listOf("시트" to null, "미러" to null, "벨트" to st?.belt?.v)   // 시트·미러는 읽을 길이 없다 → 체크 없이 "확인해요"(예전엔 늘 ✓ — 가짜 감사 #14)
                 val cs = cols(RectF(r.left + 32 * U, r.top + 70 * U, r.right - 32 * U, r.bottom - 30 * U), 1f, 1f, 1f)
                 steps.forEachIndexed { i, (n, ok) -> val q = cs[i]; val cx = q.left + 50 * U
-                    p.color = if (ok) GOOD else SURF2; c.drawCircle(cx, q.centerY(), 38 * U, p)
-                    if (ok) { p.style = Paint.Style.STROKE; p.strokeWidth = 6 * U; p.strokeCap = Paint.Cap.ROUND; p.color = Color.WHITE; c.drawLine(cx - 16 * U, q.centerY(), cx - 4 * U, q.centerY() + 13 * U, p); c.drawLine(cx - 4 * U, q.centerY() + 13 * U, cx + 18 * U, q.centerY() - 12 * U, p); p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT }
-                    text(c, n, cx + 60 * U, q.centerY() + 14 * U, 40 * U, FG, bold) } }
+                    p.color = if (ok == true) GOOD else SURF2; c.drawCircle(cx, q.centerY(), 38 * U, p)
+                    if (ok == null) text(c, "?", cx, q.centerY() + 14 * U, 40 * U, MUTED, bold, Paint.Align.CENTER)
+                    if (ok == true) { p.style = Paint.Style.STROKE; p.strokeWidth = 6 * U; p.strokeCap = Paint.Cap.ROUND; p.color = Color.WHITE; c.drawLine(cx - 16 * U, q.centerY(), cx - 4 * U, q.centerY() + 13 * U, p); c.drawLine(cx - 4 * U, q.centerY() + 13 * U, cx + 18 * U, q.centerY() - 12 * U, p); p.style = Paint.Style.FILL; p.strokeCap = Paint.Cap.BUTT }
+                    text(c, if (ok == null) "$n 확인" else n, cx + 60 * U, q.centerY() + 14 * U, 40 * U, FG, bold) } }
             "weekly" -> row(300 * U) { r -> box(c, r); exTag(c, r)
                 lab(c, "지난주 리포트 · 월요일 첫 시동", r.left + 32 * U, r.top + 40 * U)
                 text(c, "86.4km", r.left + 32 * U, r.top + 110 * U, 56 * U, FG, bold); text(c, "★ +142 · 급정거 3", r.left + 32 * U, r.top + 150 * U, 26 * U, MUTED, medium)
@@ -1928,7 +1930,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 p.shader = RadialGradient(r.left + r.width() * 0.75f, r.bottom, r.height() * 1.1f, 0xCCFF8A3D.toInt(), 0x00FF8A3D, Shader.TileMode.CLAMP); c.drawRect(r, p); p.shader = null
                 c.restore()
                 text(c, "기다림 모드", r.left + 40 * U, r.top + 100 * U, 52 * U, 0xFFFFF1E0.toInt(), bold)
-                text(c, "실내 ${(st?.cabinC?.v ?: 23f).toInt()}° 유지 · 벽난로 장면 · 빗소리", r.left + 40 * U, r.top + 150 * U, 28 * U, 0xCCFFE6C8.toInt(), medium)
+                text(c, "실내 ${st?.cabinC?.v?.toInt()?.let { "$it°" } ?: "—"} 유지 · 벽난로 장면 · 빗소리", r.left + 40 * U, r.top + 150 * U, 28 * U, 0xCCFFE6C8.toInt(), medium)   // 모르면 —(예전엔 23° 기본값 — 가짜 감사 #12)
                 text(c, "\"기다림 모드\" 라고 말하면 켜져요", r.left + 40 * U, r.bottom - 40 * U, 24 * U, 0x99FFE6C8.toInt(), medium) }
             "nearby" -> row(220 * U) { r -> box(c, r); exTag(c, r)
                 icon(c, "pin", r.left + 70 * U, r.centerY(), 64 * U, RED)
@@ -2156,7 +2158,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 text(c, "\"글씨 크게\" 라고 말하면 켜져요", r.left + 32 * U, r.bottom - 32 * U, 30 * U, ACC, semi) }
             "gleo3" -> row(min(380 * U, z.height())) { r -> box(c, r)
                 lab(c, "글레오가 부르는 현비서 함수 3개 · Gleo Interface(앱당 3개)", r.left + 32 * U, r.top + 40 * U)
-                val fns = listOf(Triple("현비서_오늘_브리핑", "\"글레오, 현비서 오늘 뭐 있어?\"", "날씨 · 소식 · 첫 일정"), Triple("현비서_안전점수", "\"글레오, 나 오늘 운전 어땠어?\"", "급정거 · 별 · 레벨 · 기분"), Triple("현비서_꾸미기", "\"글레오, 현비서 산타 모자 씌워 줘\"", "소품 입기(정차 중)"))
+                // 실제 Gleo Interface 3액션(assets/schema.json) 이름 그대로 — 예전 '현비서_오늘_브리핑' 등은 없는 이름이었다(가짜 감사 #23)
+                val fns = listOf(Triple("ASK_HYUN", "\"글레오, 현비서한테 오늘 운전 어땠는지 물어봐\"", "질문을 현비서에게 · 현비서 목소리로 답"), Triple("HYUN_STATUS", "\"글레오, 현비서 지금 상황 알려 줘\"", "목적지 · 남은 시간 · 길 교통"), Triple("HYUN_QUIET", "\"글레오, 현비서 조용히 해 줘\"", "수다·제안 끄기(안전·대답만)"))
                 val cs = cols(RectF(r.left + 24 * U, r.top + 64 * U, r.right - 24 * U, r.bottom - 64 * U), 1f, 1f, 1f)
                 fns.forEachIndexed { i, (fn, say2, what) -> val q = cs[i]; p.color = SURF2; c.drawRoundRect(q, 16 * U, 16 * U, p)
                     text(c, "${i + 1}", q.left + 20 * U, q.top + 46 * U, 34 * U, ACC, bold); text(c, fn, q.left + 56 * U, q.top + 42 * U, 22 * U, FG, semi, maxW = q.width() - 70 * U)
