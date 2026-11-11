@@ -10,6 +10,7 @@
 """
 import json
 import math
+import os
 import re
 import threading
 import time
@@ -45,13 +46,28 @@ def _via_query(text):
 TALK = re.compile(r"맛집|식당|먹을\s*(데|곳|만한)|(어디서|뭐)\s*먹|배고|카페|커피\s*(마실|어디|한\s*잔)|(점심|저녁|밥)\s*(어디|뭐|추천|먹으러|먹을)|근처\s*(밥|먹)")
 # 운전자가 음식을 콕 집어 물음 — "도착지 근처 맛난 족발집 알려 줘" → "족발"로(취향 음식 대신, 11-11 어필 영상)
 FOODQ = re.compile(r"([가-힣]{2,6}?)\s*(?:집|맛집|가게)\s*(?:좀\s*|하나\s*)?(?:알려|추천|찾아|어디|있어|있나)")
-_NOT_FOOD = {"근처", "주변", "가까운", "도착지", "목적지", "맛있는", "맛난", "유명한", "좋은", "괜찮은", "동네", "우리", "저희", "단골"}
+# "족발 먹고 싶어" · "국밥 땡겨" — 곧 도착 때 "근처 식당 알아봐 드릴까요?"에 음식으로 대답(11-11 어필 영상)
+EATQ = re.compile(r"([가-힣]{2,6}?)\s*(?:이|가|을|를)?\s*(?:먹고\s*싶|땡겨|땡기|당겨|먹을래|먹자|먹으러)")
+_NOT_FOOD = {"근처", "주변", "가까운", "도착지", "목적지", "맛있는", "맛난", "유명한", "좋은", "괜찮은", "동네", "우리", "저희", "단골",
+             "점심", "저녁", "아침", "뭐", "뭘", "아무거나", "간단히", "맛있는거", "그거", "거기"}
+# 곧 도착 때 바로 추천하지 않고 먼저 묻기 — 취향 음식을 모를 때 · 시연 키(HYUN_NEAR_ASK=1, 서버 환경 변수)
+NEAR_ASK = os.environ.get("HYUN_NEAR_ASK") == "1"
+NO_WORDS = r"아니|괜찮|됐어|싫어|나중|안\s*먹"
 
 
 def _food_query(text):
-    m = FOODQ.search(text or "")
-    w = m.group(1) if m else ""
-    return "" if not w or w in _NOT_FOOD else w
+    for pat in (FOODQ, EATQ):
+        m = pat.search(text or "")
+        w = m.group(1) if m else ""
+        if w and w not in _NOT_FOOD:
+            return w
+    return ""
+
+
+def _asked_near(d):
+    """방금 곧 도착에 "근처 식당 알아봐 드릴까요?"라고 물었나(그 뒤 10분)"""
+    t = _trips.get(_tkey(d))
+    return bool(t and t.get("mode") == "near_ask" and time.time() - t["at"] < PICK_MIN)
 
 
 PICK_MIN = 10 * 60    # 추천 뒤 이 안의 말은 고르기일 수 있다("응" · "두 번째로 가자") — [주변 장소]를 다시 싣는다
@@ -162,7 +178,9 @@ def on_in(msg):
     d = _dest(c)
     if kind == "event" and text in ("near", "arrived") and d:
         meal, at = meal_at(c, text)
-        if meal:
+        if meal and text == "near" and (NEAR_ASK or not _food_likes()):
+            msg["places_want"] = {"mode": "near_ask", "meal": meal, "arrive": at, "dest": d}   # 찾지 않고 먼저 묻는다
+        elif meal:
             msg["places_want"] = {"mode": text, "meal": meal, "arrive": at, "dest": d}
     elif kind == "talk":
         here = d or ((c.get("addr") or "현재 위치", float(c["lat"]), float(c["lng"])) if c.get("lat") and c.get("lng") else None)
@@ -174,6 +192,9 @@ def on_in(msg):
             meal, at = meal_at(c, "talk")
             msg["places_want"] = {"mode": "ask", "meal": meal or "", "arrive": at, "dest": here, "cafe": bool(re.search(r"카페|커피", text)),
                                   "food": _food_query(text)}
+        elif d and _asked_near(d) and not re.search(NO_WORDS, text):   # "응" — 물은 뒤 대답(음식을 안 말하면 취향 음식으로)
+            t0 = _trips.get(_tkey(d)) or {}
+            msg["places_want"] = {"mode": "ask", "meal": t0.get("meal", ""), "arrive": t0.get("arrive", ""), "dest": d, "cafe": False, "food": ""}
         elif d:
             t = _trips.get(_tkey(d))
             if t and time.time() - t["at"] < PICK_MIN and t.get("items"):
@@ -200,6 +221,13 @@ def _ensure(msg):
         return t
     k = _tkey(want["dest"])
     day = time.strftime("%Y-%m-%d")
+    if want["mode"] == "near_ask":
+        t = {"at": time.time(), "day": day, "meal": want["meal"], "arrive": want["arrive"], "query": "", "why": "", "items": None,
+             "dest": name, "lat": la, "lng": lo, "mode": "near_ask", "told": False, "nokey": not _key()}
+        with _lock:
+            _trips[k] = t
+        msg["places"] = t
+        return t
     with _lock:
         t = _trips.get(k)
     if want["mode"] in ("near", "arrived"):
@@ -224,7 +252,8 @@ def _ensure(msg):
     items = _items(docs, la, lo)
     print(f"places|kakao|{want['mode']}|q={q}|n={len(items)}", flush=True)
     t = {"at": time.time(), "day": day, "meal": want["meal"], "arrive": want["arrive"], "query": q, "why": why, "items": items,
-         "dest": name, "lat": la, "lng": lo, "mode": want["mode"], "told": want["mode"] in ("near", "arrived"), "nokey": not _key()}
+         "dest": name, "lat": la, "lng": lo, "mode": want["mode"], "told": want["mode"] in ("near", "arrived"), "nokey": not _key(),
+         "food": want.get("food", "")}
     with _lock:
         _trips[k] = t
         for old in [x for x, v in _trips.items() if time.time() - v["at"] > 3 * 3600]:
@@ -234,6 +263,8 @@ def _ensure(msg):
 
 
 RULES = """- **주변 장소·도착 추천**([주변 장소] 블록이 있을 때만): 장소 이름·거리는 블록에 있는 것만 — 지어내지 않는다. 식사 시간·식당 목적지 판단은 서버가 이미 했다. 카드는 서버가 만든다 — card는 비운다(title="" items=[])
+  · near_ask(도착 전 — 먼저 묻기): 아직 찾지 않았다 — 블록의 도착 시각·식사로 "○○ 도착이 HH시 MM분이라 ○○ 시간이네요. 도착하면 근처 식당 알아봐 드릴까요?"(남은 시간이 10분 안쪽이면 "곧 ○○예요"로 시작) 한두 문장, [취향] 음식 하나를 곁들여도 됨, 장소 이름은 말하지 않는다 — listen=true, prio 1
+  · 물음 뒤 대답([주변 장소] 운전자가 물음 — 운전자가 음식을 말했거나 "응"): 2~3곳을 이름·목적지에서 거리와 함께(평판은 검색으로 확인한 것만, 없으면 거리 순이라고), 끝에 "도착하면 화면에 띄울게요"
   · near(곧 도착): 도착하면 몇 시 무슨 식사인지 + 1번 장소 이름·목적지에서 거리를 말하고 "바로 거기로 갈까요? 다른 곳은 내리면 보여 드릴게요" — listen=true, prio 1
   · arrived(도착): "도착했어요" + 1번 이름·거리(걸어서 N분) + "화면에 N곳 띄웠어요". [취향] 음식이 없으면 "좋아하는 음식 알려 주시면 다음엔 맞춰 볼게요"
   · 고르기: 운전자가 곧 도착 제안에 "응·그래·가자"면 1번, "두 번째로"면 2번 — **주행 중이면 nav_name·nav_lat·nav_lng에 그 장소**("○○로 안내할게요"). **정차 중이면** 목적지에서 500m 안은 nav를 비우고 "걸어서 N분, ○쪽이에요", 500m 넘거나 "차로 가자"면 nav
@@ -245,13 +276,16 @@ def block(msg, env):
     p = _ensure(msg)
     if not p:
         return None
+    if p.get("mode") == "near_ask":
+        return (f"[주변 장소] 곧 도착(near) · {p['dest']} · {p['meal']}(도착 {p['arrive']}) — 아직 찾지 않았다: 먼저 묻는다(near_ask)")
     if p.get("nokey"):
         return "[주변 장소] 찾지 못함 — 지역 검색 키 없음"
     if not p.get("items"):
         return f"[주변 장소] {p['dest']} 근처 {p['query']} — 찾지 못함"
     mode = {"near": "곧 도착(near)", "arrived": "도착(arrived)", "ask": "운전자가 물음", "pick": "추천 뒤 운전자 말(고르기일 수 있음)", "via": "경유 요청(via)"}[p["mode"]]
     head = f"[주변 장소] {mode} · {p['dest']} 근처 · " + (f"{p['meal']}(도착 {p['arrive']}) · " if p.get("meal") else "") + \
-           (f"{p['why']}" if p.get("why") else "가까운 순" + ("" if p["query"] == "카페" else " — 취향 음식 모름")) + " · 카카오 로컬 실시간"
+           (f"운전자가 말한 음식 '{p['food']}' · 가까운 순" if p.get("food") else f"{p['why']}" if p.get("why")
+            else "가까운 순" + ("" if p["query"] == "카페" else " — 취향 음식 모름")) + " · 카카오 로컬 실시간"
     frm = "지금 위치에서" if p["mode"] == "via" else "목적지에서"
     rows = [f"  {i}. {x['name']} · {frm} {x['m']}m({x['dir']}쪽, 걸어서 {x['walk']}분) · {x['kind']} · 좌표 {x['lat']},{x['lng']}"
             for i, x in enumerate(p["items"], 1)]
@@ -264,7 +298,7 @@ def post(rep, msg, b, dry, rec):
         rec["places"] = f"kakao|{p['mode']}|q={p.get('query', '')}|n={len(p.get('items') or [])}"   # 로그엔 검색 사실·개수만(이름 X)
     if not p or not p.get("items") or p.get("mode") == "pick":
         return
-    title = f"{p['dest']} 근처 " + (p["meal"] or p["query"]) + (f" · {p['why']}" if p.get("why") else "")
+    title = f"{p['dest']} 근처 " + (p["query"] if p.get("food") else (p["meal"] or p["query"])) + (f" · {p['why']}" if p.get("why") else "")
     rep["card"] = {"kind": "", "title": title.strip(), "source": "카카오 로컬 · 실시간", "nostore": True,
                    "items": [f"{x['name']} — {x['m']}m · {x['kind']} · 걸어서 {x['walk']}분" for x in p["items"]]}
     if p["mode"] == "near":
