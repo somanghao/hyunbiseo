@@ -25,5 +25,6 @@ object Registry {
         CarBatteryFeature(),   // 차 배터리(Vehicle SDK) · 20% 아래 알림(차)
         DriveCareFeature(),    // 장시간 운전 · 한동안 조용하면 먼저 말 걸기(차) — 쉼표 모듈의 자리
         PhoneFeature(),        // 짭비서 — 폰 모드 · 일정 · 리마인더 · 할 일 · 산책 · 하차 알림(폰)
+        CarLinkFeature(),      // 폰 연동 — 차 현비서와 연결 표시 · 차에서 보낸 장소 알림 · 차에서 나눈 이야기(폰, 서버 phonelink)
     )
 }

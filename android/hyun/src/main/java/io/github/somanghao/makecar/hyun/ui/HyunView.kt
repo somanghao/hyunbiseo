@@ -87,6 +87,8 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
     private var listOpen = false
     private val nextHit = RectF()
     private val listBtn = RectF()
+    var onCarLink: () -> Unit = {}       // 폰 — '차 현비서' 줄 누름 → 차에서 나눈 이야기 · 보낸 장소(CarLinkFeature)
+    private val carHit = RectF()
     // 우리 쪽(dan-emu) — 상시 듣기 토글 · 상황 화면(StageUi) · 표정 덮기. 데이터(목적지·회전·말…)는 위 ScreenData 로 옮겨 갔다(업스트림 11-09)
     var listenAlways = true             // 상시 듣기("현비서야") ↔ 눌러서 말하기
     var showListenToggle = false
@@ -451,6 +453,18 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
         val line = if (has) nextUp + (if (nextMore > 0) "   +$nextMore" else "") else "\"10분 뒤 알려줘\"처럼 말해 보세요"
         text(c, line, pad, ny, u * 0.035f, if (has) SUB else FAINT, maxW = w - pad * 2)
         nextHit.set(0f, ny - u * 0.06f, w, ny + u * 0.03f)
+        // 차 현비서 연동 줄(누르면 차에서 나눈 이야기 · 보낸 장소) — 폰 연동 기능이 채운다
+        carHit.setEmpty()
+        if (carLine.isNotBlank()) {
+            val cy0 = ny + u * 0.075f; val chH = u * 0.075f
+            p.textSize = u * 0.032f; p.typeface = medium
+            val tw = p.measureText(carLine) + u * 0.1f
+            val r0 = RectF(pad, cy0 - chH * 0.72f, min(w - pad, pad + tw + u * 0.05f), cy0 + chH * 0.28f)
+            p.style = Paint.Style.FILL; p.color = CARD; c.drawRoundRect(r0, chH / 2, chH / 2, p)
+            p.color = if (carLine.contains("연결됨")) OK else MUTED; c.drawCircle(r0.left + u * 0.035f, r0.centerY(), u * 0.011f, p)
+            text(c, carLine + "  ›", r0.left + u * 0.065f, cy0, u * 0.032f, SUB, medium, maxW = r0.width() - u * 0.08f)
+            carHit.set(RectF(r0).apply { inset(0f, -chH * 0.3f); offset(paddingLeft.toFloat(), paddingTop.toFloat()) })
+        }
 
         // 캐릭터 + 대화
         val r = min(w * 0.19f, h * 0.085f); val cx = w / 2; val cy = h * 0.33f
@@ -1601,6 +1615,7 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
         if (!phone && !charBtn.isEmpty && RectF(charBtn).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) { onCharacter(); return true }   // 캐릭터 바꾸기
         if (!phone && !skinBtn.isEmpty && RectF(skinBtn).apply { inset(-width() * 0.25f, -height() * 0.25f) }.contains(x, y)) { onSkin(); return true }   // 스킨 바꾸기
         if (!cardHit.isEmpty && cardHit.contains(e.x, e.y)) { cardHit.setEmpty(); onCardClose(); return true }   // 목록 카드 닫기(코어가)
+        if (phone && !carHit.isEmpty && carHit.contains(e.x, e.y)) { onCarLink(); return true }   // 차 현비서 연동 화면
         if (phone && (RectF(listBtn).apply { inset(-listBtn.width() * 0.3f, -listBtn.height() * 0.3f) }.contains(x, y) || nextHit.contains(x, y))) {
             listOpen = true; invalidate(); return true
         }

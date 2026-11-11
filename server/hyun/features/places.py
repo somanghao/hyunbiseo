@@ -144,7 +144,10 @@ def _items(docs, la, lo):
             continue
         m = int(d.get("distance") or 0)
         out.append({"name": d.get("place_name", ""), "m": m, "walk": max(1, math.ceil(m / WALK)), "dir": _bearing(la, lo, dy, dx),
-                    "kind": (d.get("category_name") or "").split(" > ")[-1], "lat": round(dy, 5), "lng": round(dx, 5)})
+                    "kind": (d.get("category_name") or "").split(" > ")[-1], "lat": round(dy, 5), "lng": round(dx, 5),
+                    # 폰으로 보내기(phonelink)용 — 메모리(_trips)에만 두고 카드·로그엔 쓰지 않는다(약관 — 서버 저장 금지)
+                    "tel": d.get("phone") or "", "addr": d.get("road_address_name") or d.get("address_name") or "",
+                    "url": d.get("place_url") or ""})
     return out
 
 

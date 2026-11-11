@@ -103,6 +103,12 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- 차 현비서 연동(폰) — 차에서 보낸 장소 카드 · 차에서 나눈 이야기(feature/CarLinkFeature · 서버 phonelink) -->
+        <activity
+            android:name=".phone.CarLinkActivity"
+            android:exported="false"
+            android:label="차 현비서"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
         <!-- 빠른 대화 창(폰) — 홈 위젯·상주 알림에서 열려 다른 앱 위에 뜬다. 최근 앱 목록엔 안 남는다 -->
         <activity
             android:name=".phone.QuickActivity"

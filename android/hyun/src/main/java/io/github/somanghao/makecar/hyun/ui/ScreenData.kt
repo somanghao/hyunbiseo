@@ -28,6 +28,7 @@ interface ScreenData {
     var modes: List<String>              // 폰 모드 칩(대중교통·산책·업무중)
     var modeIdx: Int
     var nextUp: String                   // 폰 — "15:00 팀 회의 · 32분 뒤"
+    var carLine: String                  // 폰 — "차 현비서와 연결됨 · 마지막 대화 3분 전"(폰 연동 CarLinkFeature) · 빈 글자면 안 그림
     var nextMore: Int
     var tasks: List<String>
     var reminderItems: List<String>
@@ -73,6 +74,7 @@ class ScreenModel : ScreenData {
     override var modes: List<String> = emptyList()
     override var modeIdx = -1
     override var nextUp = ""
+    override var carLine = ""
     override var nextMore = 0
     override var tasks: List<String> = emptyList()
     override var reminderItems: List<String> = emptyList()

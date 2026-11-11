@@ -13,10 +13,10 @@
   GET / POST: {경로: fn(h, q | body)} HTTP 라우트(h = core.http.Handler — send_json · send_html · send_bytes)
   threads() -> [callable]             서버가 띄울 백그라운드 일(예열 · 정리 봇)
 
-순서가 뜻이 있다 — 질문 블록: 길 → 주변 장소 → 기억 → 취향 → 최근 대화 → 브리핑 → 정보 통로 · 답 등록: 길 → 교통 표 → 주변 장소 → 카드(손질·사진) → 기억 → 취향 → 브리핑 → 폰.
+순서가 뜻이 있다 — 질문 블록: 길 → 주변 장소 → 기억 → 취향 → 최근 대화 → 브리핑 → 정보 통로 · 답 등록: 길 → 교통 표 → 주변 장소 → 카드(손질·사진) → 기억 → 취향 → 브리핑 → 폰 → 폰 연동.
 앱 쪽 짝 = android/hyun/…/feature/ (Registry.kt). 설계 → .claude/docs/wiki/hyun-architecture.md
 """
-from features import (briefing, cards, chat, feeds, history, login, memory, phone, places, restarea, route, search, taste, taste_refine,
+from features import (briefing, cards, chat, feeds, history, login, memory, phone, phonelink, places, restarea, route, search, taste, taste_refine,
                       testaudio, traffic)
 
 ALL = [
@@ -33,6 +33,7 @@ ALL = [
     search,         # 검색 모드(스포츠 · 기사 · 근황) · 인물 기사 카드
     restarea,       # 휴게소 소개(검색 모드 + 소개 카드)
     phone,          # 짭비서 — 폰 모드 · 리마인더 · 할 일 · /hyun/tasks
+    phonelink,      # 폰 연동 — 차 "폰으로 보내 줘" → 최근 장소를 폰 앱에(메모리 전달 · nostore) · /hyun/push(폰 long-poll = 연결) · /hyun/history
     taste_refine,   # 취향 정리 봇(서버 스레드) · /hyun/taste/refine
     login,          # Claude 로그인 페이지(API 키) · /hyun/login
     testaudio,      # 귀 시험 녹음 · /hyun/testaudio
