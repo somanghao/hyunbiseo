@@ -1419,6 +1419,7 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
     /** 목록 카드(차 오른쪽 칸) — 제목·출처 + 번호 목록 한 칸(최대 10줄), 1~3위 강조, "제목 — 작가"면 작가는 옅게 */
     internal fun listCard(c: Canvas, k: Card, x0: Float, y0: Float, x1: Float, y1: Float, u: Float) {
         if (k.kind == "info") { infoCard(c, k, x0, y0, x1, y1, u); return }
+        if (k.kind == "schedule") { scheduleCard(c, k, x0, y0, x1, y1, u); return }
         val r = RectF(x0, y0, x1, y1)
         cardHit.set(r); cardHit.offset(paddingLeft.toFloat(), paddingTop.toFloat())
         kit.panel(c, r, u * 0.025f, CARD, u)
@@ -1442,12 +1443,29 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
         telHits.clear()
         val hasTel = k.tels.any { it.isNotBlank() }
         val chipW = if (hasTel) min(u * 0.15f, iw * 0.22f) else 0f
+        val walkRe = Regex("""걸어서\s*(\d+)\s*분""")
+        val meters = items.map { s -> Regex("""(\d+)\s*m\b""").find(s.substringAfter(" — ", ""))?.groupValues?.get(1)?.toIntOrNull() }
+        val nearest = if (items.any { walkRe.containsMatchIn(it) }) meters.withIndex().filter { it.value != null }.minByOrNull { it.value!! }?.index ?: -1 else -1
         items.forEachIndexed { i, s ->
             val y = listTop + rowH * i + rowH * 0.66f
             text(c, "${i + 1}", ix + numW - size * 0.8f, y, size, if (i < 3) moodColor() else MUTED, bold, Paint.Align.RIGHT)
-            val parts = s.split(" — ", " - ", limit = 2)
+            var parts = s.split(" — ", " - ", limit = 2)
             val face = if (i < 3) bold else body
-            val avail = iw - numW - (if (hasTel) chipW + u * 0.02f else 0f)
+            var avail = iw - numW - (if (hasTel) chipW + u * 0.02f else 0f)
+            walkRe.find(parts.getOrNull(1).orEmpty())?.let { w ->
+                val label = "걸어서 ${w.groupValues[1]}분"
+                val ps = size * 0.84f
+                p.textSize = ps; p.typeface = bold
+                val pw = p.measureText(label) + ps * 1.2f
+                val right = ix + iw - (if (hasTel) chipW + u * 0.02f else 0f)
+                val pr = RectF(right - pw, listTop + rowH * i + rowH * 0.2f, right, listTop + rowH * (i + 1) - rowH * 0.2f)
+                p.style = Paint.Style.FILL; p.shader = null
+                p.color = if (i == nearest) ACCENT else (ACCENT and 0x00FFFFFF) or 0x40000000
+                c.drawRoundRect(pr, pr.height() / 2, pr.height() / 2, p)
+                text(c, label, pr.centerX(), pr.centerY() + ps * 0.36f, ps, if (i == nearest) C.tbtBg else FG, bold, Paint.Align.CENTER)
+                avail -= pw + u * 0.015f
+                parts = listOf(parts[0], parts[1].replace(w.value, "").split(" · ").map { it.trim() }.filter { it.isNotBlank() }.joinToString(" · "))
+            }
             k.tels.getOrNull(i)?.takeIf { it.isNotBlank() }?.let {   // 가게 줄 오른쪽 [전화] — 누르기 영역은 줄 높이 거의 전부(사용자 11-11 "리스트 아래에 바로 전화하기")
                 val ch = RectF(ix + iw - chipW, listTop + rowH * i + rowH * 0.14f, ix + iw, listTop + rowH * (i + 1) - rowH * 0.14f)
                 p.style = Paint.Style.FILL; p.shader = null; p.color = ACCENT
@@ -1464,6 +1482,72 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
                 c.drawLine(ix, listTop + rowH * (i + 1), ix + iw, listTop + rowH * (i + 1), p)
             }
         }
+    }
+
+    /** "04:00" → "새벽 4시" — 폰 [정보] 탭(Cards.easyTime)과 같은 규칙 */
+    private fun easyTime(hm: String): String? {
+        val m = Regex("""(\d{1,2}):(\d{2})""").find(hm) ?: return null
+        val h = m.groupValues[1].toInt(); val mi = m.groupValues[2].toInt()
+        val part = when (h) { in 0..5 -> "새벽"; in 6..11 -> "오전"; 12 -> "낮"; in 13..17 -> "오후"; in 18..20 -> "저녁"; else -> "밤" }
+        val h12 = when { h == 0 -> 12; h > 12 -> h - 12; else -> h }
+        return "$part ${h12}시" + if (mi > 0) " ${mi}분" else ""
+    }
+
+    /** 일정 카드(정차, 한눈) — 왼쪽 선수·팀 사진(작게, 있으면) · 오른쪽 제목 + 일정 3줄(날짜 · 읽기 쉬운 시각 크게 · 대진) · 다음 일정 강조.
+     *  폰 [정보] 탭과 같은 카드 데이터(값 동일) — 폰은 전부·사진 크게, 차는 3줄·큰 글씨 */
+    private fun scheduleCard(c: Canvas, k: Card, x0: Float, y0: Float, x1: Float, y1: Float, u: Float) {
+        val r = RectF(x0, y0, x1, y1)
+        cardHit.set(r); cardHit.offset(paddingLeft.toFloat(), paddingTop.toFloat())
+        kit.panel(c, r, u * 0.025f, CARD, u)
+        val gap = u * 0.028f
+        val srcH = if (k.source.isNotBlank()) u * 0.05f else 0f
+        var left = r.left + gap
+        if (k.images.any { it.isNotBlank() }) {
+            val ih = r.height() - gap * 2 - srcH
+            val img = RectF(left, r.top + gap, left + min(r.width() * 0.22f, ih * 0.78f), r.top + gap + ih)
+            p.style = Paint.Style.FILL; p.shader = null; p.color = C.card2
+            c.drawRoundRect(img, u * 0.018f, u * 0.018f, p)
+            val bm = k.images.firstOrNull { it.isNotBlank() }?.let { urlBmp(it) }
+            if (bm != null) {   // 인물 사진 — 얼굴이 위쪽이라 위를 남기고 자른다
+                val sc = max(img.width() / bm.width, img.height() / bm.height)
+                val sw = img.width() / sc; val sh = img.height() / sc
+                val sx = (bm.width - sw) / 2; val sy = (bm.height - sh) * 0.15f
+                val src = android.graphics.Rect(sx.toInt(), sy.toInt(), (sx + sw).toInt(), (sy + sh).toInt())
+                c.save(); clip.reset(); clip.addRoundRect(img, u * 0.018f, u * 0.018f, Path.Direction.CW); c.clipPath(clip)
+                p.color = Color.WHITE; p.isFilterBitmap = true; c.drawBitmap(bm, src, img, p); c.restore()
+                if (comic) kit.frame(c, img, u * 0.018f, u)
+            } else text(c, "사진 불러오는 중", img.centerX(), img.centerY(), u * 0.022f, MUTED, align = Paint.Align.CENTER)
+            left = img.right + gap
+        }
+        val tw = r.right - gap - left
+        val titleY = r.top + gap + u * 0.038f
+        if (comic) caption(c, k.title.ifBlank { botName }, left, titleY, u * 0.034f, tw, u)
+        else text(c, k.title.ifBlank { botName }, left, titleY, u * 0.036f, FG, bold, maxW = tw)
+        val rowsTop = titleY + u * (if (comic) 0.05f else 0.03f)
+        val bottom = r.bottom - gap - srcH
+        val rows = k.items.take(3)   // 차 = 한눈(3줄) · 폰 = 전부
+        val past = { s: String -> Regex("끝남|결과|종료").containsMatchIn(s.substringBefore(" — ")) }
+        val next = rows.indexOfFirst { !past(it) }
+        val rh = min((bottom - rowsTop) / max(rows.size, 1), u * 0.13f)
+        val dateW = min(tw * 0.34f, u * 0.25f)
+        rows.forEachIndexed { i, s ->
+            val top = rowsTop + rh * i
+            val box = RectF(left, top + rh * 0.06f, left + tw, top + rh * 0.94f)
+            if (i == next) { p.style = Paint.Style.FILL; p.shader = null; p.color = (ACCENT and 0x00FFFFFF) or 0x33000000; c.drawRoundRect(box, u * 0.016f, u * 0.016f, p) }
+            val parts = s.split(" — ", limit = 2)
+            val date = Regex("""\d{1,2}-\d{1,2}(\(.\))?""").find(parts[0])?.value.orEmpty()
+            val hm = Regex("""\d{1,2}:\d{2}""").find(parts[0])?.value
+            val big = when { past(s) -> "끝남"; hm != null -> easyTime(hm) ?: hm; else -> "시각 미정" }
+            val dim = past(s)
+            text(c, date, left + u * 0.02f, box.top + box.height() * 0.36f, u * 0.022f, MUTED, maxW = dateW)
+            text(c, big, left + u * 0.02f, box.top + box.height() * 0.82f, u * 0.034f, if (dim) MUTED else FG, bold, maxW = dateW)
+            val segs = parts.getOrNull(1).orEmpty().split(" · ")
+            val rx = left + dateW + u * 0.03f; val rw = left + tw - rx - u * 0.015f
+            text(c, segs.first(), rx, box.top + box.height() * 0.48f, u * 0.03f, if (dim) MUTED else FG, bold, maxW = rw)
+            val sub = (if (i == next && hm != null) "$hm KST · " else "") + segs.drop(1).joinToString(" · ")
+            if (sub.isNotBlank()) text(c, sub, rx, box.top + box.height() * 0.84f, u * 0.022f, MUTED, maxW = rw)
+        }
+        if (k.source.isNotBlank()) text(c, k.source, r.left + gap, r.bottom - gap * 0.7f, u * 0.02f, MUTED, maxW = r.width() - gap * 2)
     }
 
     /** 그림 목록(웹툰 표지 등) — 5칸 × 2줄 격자: 표지 + 순위 + 제목 한 줄 */

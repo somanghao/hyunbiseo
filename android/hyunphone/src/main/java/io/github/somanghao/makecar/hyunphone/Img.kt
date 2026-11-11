@@ -25,7 +25,7 @@ object Img {
         cache.get(u)?.let { iv.setImageBitmap(it); return }
         pool.execute {
             val bm = runCatching {
-                val c = (URL(u).openConnection() as HttpURLConnection).apply { connectTimeout = 4000; readTimeout = 8000; setRequestProperty("User-Agent", "HyunPhone/0.1") }
+                val c = (URL(u).openConnection() as HttpURLConnection).apply { connectTimeout = 4000; readTimeout = 8000; setRequestProperty("User-Agent", "Mozilla/5.0") }
                 try {
                     val bytes = c.inputStream.use { it.readBytes() }
                     val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeByteArray(bytes, 0, bytes.size, o)

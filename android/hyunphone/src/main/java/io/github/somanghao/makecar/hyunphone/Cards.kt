@@ -26,10 +26,10 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
         val imgs = e.cardx?.optJSONArray("images")?.let { arr -> (0 until arr.length()).any { arr.optString(it).isNotBlank() } } == true
         return when {
             e.places != null || e.placesGone -> "장소"
-            k == "image_list" || (imgs && k != "info") -> "순위"
-            k == "schedule" -> "일정"
+            k == "schedule" -> "일정"   // 일정·시세·추천은 사진이 붙어도 그 모양(선수 사진 ≠ 순위 표지)
             k == "stock" -> "시세"
             k == "picks" -> "추천"
+            k == "image_list" || (imgs && k != "info") -> "순위"
             k == "info" -> if (e.card.contains("휴게소")) "휴게소" else "소개"
             e.card.contains("교통") -> "교통"
             else -> "목록"
@@ -47,12 +47,21 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
         top.addView(t("  ${e.t}" + (if (e.live) " · 방금 동기화" else "") + (if (e.who == "운전자") " · \"${e.q}\"" else " · 현비서가 먼저"), 11.5f, Ui.CARD_SUB).apply {
             maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
         c.addView(top)
-        c.addView(t(e.card.ifBlank { "찾은 것" }, 17.5f, Ui.CARD_FG, bold = true).apply { setPadding(0, dp(8), 0, 0) })
-        if (kind != "순위" && kind != "시세") c.addView(t(e.a, 13.5f, Ui.CARD_SUB).apply { maxLines = 3; ellipsize = TextUtils.TruncateAt.END; setPadding(0, dp(3), 0, dp(2)) })
-        val items = e.cardx?.optJSONArray("items")?.let { arr -> (0 until minOf(arr.length(), 10)).map { arr.optString(it) } }.orEmpty()
+        // 결과만(사용자 11-11 "쓸데없는 텍스트가 너무 많아") — 제목 한 줄 + 결과 + 출처 작게. 답 문장은 [대화] 탭에
+        val items = e.cardx?.optJSONArray("items")?.let { arr -> (0 until minOf(arr.length(), 10)).map { clean(arr.optString(it)) } }.orEmpty().filter { it.isNotBlank() }
         val imgs = e.cardx?.optJSONArray("images")?.let { arr -> (0 until arr.length()).map { arr.optString(it) } }.orEmpty()
+        val title = t(e.card.ifBlank { "찾은 것" }, 17.5f, Ui.CARD_FG, bold = true)
+        val face = if (kind == "일정") imgs.firstOrNull { it.isNotBlank() } else null   // 선수·팀 사진(위키미디어 공용 — 서버 중계)
+        if (face != null) {
+            val head = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(10), 0, dp(2)) }
+            head.addView(ImageView(a).apply { scaleType = ImageView.ScaleType.CENTER_CROP; background = Ui.round(0xFFDDE4EC.toInt(), 14f, a); clipToOutline = true
+                layoutParams = LinearLayout.LayoutParams(dp(84), dp(104)).apply { marginEnd = dp(12) }; Img.load(face, this) })
+            head.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+            c.addView(head)
+        } else c.addView(title.apply { setPadding(0, dp(8), 0, 0) })
         when (kind) {
-            "장소" -> if (e.places != null) e.places.take(5).forEach { c.addView(placeRow(it, focusName)) } else c.addView(gone())
+            "장소" -> if (e.places != null) { val near = e.places.take(5).minByOrNull { it.optInt("m", Int.MAX_VALUE) }
+                e.places.take(5).forEach { c.addView(placeRow(it, focusName, it === near)) } } else c.addView(gone())
             "순위" -> c.addView(coverGrid(items, imgs))
             "추천" -> items.forEach { c.addView(pickRow(it)) }
             "시세" -> items.forEachIndexed { i, s -> c.addView(stockRow(s, i)) }
@@ -60,9 +69,14 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
             "소개", "휴게소" -> { imgs.firstOrNull { it.isNotBlank() }?.let { c.addView(photo(it)) }; items.forEach { c.addView(infoRow(it)) } }
             else -> items.forEachIndexed { i, s -> c.addView(listRow(s, i)) }
         }
-        e.cardx?.optString("source")?.takeIf { it.isNotBlank() }?.let { c.addView(t(it, 11.5f, Ui.CARD_SUB).apply { setPadding(0, dp(10), 0, 0) }) }
+        e.cardx?.optString("source")?.let { clean(it) }?.takeIf { it.isNotBlank() }?.let { c.addView(t(it, 11f, Ui.CARD_SUB).apply { setPadding(0, dp(10), 0, 0) }) }
         return c
     }
+
+    /** 부정·메타 조각("확인 못 했어요" · "(시각 미확인)")은 정보 탭에 안 보인다 — 값만 남긴다(사용자 11-11) */
+    private val neg = Regex("""확인\s*못|못\s*찾|미확인|모르겠|알\s*수\s*없|없어요|지어내지""")
+    fun clean(s: String): String = s.replace(Regex("""\([^)]*(미확인|확인\s*못|확인\s*필요|못\s*찾)[^)]*\)"""), "")
+        .split(" · ").filterNot { neg.containsMatchIn(it) }.joinToString(" · ").trim().trimEnd('·', ' ')
 
     private fun chipColor(k: String) = when (k) { "장소" -> 0xFFBFEDEC; "순위" -> 0xFFFFE2B8; "추천" -> 0xFFE3D7FF; "시세" -> 0xFFD8E6FF; "일정" -> 0xFFC9F0D6; else -> 0xFFE1E8EF }.toInt()
 
@@ -71,17 +85,23 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
         layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) } }
 
     /** 장소 — 이름(누르면 상세) · 거리 · 찾은 평판 한 줄 · 바로 [전화] [지도] */
-    private fun placeRow(p: JSONObject, focusName: String): View {
+    private fun placeRow(p: JSONObject, focusName: String, nearest: Boolean): View {
         val focus = focusName.isNotBlank() && p.optString("name") == focusName
         val line = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(if (focus) 8 else 0), dp(8), 0, dp(6)); if (focus) background = Ui.round(0xFFD6F3F2.toInt(), 12f, a)
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) } }
         val r = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, -2, 1f); setOnClickListener { onPlace(p) } }
         r.addView(t(p.optString("name") + "  ›", 15f, Ui.CARD_FG, bold = true))
-        r.addView(t(listOfNotNull(p.optString("cat").takeIf { it.isNotBlank() },
-            p.optString("near").takeIf { it.isNotBlank() }?.let { "$it ${p.optInt("m")}m" } ?: "${p.optInt("m")}m",
-            p.optInt("walk").takeIf { it > 0 }?.let { "걸어서 ${it}분" }).joinToString(" · "), 12.5f, Ui.CARD_SUB))
-        p.optString("note").takeIf { it.isNotBlank() }?.let { r.addView(t("★ $it", 12.5f, 0xFF0E7C7B.toInt()).apply { setPadding(0, dp(2), 0, 0) }) }
+        val meta = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(3), 0, 0) }
+        p.optInt("walk").takeIf { it > 0 }?.let { w ->   // 걸어서 N분 = 카카오 거리 ÷ 67m/분 올림(서버 places.WALK) — 중요한 정보라 색 다르게(사용자 11-11)
+            meta.addView(t("걸어서 ${w}분", 12.5f, if (nearest) 0xFF06302F.toInt() else 0xFF0E7C7B.toInt(), bold = true).apply {
+                background = Ui.round(if (nearest) Ui.ACCENT else 0xFFD6F3F2.toInt(), 10f, a); setPadding(dp(8), dp(2), dp(8), dp(2)) })
+            if (nearest) meta.addView(t(" 가장 가까움", 11.5f, 0xFF0E7C7B.toInt(), bold = true))
+        }
+        meta.addView(t("  " + listOfNotNull(p.optString("near").takeIf { it.isNotBlank() }?.let { "$it ${p.optInt("m")}m" } ?: "${p.optInt("m")}m",
+            p.optString("cat").takeIf { it.isNotBlank() }).joinToString(" · "), 12f, Ui.CARD_SUB).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+        r.addView(meta)
+        p.optString("note").let { clean(it) }.takeIf { it.isNotBlank() }?.let { r.addView(t("★ $it", 12.5f, 0xFF5B4A00.toInt()).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setPadding(0, dp(3), 0, 0) }) }
         line.addView(r)
         if (p.optString("tel").isNotBlank()) line.addView(pill("전화", true) { Place.dial(a, p) })
         line.addView(pill("지도", false) { Place.map(a, p) })
@@ -136,7 +156,7 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
         head.addView(t(parts[0], 16f, Ui.CARD_FG, bold = true).apply { layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
         rating?.let { head.addView(t(it.trim(), 12f, 0xFF6B4E00.toInt(), bold = true).apply { background = Ui.round(0xFFFFE7A6.toInt(), 10f, a); setPadding(dp(8), dp(3), dp(8), dp(3)) }) }
         box.addView(head)
-        if (reason.isNotBlank()) box.addView(t(reason, 13.5f, Ui.CARD_SUB).apply { setPadding(0, dp(3), 0, 0) })
+        if (reason.isNotBlank()) box.addView(t(reason, 13f, Ui.CARD_SUB).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setPadding(0, dp(3), 0, 0) })
         return box
     }
 
@@ -178,9 +198,11 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
         val line = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(10), dp(10), dp(10), dp(10)); layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) }
             background = Ui.round(if (next) 0xFFD9F5F4.toInt() else 0xFFFFFFFF.toInt(), 12f, a, if (next) Ui.ACCENT else null); alpha = if (past) 0.6f else 1f }
-        val dcol = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(78), -2) }
-        dcol.addView(t(date.ifBlank { "날짜 미정" }, 12f, Ui.CARD_SUB).apply { gravity = Gravity.CENTER })
-        dcol.addView(t(time, if (time.length <= 5) 19f else 14f, if (past) Ui.CARD_SUB else Ui.CARD_FG, bold = true).apply { gravity = Gravity.CENTER })
+        val dcol = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(dp(88), -2) }
+        dcol.addView(t(date.ifBlank { "날짜 미정" }, 12.5f, Ui.CARD_SUB).apply { gravity = Gravity.CENTER })
+        val easy = easyTime(time)   // "04:00" → "새벽 4시"(사용자 11-11 — 읽기 쉬운 시각)
+        dcol.addView(t(easy ?: time, if ((easy ?: time).length <= 5) 18f else 14f, if (past) Ui.CARD_SUB else Ui.CARD_FG, bold = true).apply { gravity = Gravity.CENTER })
+        if (easy != null) dcol.addView(t("$time KST", 10.5f, Ui.CARD_SUB).apply { gravity = Gravity.CENTER })
         line.addView(dcol)
         val rcol = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, 0, 0); layoutParams = LinearLayout.LayoutParams(0, -2, 1f) }
         val segs = right.split(" · ")
@@ -189,6 +211,15 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
         if (segs.size > 1) rcol.addView(t(segs.drop(1).joinToString(" · "), 12.5f, Ui.CARD_SUB))
         line.addView(rcol)
         return line
+    }
+
+    /** "04:00" → "새벽 4시" · "19:30" → "저녁 7시 30분" · 시각이 아니면 null */
+    private fun easyTime(hm: String): String? {
+        val m = Regex("""^(\d{1,2}):(\d{2})$""").find(hm.trim()) ?: return null
+        val h = m.groupValues[1].toInt(); val mi = m.groupValues[2].toInt()
+        val part = when (h) { in 0..5 -> "새벽"; in 6..11 -> "오전"; 12 -> "낮"; in 13..17 -> "오후"; in 18..20 -> "저녁"; else -> "밤" }
+        val h12 = when { h == 0 -> 12; h > 12 -> h - 12; else -> h }
+        return "$part ${h12}시" + if (mi > 0) " ${mi}분" else ""
     }
 
     /** 소개 — 사진 */

@@ -148,7 +148,15 @@ def _cardx(card):
     if not card or card.get("nostore") or not card.get("items"):
         return None
     return {"kind": card.get("kind", ""), "title": card.get("title", ""), "source": card.get("source", ""),
-            "items": list(card.get("items") or [])[:10], "images": list(card.get("images") or [])[:10]}
+            "items": list(card.get("items") or [])[:10], "images": [_via_server(u) for u in list(card.get("images") or [])[:10]]}
+
+
+def _via_server(u):
+    """그림은 서버 중계(/hyun/img)로 — 네이버 웹툰 표지는 Referer가 없으면 403이라 폰이 바로 못 받는다(11-11 '표지 안 보여')"""
+    if not u or u.startswith("/"):
+        return u or ""
+    from urllib.parse import quote
+    return "/hyun/img?u=" + quote(u, safe="")
 
 
 def _sync(rep, msg, uid):
