@@ -241,10 +241,17 @@ class StageModel {
         fun pages(s: Sit): List<Page> {
             val out = mutableListOf(Page("auto", "", "${s.label} 기본"))
             val glance = s == Sit.DRIVE || s == Sit.READY || s == Sit.STOP
-            if (!glance) CATS.filter { allowed(it.first, s) }.forEach { out += Page("cat", it.first, it.second) }
-            ALL_IDEAS.filter { it.sit == s }.forEach { out += Page("idea", it.id, it.name) }
+            if (!glance) CATS.filter { allowed(it.first, s) && it.first !in DEMO_CATS }.forEach { out += Page("cat", it.first, it.second) }
+            ALL_IDEAS.filter { it.sit == s && (it.id in REAL_IDEAS || it.id in liveIdeas) }.forEach { out += Page("idea", it.id, it.name) }
             return out
         }
+        /** 평소 넘겨 보는 장에 넣는 아이디어 — 실제 데이터로 도는 것만(11-11 가짜 감사: 예전엔 아이디어 62장이 조건 없이 다 들어가
+         *  '예시'·고정 값 화면이 평소 운전 중에도 나왔다). 나머지는 허브 미리보기(--es idea)로만 */
+        val REAL_IDEAS = setOf("fortune", "first", "routine", "launch", "stretch", "level", "stamp", "progress", "mood")
+        /** 조건이 맞을 때만 실제인 아이디어(조수석 착석 · 뒷좌석 착석 · 비) — StageFeature.refresh가 채운다 */
+        @Volatile var liveIdeas: Set<String> = emptySet()
+        /** 예시 데이터뿐인 취미 장(음악·스포츠·동네 이야기·일정) — 평소엔 빼고 미리보기로만 */
+        val DEMO_CATS = setOf("music", "sports", "local", "schedule")
         fun idea(id: String?) = ALL_IDEAS.firstOrNull { it.id == id }
     }
 }
@@ -889,6 +896,8 @@ class StageFeature : Feature {
     // Tile 재사용: icon(선 아이콘 이름) · label(칩 제목) · value(캐릭터의 한마디) · sub(작은 근거) · action
     // ======================================================================
     private fun refresh() {
+        // 조건이 맞을 때만 실제인 아이디어 장 — 조수석 착석(동승자 편성) · 뒷좌석 착석(두고 내림) · 비(와이퍼·날씨)
+        m.status?.let { st -> StageModel.liveIdeas = buildSet { if (st.passenger.v == true) add("crew"); if (st.rearKid.v == true) add("leftbehind"); if (st.wiper.v == true || m.wcode in 51..67 || m.wcode in 80..82) add("rain") } }
         val now = Calendar.getInstance()
         val hhmm = "%02d:%02d".format(now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE))
         m.kicker = "${m.sit.label} · $hhmm"
