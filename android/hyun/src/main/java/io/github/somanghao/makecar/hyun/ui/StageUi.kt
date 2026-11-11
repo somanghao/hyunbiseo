@@ -850,7 +850,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                         val sc = max(ir.width() / im.width, ir.height() / im.height); c.drawBitmap(im, null, RectF(ir.centerX() - im.width * sc / 2, ir.centerY() - im.height * sc / 2, ir.centerX() + im.width * sc / 2, ir.centerY() + im.height * sc / 2), bp); c.restore() } }
                 text(c, m.newsSource, x0, zone.bottom - pad + 8 * U, 18 * U, FAINT, medium, maxW = x1 - x0) }
             "todo" -> { m.todos.forEachIndexed { i, t -> row(if (i == 0) "pin" else "bag", t, if (i == 0) "가는 길" else "", if (i == 0) ACC else MUTED, ACC) }
-                text(c, "예시 할 일 — 폰 짭비서·서버 할 일과 이어질 자리", x0, zone.bottom - pad + 8 * U, 18 * U, FAINT, medium) }
+                text(c, "예시 할 일 — 폰 현비서 앱·서버 할 일과 이어질 자리", x0, zone.bottom - pad + 8 * U, 18 * U, FAINT, medium) }
             "car" -> { val st = m.status
                 fun src(v: io.github.somanghao.makecar.hyun.drive.CarStatus.V<*>?) = when (v?.v) { null -> "예시"; else -> when (v.from) { io.github.somanghao.makecar.hyun.drive.CarStatus.From.PLEOS -> "Pleos"; io.github.somanghao.makecar.hyun.drive.CarStatus.From.AAOS -> "AAOS"; io.github.somanghao.makecar.hyun.drive.CarStatus.From.APP -> "앱"; else -> "모의" } }
                 fun line(ic: String, a: String, v: io.github.somanghao.makecar.hyun.drive.CarStatus.V<*>?, value: String) = row(ic, "$a  ·  ${src(v)}", value, ACC, if (v?.v == null) FAINT else FG)
@@ -2135,7 +2135,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 text(c, "주간 공유 카드", x0, r.top + 100 * U, 48 * U, FG, bold)
                 text(c, "지금 스킨 그림체로 만든 한 장 · 일요일 밤마다", x0, r.top + 146 * U, 26 * U, MUTED, medium, maxW = r.right - x0 - 32 * U)
                 button(c, "폰으로 보내기", RectF(x0, r.bottom - 120 * U, x0 + 260 * U, r.bottom - 56 * U), true, "noop")
-                lab(c, "폰(짭비서) 공유 연동 예정 · 숫자는 이번 주 기록(없으면 예시)", x0, r.bottom - 22 * U, r.right - x0 - 32 * U, FAINT) }
+                lab(c, "폰 현비서 앱 공유 연동 예정 · 숫자는 이번 주 기록(없으면 예시)", x0, r.bottom - 22 * U, r.right - x0 - 32 * U, FAINT) }
             "league" -> row(340 * U) { r -> box(c, r); exTag(c, r)
                 lab(c, "가족 온기 리그 · 이번 주", r.left + 32 * U, r.top + 40 * U)
                 listOf(Triple("엄마", 214, false), Triple("나", max(m.weekPoints, 186), true), Triple("동생", 142, false), Triple("아빠", 98, false)).sortedByDescending { it.second }.forEachIndexed { i, (n2, pts, me) ->

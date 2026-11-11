@@ -22,7 +22,7 @@ def fmt_ctx(c):
         return ""
     parts = []
     if c.get("device") == "phone":
-        parts.append(f"폰({c.get('bot', '짭비서')}·{MODE.get(c.get('mode'), c.get('mode'))}"
+        parts.append(f"폰({c.get('bot', '현비서')}·{MODE.get(c.get('mode'), c.get('mode'))}"
                      + ("·이어폰 없음=자막만" if c.get("mode") == "transit" and not c.get("headset", True) else "") + ")")
     if "gear" in c or "speed" in c:
         parts.append(f"{c.get('gear', '?')} {c.get('speed', 0)}km/h" + (" 주행규제" if c.get("driving") else ""))

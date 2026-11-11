@@ -48,7 +48,7 @@ import kotlin.math.roundToInt
 class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Events, Sense.Out, Ear.Out {
     val main = Handler(Looper.getMainLooper())
     val isCar = act.packageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)
-    val botName = if (isCar) "현비서" else "짭비서"   // 폰은 짭비서 — 두뇌는 같고 캐릭터 이름·말투만 다르다(server/hyun/persona.md)
+    val botName = "현비서"   // 차·폰 모두 현비서(11-11 — 폰 앱도 '현비서 휴대폰 앱', 예전 이름 짭비서는 내부 코드명) · 폰 말투·규칙 = server/hyun/persona.md 폰 모드
     /** 이 기기에서 켠 기능들(등록 순서) — 생성자 인자 이름을 따로 둔다: 속성 초기화 안의 익명 객체(1초 루프 등)가 인자(거르기 전 목록)를 잡았다(11-07) */
     val features: List<Feature> = all.filter { it.enabled(isCar) }
     val link = Link(if (isCar) "http://10.0.2.2:8790" else "http://127.0.0.1:8790")

@@ -122,7 +122,7 @@
         <!-- 헤드업 알림 [반반으로] — 내비를 1칸으로 줄여 빈 칸에 현비서 -->
         <receiver android:name=".drive.SplitReceiver" android:exported="false" />
 
-        <receiver android:name=".phone.QuickWidget" android:exported="false" android:label="짭비서">
+        <receiver android:name=".phone.QuickWidget" android:exported="false" android:label="현비서">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
         </receiver>
