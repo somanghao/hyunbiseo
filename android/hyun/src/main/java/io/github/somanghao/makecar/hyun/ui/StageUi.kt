@@ -13,6 +13,7 @@ import android.graphics.Typeface
 import android.os.SystemClock
 import io.github.somanghao.makecar.hyun.drive.CarCheck
 import io.github.somanghao.makecar.hyun.feature.Sit
+import io.github.somanghao.makecar.hyun.core.Fmt
 import io.github.somanghao.makecar.hyun.feature.StageModel
 import io.github.somanghao.makecar.hyun.feature.Tile
 import kotlin.math.max
@@ -1181,7 +1182,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         fun ok(t: String) = m.newsImgs[t]?.let { v.urlBmp(it) } != null   // 사진을 실제로 받은 기사(깨진 주소는 건너뜀)
         return m.newsList.firstOrNull { ok(it) } ?: m.newsImgs.keys.firstOrNull { ok(it) } ?: m.newsList.firstOrNull { m.newsImgs[it] != null } ?: m.newsList.firstOrNull()
     }
-    private fun navLine(): String = "${v.dist(m.navTurnM)} 앞에서 ${shortTurn(m.navTurnType, m.navTurn)}이에요"
+    private fun navLine(): String = if (!hasRoute()) "목적지는 말로 정해요" else "${v.dist(m.navTurnM)} 앞에서 ${shortTurn(m.navTurnType, m.navTurn)}이에요"
+    /** 실제 경로(또는 시연 모의 경로)가 있나 — 없으면 길 안내 칸에 아무 값도 꾸며 넣지 않는다 */
+    private fun hasRoute() = m.navTurnType.isNotBlank() || m.navTurn.isNotBlank()
     private fun outfitLine(): String {
         val t = m.tempNow ?: return "날씨를 살펴보는 중이에요"
         val base = when { t <= 5 -> "두꺼운 외투에 목도리까지"; t <= 12 -> "얇은 니트에 가벼운 겉옷이면 돼요"; t <= 19 -> "긴소매 한 장이면 충분해요"; t <= 25 -> "반소매도 괜찮아요"; else -> "가볍게 입고 선글라스 챙겨요" }
@@ -1223,14 +1226,21 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     /** 조사 로/으로 — 받침(ㄹ 제외) 있으면 으로 */
     private fun ro(w: String): String { val ch = w.lastOrNull() ?: return "로"; if (ch !in '가'..'힣') return "로"; val jong = (ch - '가') % 28; return if (jong == 0 || jong == 8) "로" else "으로" }
     private fun turnWord() = shortTurn(m.navTurnType, m.navTurn)
-    private fun lanes(c: Canvas, r: RectF, size: Float) {
-        val ty = m.navTurnType
-        val rt = ty.contains("RIGHT") || ty == "TURN_KEEP_R" || ty == "TURN_EXIT_IC"; val lt = ty.contains("LEFT") || ty == "TURN_KEEP_L" || ty == "TURN_UTURN"
-        val lw = r.width() / 4
-        for (i in 0 until 4) {
-            val on = (rt && i >= 2) || (lt && i < 2) || (!rt && !lt)
-            val lty = if (rt && i >= 2) "TURN_RIGHT" else if (lt && i < 2) "TURN_LEFT" else "TURN_STRAIGHT"
-            v.turnIcon(c, lty, r.left + lw * (i + 0.5f), r.centerY(), size, if (on) ACC else Glass.a(MUTED, 90)); p.style = Paint.Style.FILL; p.strokeWidth = 0f
+    /** 그다음 회전(내비 TBT 둘째 — 회전 · 거리 · 방면). 예전 차로 화살표 4칸은 회전 종류로 짐작해 그린 것이라 뺐다 — Pleos NaviHelper에 차선 정보가 없다(navi-data TBTInfo = 종류·거리·설명뿐, 11-11 바이너리 확인)
+     *  그다음 회전이 없으면 남은 거리 · 목적지(이것도 내비 실제 값) */
+    private fun nextTurnTile(c: Canvas, r: RectF) {
+        box(c, r)
+        if (m.navNext.isNotBlank()) {
+            lab(c, "그다음", r.left + 40 * U, r.top + 52 * U)
+            val ic = min(110 * U, r.height() * 0.42f)
+            v.turnIcon(c, m.navNextType.ifBlank { "TURN_STRAIGHT" }, r.left + 40 * U + ic / 2, r.centerY() + 24 * U, ic, ACC); p.style = Paint.Style.FILL; p.strokeWidth = 0f
+            val tx = r.left + 64 * U + ic
+            text(c, "${v.dist(m.navNextM)} 뒤 ${shortTurn(m.navNextType, m.navNext)}", tx, r.centerY() + 14 * U, fit("${v.dist(m.navNextM)} 뒤 ${shortTurn(m.navNextType, m.navNext)}", 46 * U, r.right - tx - 32 * U, bold), FG, bold, maxW = r.right - tx - 32 * U)
+            text(c, m.navNext, tx, r.centerY() + 62 * U, 30 * U, MUTED, medium, maxW = r.right - tx - 32 * U)
+        } else {
+            lab(c, "남은 거리", r.left + 40 * U, r.top + 52 * U)
+            text(c, m.navRemain, r.left + 40 * U, r.centerY() + 40 * U, fit(m.navRemain, 80 * U, r.width() * 0.6f, bold), FG, bold)
+            text(c, m.navDest, r.left + 40 * U, r.bottom - 32 * U, 30 * U, MUTED, medium, maxW = r.width() - 80 * U)
         }
     }
 
@@ -1238,6 +1248,22 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private fun navGlance(c: Canvas, r: RectF) {
         val cs = cols(r, 1.35f, 1f)
         val L = cs[0]; box(c, L)
+        if (!hasRoute()) {   // 실제 경로가 없으면 꾸민 회전·도착을 보이지 않는다(예전엔 모의 경로 판교→코엑스가 표시 없이 나왔다 — 가짜 감사 #3)
+            icon(c, "pin", L.left + 96 * U, L.centerY() - 70 * U, 96 * U, ACC)
+            text(c, "목적지 없음", L.left + 170 * U, L.centerY() - 46 * U, fit("목적지 없음", 80 * U, L.width() - 220 * U, bold), FG, bold)
+            wrap(c, "\"현비서야, 코엑스 가자\"처럼 말하면 길을 안내해요", L.left + 64 * U, L.centerY() + 70 * U, 40 * U, MUTED, L.width() - 128 * U, 2, medium, lh = 1.3f)
+            val R0 = cs[1]
+            val top0 = RectF(R0.left, R0.top, R0.right, R0.top + R0.height() * 0.46f)
+            val di0 = ideaNow(); val ev0 = m.carEvent
+            if (di0 != null && m.sit == Sit.DRIVE) ideaBanner(c, top0, di0)
+            else if (m.sit == Sit.DRIVE && ev0 != null && SystemClock.elapsedRealtime() - m.carEventAt < 6000) { glassCard(c, top0, 24 * U, ACC); icon(c, ev0.first, top0.left + 80 * U, top0.centerY(), 64 * U, ACC); wrap(c, ev0.second, top0.left + 150 * U, top0.centerY() + 16 * U, 44 * U, FG, top0.width() - 190 * U, 2, bold, lh = 1.2f) }
+            else box(c, top0)
+            val bot0 = RectF(R0.left, top0.bottom + G, R0.right, R0.bottom); box(c, bot0)
+            val now = java.util.Calendar.getInstance(); val clock = "%02d:%02d".format(now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE))
+            text(c, clock, bot0.left + 48 * U, bot0.centerY() + 20 * U, fit(clock, 110 * U, bot0.width() * 0.6f, bold), FG, bold)
+            text(c, "지금", bot0.left + 48 * U, bot0.centerY() + 84 * U, 40 * U, MUTED, medium)
+            return
+        }
         val ts = min(300 * U, L.height() * 0.46f)
         val blockTop = L.centerY() - (ts + 130 * U) / 2   // 화살표 + 길 이름 묶음을 카드 가운데로
         val tile = RectF(L.left + 48 * U, blockTop, L.left + 48 * U + ts, blockTop + ts)
@@ -1263,18 +1289,18 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             if (ev.first != "signal" || (SystemClock.elapsedRealtime() / 500) % 2 == 0L) icon(c, ev.first, top.left + 80 * U, top.centerY(), 64 * U, col)
             val n2 = min(2, lineCount(ev.second, top.width() - 190 * U, 44 * U, bold))
             wrap(c, ev.second, top.left + 150 * U, top.centerY() + 16 * U - (n2 - 1) * 26 * U, 44 * U, FG, top.width() - 190 * U, 2, bold, lh = 1.2f)
-        } else { box(c, top); lanes(c, RectF(top.left + 32 * U, top.top, top.right - 32 * U, top.bottom), min(130 * U, top.height() * 0.6f)) }
+        } else nextTurnTile(c, top)
         val bot = RectF(R.left, top.bottom + G, R.right, R.bottom)
         box(c, bot)
         val eta = m.navEta.removePrefix("도착 ")
         text(c, eta, bot.left + 48 * U, bot.centerY() + 20 * U, fit(eta, 110 * U, bot.width() * 0.6f, bold), FG, bold)
         p.textSize = fit(eta, 110 * U, bot.width() * 0.6f, bold); p.typeface = bold; val ex = bot.left + 48 * U + p.measureText(eta) + 24 * U
         text(c, "도착", ex, bot.centerY() + 18 * U, 40 * U, MUTED, medium)
-        if (m.navMin > 0) text(c, "${m.navMin}분", bot.left + 48 * U, bot.centerY() + 84 * U, 40 * U, MUTED, medium)
+        if (m.navMin > 0) text(c, Fmt.dur(m.navMin), bot.left + 48 * U, bot.centerY() + 84 * U, 40 * U, MUTED, medium)
     }
 
     private fun navMainScreen(c: Canvas, r: RectF, w: Float, h: Float) {
-        if (glance()) { navGlance(c, r); return }
+        if (glance() || !hasRoute()) { navGlance(c, r); return }   // 경로가 없으면 정차 중에도 '목적지 없음'(꾸민 지도·회전 없음)
         val leftW = min(600 * U, r.width() * 0.36f)
         val L = RectF(r.left, r.top, r.left + leftW, r.bottom)
         val M = RectF(L.right + G, r.top, r.right, r.bottom)
@@ -1305,19 +1331,10 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             p.color = Glass.a(col, if (darkUi) 60 else 36); c.drawCircle(t2.left + 76 * U, t2.centerY(), 44 * U, p)
             if (ev.first != "signal" || (SystemClock.elapsedRealtime() / 500) % 2 == 0L) icon(c, ev.first, t2.left + 76 * U, t2.centerY(), 44 * U, col)
             text(c, ev.second, t2.left + 140 * U, t2.centerY() + 12 * U, fit(ev.second, 34 * U, t2.width() - 170 * U, bold), FG, bold, maxW = t2.width() - 170 * U)
-        } else {
+        } else {   // 예전 '차로' 4칸(회전 종류로 짐작)은 뺐다 — SDK에 차선 정보 없음. 대신 남은 거리(내비 실제 값)
             box(c, t2)
-            lab(c, "차로", t2.left + 32 * U, t2.top + 38 * U)
-            val ty = m.navTurnType
-            val rt = ty.contains("RIGHT") || ty == "TURN_KEEP_R" || ty == "TURN_EXIT_IC"; val lt = ty.contains("LEFT") || ty == "TURN_KEEP_L" || ty == "TURN_UTURN"
-            val lw = (t2.width() - 64 * U) / 4
-            for (i in 0 until 4) {
-                val on = (rt && i >= 2) || (lt && i < 2) || (!rt && !lt)
-                val lty = if (rt && i >= 2) "TURN_RIGHT" else if (lt && i < 2) "TURN_LEFT" else "TURN_STRAIGHT"
-                val lx = t2.left + 32 * U + lw * (i + 0.5f)
-                v.turnIcon(c, lty, lx, t2.centerY() + 18 * U, 64 * U, if (on) ACC else Glass.a(MUTED, 110)); p.style = Paint.Style.FILL; p.strokeWidth = 0f
-                if (i > 0) { p.color = LINE; var yy = t2.top + 56 * U; while (yy < t2.bottom - 20 * U) { c.drawRect(t2.left + 32 * U + lw * i - U, yy, t2.left + 32 * U + lw * i + U, yy + 10 * U, p); yy += 18 * U } }
-            }
+            lab(c, "남은 거리", t2.left + 32 * U, t2.top + 38 * U)
+            text(c, m.navRemain, t2.left + 32 * U, t2.top + 108 * U, fit(m.navRemain, 56 * U, t2.width() - 64 * U, bold), FG, bold)
         }
         // 도착
         val t3 = RectF(L.left, t2.bottom + G, L.right, L.bottom)
@@ -1325,7 +1342,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             box(c, t3)
             lab(c, "도착" + if (m.mockRoute) " · 모의 경로" else "", t3.left + 32 * U, t3.top + 40 * U)
             text(c, m.navEta.removePrefix("도착 "), t3.left + 32 * U, t3.top + 108 * U, 60 * U, FG, bold)
-            text(c, "${m.navRemain}" + (if (m.navMin > 0) " · ${m.navMin}분" else "") + " · ${m.navDest}", t3.left + 32 * U, t3.top + 150 * U, 26 * U, MUTED, medium, maxW = t3.width() - 64 * U)
+            text(c, (if (m.navMin > 0) Fmt.dur(m.navMin) + " · " else "") + m.navDest, t3.left + 32 * U, t3.top + 150 * U, 26 * U, MUTED, medium, maxW = t3.width() - 64 * U)
         }
         mapView(c, M)
     }
@@ -1369,7 +1386,8 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         path.reset(); path.moveTo(vx, carY - 20 * U); path.lineTo(vx + 15 * U, carY + 16 * U); path.lineTo(vx, carY + 8 * U); path.lineTo(vx - 15 * U, carY + 16 * U); path.close()
         p.color = ACC; c.drawPath(path, p)
         // 위 왼쪽 — 목적지까지
-        val tag = "${m.navDest}까지 ${m.navRemain}" + if (m.mockRoute) " · 모의 경로" else ""
+        // 이 지도는 회전 종류로 그린 도식(실제 도로 모양 아님) — 실제 경로여도 '경로 도식'이라 밝힌다(가짜 감사 #22)
+        val tag = "${m.navDest}까지 ${m.navRemain}" + if (m.mockRoute) " · 모의 경로" else " · 경로 도식"
         p.textSize = 22 * U; p.typeface = medium
         val tr = RectF(r.left + 24 * U, r.top + 24 * U, r.left + 24 * U + p.measureText(tag) + 36 * U, r.top + 72 * U)
         p.color = if (darkUi) Glass.a(SURF, 230) else Glass.a(Color.WHITE, 235); c.drawRoundRect(tr, 24 * U, 24 * U, p)
@@ -1479,7 +1497,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                     box(c, r); val x0 = r.left + 48 * U
                     val hr = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
                     val (name, sub) = when {
-                        m.navActive -> m.navDest to "${m.navEta} · ${m.navMin}분"
+                        m.navActive -> m.navDest to "${m.navEta} · ${Fmt.dur(m.navMin)}"
                         hr in 6..10 -> "회사" to "도착 ${etaIn(23)} · 23분"
                         hr in 17..21 -> "집" to "도착 ${etaIn(30)} · 30분"
                         else -> "자주 가는 카페" to "도착 ${etaIn(9)} · 9분"

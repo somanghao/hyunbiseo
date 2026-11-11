@@ -463,7 +463,8 @@ class StageFeature : Feature {
         val now = SystemClock.elapsedRealtime()
         val st = m.status
         // 과속 — 제한속도를 아는 구간만(지금은 모의 경로 구간 제한, 실차는 내비 제한속도로 바꿀 자리)
-        val limit = if (m.mockRoute || hub.view.dest == null) mockLimit() else 0
+        // 모의 제한속도로 감점·"○○킬로 구간이에요"를 말하던 것 → 시연 모의 경로(SIM nav on)일 때만. 실제 제한속도(NaviHelper 콜백)는 에뮬 미수신이라 아직 0(가짜 감사 #4)
+        val limit = if (m.simNav && m.mockRoute) mockLimit() else 0
         val kmh = v * 3.6f
         if (limit > 0 && kmh > limit + 10) overS++ else overS = 0
         if (overS >= 8 && now - overAt > 60_000) {
@@ -1253,9 +1254,16 @@ class StageFeature : Feature {
         if (v.dest != null && t != null) {
             m.mockRoute = false
             m.navTurnType = t.type; m.navTurnM = t.m; m.navTurn = t.desc.ifBlank { "다음 안내" }
-            m.navDest = v.dest ?: ""; m.navRemain = v.remain; m.navEta = v.eta
+            // 남은 거리는 거리만(분은 navMin) — "11.9km · 26분 · 26분" 중복 · 남은 시간은 정수 분 그대로(정규식이 "1시간 53분"의 53만 잡아 "53분"이 됐다, 11-11 영상)
+            m.navDest = v.dest ?: ""; m.navRemain = v.remain.substringBefore(" · "); m.navEta = v.eta
             v.turns.getOrNull(1).let { n -> m.navNextType = n?.type ?: ""; m.navNextM = n?.m ?: 0; m.navNext = n?.desc ?: "" }
-            m.navMin = Regex("(\\d+)분").find(v.remain)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            m.navMin = hub.mins()
+            return
+        }
+        // 실제 경로가 없으면 모의 경로를 그리지 않는다 — 모의(판교→코엑스)는 시연 키 SIM nav on 일 때만(가짜 감사 #3)
+        if (!m.simNav) {
+            m.mockRoute = false; m.navTurnType = ""; m.navTurnM = 0; m.navTurn = ""; m.navNextType = ""; m.navNextM = 0; m.navNext = ""
+            m.navDest = ""; m.navRemain = ""; m.navEta = ""; m.navMin = 0
             return
         }
         m.mockRoute = true
