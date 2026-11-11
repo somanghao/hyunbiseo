@@ -358,9 +358,14 @@ def run_case(case, log, n_case, run_dir, tts, prefix, video, state, force_voice=
             i = log.wait(st["pattern"], last if st.get("from") == "last" else start, st.get("timeout", 30))
             note = "확인" if i is not None else "시간 초과"
         elif st.get("wait") == "tts":
-            s = log.find(r"^say\|P", last) or log.wait(r"^say\|P", last, 10)
+            # 가장 최근 말이 끝날 때까지 — 질문 뒤 첫 말(채움말 '어디 보자')을 잡으면 이미 지난 tts|done에 바로 풀려
+            # 다음 질문이 답을 2초 만에 끊었다(11-12 어필 영상 c04·c09q)
+            log.poll()
+            s = next((i for i in range(len(log.lines) - 1, last - 1, -1) if re.search(r"^say\|P", log.lines[i][1])), None)
+            if s is None:
+                s = log.wait(r"^say\|P", last, 10)
             if s is not None:
-                log.wait(r"^tts\|done", s, 4 + len(log.lines[s][1]) / 5)
+                log.wait(r"^tts\|(done|stopped)", s + 1, 4 + len(log.lines[s][1]) / 5)
         elif st.get("wait") == "sec":
             time.sleep(st["sec"])
         elif "shot" in st:
