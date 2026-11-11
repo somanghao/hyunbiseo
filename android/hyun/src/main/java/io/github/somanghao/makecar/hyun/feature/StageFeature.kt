@@ -1176,7 +1176,9 @@ class StageFeature : Feature {
     private fun favKm(f: Fav): Double? { val la = hub.lat ?: return null; val lo = hub.lng ?: return null; return io.github.somanghao.makecar.hyun.drive.Trip.meters(la, lo, f.lat, f.lng) / 1000 }
     /** 지금 출발하면 걸리는 분 — 지난 주행 평균 → 현재 위치 직선거리 어림(×1.3 · 시내 30km/h) → 예시 값. (분, 근거) */
     private fun favMin(f: Fav): Pair<Int, String>? {
-        goLog().filter { it.name == f.name }.takeIf { it.isNotEmpty() }?.let { l -> return l.map { it.travelMin }.average().roundToInt() to "지난 ${l.size}번 평균" }
+        // 지난 주행 평균 — 직선거리로 봐서 말이 되는 기록만(시속 100km 넘게 걸린 셈이면 도착 전에 끝난 기록 — 11-11: 143km 대전역 '지금 가면 4분 · 지난 2번 평균')
+        val floorMin = favKm(f)?.let { it / 100.0 * 60 } ?: 0.0
+        goLog().filter { it.name == f.name && it.travelMin >= floorMin }.takeIf { it.isNotEmpty() }?.let { l -> return l.map { it.travelMin }.average().roundToInt() to "지난 ${l.size}번 평균" }
         val la = hub.lat; val lo = hub.lng
         if (la != null && lo != null) {
             val km = io.github.somanghao.makecar.hyun.drive.Trip.meters(la, lo, f.lat, f.lng) * 1.3 / 1000
