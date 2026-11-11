@@ -450,6 +450,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         c.restore()
     }
 
+    /** 캐릭터 옆 한 줄 — 물음이 있으면 그 물음(운전자가 답할 것), 없으면 첫 문장. "쌀쌀하네요. 23도로 올려 드릴까요?" → 물음 쪽(11-11) */
+    private fun keySentence(s: String): String =
+        Regex("(?<=[.!?])\\s+").split(s.trim()).lastOrNull { it.trim().endsWith("?") }?.trim() ?: firstSentence(s)
     private fun firstSentence(s: String): String {
         val i = Regex("[.!?](\\s|$)").find(s)?.range?.first ?: return s
         return s.substring(0, i + 1).trim()
@@ -619,13 +622,13 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val hold = if (m.sit == Sit.DRIVE) 60_000L else 30_000L
         val recent = lastSaid.isNotBlank() && now - lastSaidAt < hold && max(m.pageAt, touchedAt) < lastSaidAt
         val full = when {
-            recent && v.mode == HyunView.Mode.READY -> firstSentence(lastSaid)
+            recent && v.mode == HyunView.Mode.READY -> keySentence(lastSaid)
             ideaNow() != null && v.mode == HyunView.Mode.READY -> ideaLine(ideaNow()!!)
             over != null && v.mode == HyunView.Mode.READY -> over
             m.view != null && v.mode == HyunView.Mode.READY -> viewLine(m.view!!)
             v.mode == HyunView.Mode.LISTENING -> "듣고 있어요…"
             v.mode == HyunView.Mode.THINKING -> "음… 생각 중이에요"
-            v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() -> firstSentence(v.hyunLine)
+            v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() -> keySentence(v.hyunLine)
             (SystemClock.elapsedRealtime() / 9000) % 2 == 1L && THEME_LINES[k.id] != null -> THEME_LINES[k.id]!![((SystemClock.elapsedRealtime() / 18000) % 2).toInt()]
             else -> m.tiles.getOrNull(m.heroIdx)?.label?.let { lab -> bubbleFor(lab) } ?: m.bubble.let { firstSentence(it) }
         }.let { if (it.length > 34) it.take(33) + "…" else it }
