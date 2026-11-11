@@ -878,7 +878,10 @@ class StageFeature : Feature {
         val who = if (name.isNotBlank()) "${name}님, " else ""
         val soc = st?.soc?.v; val range = st?.rangeKm?.v
         val km = tripM / 1000; val min = max(1, tripS / 60)
+        val wasNav = m.navActive
         m.navActive = hub.view.dest != null || m.simNav
+        // 실제 길 안내가 시작되면 열어 둔 장(뉴스 등)을 닫아 길 쪽으로 — 안내를 시작했는데 뉴스 장이 그대로 남았다(11-11 영상). 미리보기로 강제한 화면은 그대로
+        if (!wasNav && hub.view.dest != null && m.view != null && m.view != "nav" && !m.viewForced) { hub.log("stage|view|${m.view} 닫음(길 안내 시작)"); m.view = null }
         if (inTrip) hub.view.dest?.let { tripDest = it }
         goBox()
         if (m.navActive || m.view == "nav" || m.sit == Sit.DRIVE || m.sit == Sit.STOP) navState()

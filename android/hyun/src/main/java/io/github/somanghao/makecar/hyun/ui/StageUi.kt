@@ -242,7 +242,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             if (taps >= 3) { taps = 0; act("debug") }
             return true
         }
-        if (a != "noop") act(a); return true
+        if (a != "noop") { touchedAt = SystemClock.elapsedRealtime(); act(a) }; return true
     }
 
     private fun scrim(c: Canvas, w: Float, h: Float, a: Float) { p.shader = null; p.color = Glass.a(Color.BLACK, (a * 255).toInt()); c.drawRect(0f, 0f, w, h, p) }
@@ -610,8 +610,16 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     // ---------- 캐릭터 말풍선(짧게, 타자 치듯) ----------
     private var bubbleText = ""; private var bubbleAt = 0L
+    // 방금 한 대답 — 말이 끝난 뒤에도 잠깐 캐릭터 옆에 남긴다(장·아이디어 고정 문구보다 먼저). 그사이 운전자가 장을 넘기거나 눌렀으면 그 장 문구로.
+    // 11-11 사용자: "대전 안내하라고 했는데 '오늘 소식 정리했어요'가 그대로 — 마지막 메시지를 표시해야"
+    private var lastSaid = ""; private var lastSaidAt = 0L; private var touchedAt = 0L
     private fun speech(c: Canvas, cx: Float, headTop: Float, maxW: Float, over: String? = null, tailX: Float? = null) {
+        val now = SystemClock.elapsedRealtime()
+        if (v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank() && v.hyunLine != lastSaid) { lastSaid = v.hyunLine; lastSaidAt = now }
+        val hold = if (m.sit == Sit.DRIVE) 60_000L else 30_000L
+        val recent = lastSaid.isNotBlank() && now - lastSaidAt < hold && max(m.pageAt, touchedAt) < lastSaidAt
         val full = when {
+            recent && v.mode == HyunView.Mode.READY -> firstSentence(lastSaid)
             ideaNow() != null && v.mode == HyunView.Mode.READY -> ideaLine(ideaNow()!!)
             over != null && v.mode == HyunView.Mode.READY -> over
             m.view != null && v.mode == HyunView.Mode.READY -> viewLine(m.view!!)
