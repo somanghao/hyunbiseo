@@ -37,6 +37,8 @@ interface Voice {
     fun release()
     /** 시험용 — 마이크 대신 녹음(16kHz·16bit·mono PCM)을 귀에 넣는다. 지원 안 하면 false */
     fun feed(pcm: ByteArray): Boolean = false
+    /** 목소리(화자) 바꾸기 — Pleos TTS setSpeakerType. 지원 안 하면 아무 일도 없다 */
+    fun speaker(type: String) {}
 
     interface Events {
         fun onVoiceReady()                         // 입 준비 끝(첫 인사 시점)
@@ -103,6 +105,7 @@ class PleosVoice(ctx: Context, private val ev: Voice.Events) : Voice {
         }.onFailure { log("stt|init|${it.message}") }
     }
 
+    override fun speaker(type: String) { runCatching { tts.setSpeakerType(type); log("tts|speaker|$type") }.onFailure { log("tts|speaker|FAIL|$type|${it.message}") } }
     override fun speak(text: String) { runCatching { tts.speak(text, true) }.onFailure { log("tts|speak|${it.message}"); ev.onSpeakDone() } }
     override fun stopSpeaking() { runCatching { tts.stop() } }
     override fun listen() { runCatching { stt.request() }.onFailure { log("stt|request|${it.message}"); ev.onHearError("request") } }

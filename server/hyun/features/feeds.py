@@ -140,6 +140,14 @@ def fetch_stock(top=5, **_):
         sign = "+" if j.get("compareToPreviousPrice", {}).get("code") in ("1", "2") else "-" if j.get("compareToPreviousPrice", {}).get("code") in ("4", "5") else ""
         lines.append(f"{name} {j['closePrice']} ({sign}{j['fluctuationsRatio'].lstrip('-')}%)")
         items.append({"index": name, "price": j["closePrice"], "ratio": j["fluctuationsRatio"], "status": j.get("marketStatus")})
+    try:   # 나스닥 종합(해외 지수 — 시동 화면 '코스피 · 나스닥'). 실패해도 국내 지수는 그대로
+        j = json.loads(_get("https://api.stock.naver.com/index/.IXIC/basic"))
+        down = j.get("compareToPreviousPrice", {}).get("code") in ("4", "5")
+        ratio = ("-" if down else "") + j["fluctuationsRatio"].lstrip("-")
+        lines.append(f"나스닥 {j['closePrice']} ({'' if down else '+'}{ratio}%)")
+        items.append({"index": "나스닥", "price": j["closePrice"], "ratio": ratio, "status": j.get("marketStatus")})
+    except Exception:
+        pass
     j = json.loads(_get(f"https://m.stock.naver.com/api/stocks/marketValue/KOSPI?page=1&pageSize={top}"))
     for i, s in enumerate(j["stocks"][:top], 1):
         lines.append(f"{i}. {s['stockName']} {s['closePrice']}원 ({s['fluctuationsRatio']}%)")

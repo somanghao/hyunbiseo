@@ -101,6 +101,20 @@ class StageModel {
     var mood = 60                             // 0~100 — 부드러우면 오르고 급정거·깜빡이 없는 회전이면 내려간다
     var moodWhy = ""                          // 마지막으로 기분이 바뀐 이유
     var gleoLast = ""                         // 글레오 함수 마지막 호출(2차 gleo3)
+    /** 먼저 건네는 제안(칼리 11-12) — 넓게 묻지 않고, 좌석 착석(Pleos Seat)으로 누가 탔는지 보고 하나를 고른다. (말 · 화면 큰 줄 · 화면 작은 줄)
+     *  뒷자리 = 아이들과 가족 → 넌센스 퀴즈 · 조수석만 = 둘이서 퀴즈 · 혼자(또는 좌석을 못 읽음) = 뉴스 세 줄. 전부 "응" 하면 앱 안에서 바로 된다(서버 없이) */
+    fun offer(): Triple<String, String, String> {
+        val kid = status?.rearKid?.v == true; val pas = status?.passenger?.v == true
+        return when {
+            kid -> Triple("우와, 온 가족이 다 탔네요! 오늘의 넌센스 퀴즈, 같이 맞춰 볼래요?", "오늘의 넌센스 퀴즈, 같이 맞춰 볼래요?", "우와, 온 가족이 다 탔네요 · \"좋아\" 하면 시작해요")
+            pas -> Triple("오, 옆자리에 친구가 탔네요! 둘이서 넌센스 퀴즈 한판 어때요?", "둘이서 넌센스 퀴즈 한판 어때요?", "오, 옆자리에 친구가 탔네요 · \"좋아\" 하면 시작해요")
+            else -> Triple("오늘 주요 뉴스 세 가지, 짧게 들려줄까요?", "오늘 주요 뉴스 세 가지, 짧게 들려줄까요?", "\"응\" 하면 바로 읽어 줘요 · \"퀴즈\"라고 해도 돼요")
+        }
+    }
+    /** 지금 건넨 제안이 무엇인지 — quiz(동승자 있음) · news(혼자) */
+    fun offerKind() = if (status?.rearKid?.v == true || status?.passenger?.v == true) "quiz" else "news"
+    /** 진행 중인 놀이의 화면 문구(큰 줄 · 작은 줄) — 있으면 주행 말풍선이 제안 대신 이걸 보인다 */
+    var prompt: Pair<String, String>? = null
     var pageDir = 0; var pageAt = 0L          // 페이저 — 마지막으로 넘긴 방향(+1 다음 · −1 이전)과 시각(밀어 넘기는 연출)
     val level get() = (1 + kotlin.math.sqrt(xp / 25.0).toInt()).coerceAtMost(10)
     fun xpFor(l: Int) = 25 * (l - 1) * (l - 1)
@@ -200,7 +214,7 @@ class StageModel {
         /** 상황별 아이디어 30 + 특별한 순간 7 — `--es idea <id>`(SIM · STAGE) · 디버그 판 · 허브 '아이디어' */
         val IDEAS = listOf(
             Idea("air", Sit.IGNITION, "미세먼지 → 내기 순환"), Idea("fortune", Sit.IGNITION, "오늘의 차 운세"), Idea("rival", Sit.IGNITION, "어제의 나와 비교"),
-            Idea("routine", Sit.IGNITION, "출발 전 30초 루틴"), Idea("weekly", Sit.IGNITION, "주간 리포트"), Idea("charge", Sit.IGNITION, "충전 계획"),
+            Idea("routine", Sit.IGNITION, "출발 전 30초 루틴"), Idea("bundle", Sit.IGNITION, "출발 전 한눈에"), Idea("weekly", Sit.IGNITION, "주간 리포트"), Idea("charge", Sit.IGNITION, "충전 계획"),
             Idea("habit", Sit.READY, "습관 경로 제안"), Idea("depart", Sit.READY, "출발 시각 코치"), Idea("crew", Sit.READY, "동승자 편성"),
             Idea("doors", Sit.READY, "창문·문 점검"), Idea("launch", Sit.READY, "초보 출발 카운트"),
             Idea("combo", Sit.DRIVE, "부드러운 운전 콤보"), Idea("brakecoach", Sit.DRIVE, "브레이크 칭찬"), Idea("drowsy", Sit.DRIVE, "졸음 기척"),
@@ -230,15 +244,23 @@ class StageModel {
             Idea("voicegame", Sit.DRIVE, "말 게임", round = 2, theme = "놀이·글레오"), Idea("senior", Sit.IGNITION, "시니어 모드", round = 2, theme = "놀이·글레오"),
             Idea("gleo3", Sit.PARK, "글레오 함수 3개", round = 2, theme = "놀이·글레오"))
         val ALL_IDEAS get() = IDEAS + IDEAS2
+        /** 시동 화면에서 넘겨 보는 장(순서대로). 뺀 것 —
+         *  기본 화면 카드와 겹침: news · stock(카드를 누르면 열림) · nav(맨 위 '어디로 갈까요?')
+         *  날씨 갈래는 '날씨·차림' 한 장으로: air · rain · firstsnow · heat
+         *  겹치는 리포트·차 관리: rival(→ weekly) · service · tireseason(→ charge · 내 차)
+         *  특별한 날·모드(그날·그 설정일 때만 뜰 것): first · birthday · suneung · holiday · anniv · date · commute · senior */
+        val IGNITION_PAGES = listOf("weather")   // bundle = 주간 리포트 · 충전 계획 · 출발 전 루틴 · 동네 이야기 한 장 · 운세(fortune)는 뺌
         /** 페이저 한 장 — auto(기본 상황 화면) · cat(취미 레이아웃) · idea(아이디어) */
         data class Page(val kind: String, val id: String, val title: String)
         /** 상황마다 넘겨 볼 화면들 — 1장 = 기본 화면, 이어서 그 상황에서 허용된 취미 레이아웃, 그 상황의 아이디어(1차·2차).
          *  운전 중(출발 준비 D · 주행 · 신호대기)은 한눈 규칙이라 취미 레이아웃은 빼고 기본 + 아이디어만 */
         fun pages(s: Sit): List<Page> {
             val out = mutableListOf(Page("auto", "", "${s.label} 기본"))
-            val glance = s == Sit.DRIVE || s == Sit.READY || s == Sit.STOP
-            if (!glance) CATS.filter { allowed(it.first, s) }.forEach { out += Page("cat", it.first, it.second) }
-            ALL_IDEAS.filter { it.sit == s }.forEach { out += Page("idea", it.id, it.name) }
+            if (s == Sit.IGNITION) {   // 시동은 28장 → 10장(칼리 11-12): 기본 화면 카드와 겹치는 것 · 날씨 갈래 · 특별한 날 · 모드는 넘겨 보기에서 뺀다(없앤 건 아님 — `--es idea <id>` · 카드 누르기)
+                IGNITION_PAGES.forEach { id -> CATS.firstOrNull { it.first == id }?.let { out += Page("cat", it.first, it.second) } ?: ALL_IDEAS.firstOrNull { it.id == id }?.let { out += Page("idea", it.id, it.name) } }
+                return out
+            }
+            // 다른 상황은 기본 화면 한 장만 — 아이디어 장은 대부분 예시 값이라 넘겨 보기에서 뺐다(코드·`--es idea <id>` 시연은 그대로 · 칼리 11-12 마무리)
             return out
         }
         fun idea(id: String?) = ALL_IDEAS.firstOrNull { it.id == id }
@@ -434,7 +456,7 @@ class StageFeature : Feature {
             val t = hub.view.turns.firstOrNull()
             if (t != null && t.m in 1..320 && turnWarned != "${t.type}|${t.desc}") {
                 turnWarned = "${t.type}|${t.desc}"
-                lane(t.type)?.let { hub.say("${(t.m + 50) / 100 * 100}미터 앞 $it", "", false, 1, tag = "초보·차로") }
+                turnSay(t.type)?.let { hub.say("${(t.m + 50) / 100 * 100}미터 앞 $it", "", false, 1, tag = "초보·회전") }
             }
             if (!restSaid && hub.trip.driveS > NOVICE_REST_S) { restSaid = true; hub.say("50분 가까이 달렸어요. 다음 쉼터에서 잠깐 쉬어 가요.", "care", false, 1, tag = "초보·쉼표") }
         }
@@ -504,9 +526,10 @@ class StageFeature : Feature {
     private fun award(icon: String, why: String, n: Int) { m.ledger += Entry(icon, why, n); addPoints(n); hub.log("stage|point|+$n|$why"); save() }
     private fun penalty(icon: String, why: String, n: Int) { penalties++; m.ledger += Entry(icon, why, -n); addPoints(-n); hub.log("stage|point|-$n|$why"); save() }
 
-    private fun lane(type: String) = when (type) {
-        "TURN_LEFT", "TURN_SHARP_L", "TURN_UTURN", "TURN_KEEP_L" -> "${if (type == "TURN_UTURN") "유턴" else "좌회전"}이에요. 미리 왼쪽 차로로 가요."
-        "TURN_RIGHT", "TURN_SHARP_R", "TURN_KEEP_R" -> "우회전이에요. 미리 오른쪽 차로로 가요."
+    /** 초보 회전 예고 — 회전만 알린다(주행 중 차로 바꾸기 안내는 뺐다) */
+    private fun turnSay(type: String) = when (type) {
+        "TURN_LEFT", "TURN_SHARP_L", "TURN_UTURN", "TURN_KEEP_L" -> "${if (type == "TURN_UTURN") "유턴" else "좌회전"}이에요."
+        "TURN_RIGHT", "TURN_SHARP_R", "TURN_KEEP_R" -> "우회전이에요."
         else -> null
     }
 
@@ -542,7 +565,7 @@ class StageFeature : Feature {
         hub.log("stage|idea|$id|${d.sit.key}")
     }
 
-    // ---------- 페이저 — 상황 안의 화면들을 넘겨 본다(정차·시동은 밀기·버튼, 운전 중은 말 "다음/이전"만) ----------
+    // ---------- 페이저 — 상황 안의 화면들을 넘겨 본다(정차·시동은 밀기·버튼, 운전 중은 밀기·말 "다음/이전") ----------
     fun pageIdx(): Int = StageModel.pages(m.sit).indexOfFirst { (it.kind == "auto" && m.view == null && m.idea == null) || (it.kind == "cat" && it.id == m.view) || (it.kind == "idea" && it.id == m.idea) }.coerceAtLeast(0)
     private fun clearIdeaFx() { if (m.idea == "night") m.nightOverride = null; m.forceRain = false; m.forceSnow = false }
     fun goPage(i0: Int, dir: Int) {
@@ -594,8 +617,8 @@ class StageFeature : Feature {
         if (m.overlay == "onboard" || why == "앱 시작" || why == "미리보기") return
         val line = when (s) {
             Sit.IGNITION -> ignitionLine()
-            Sit.READY -> if (m.novice) "출발 순서예요. 브레이크를 꾹 밟고, D로 바꾼 다음, 천천히 발을 떼요." else null
-            Sit.DRIVE -> if (m.novice) "출발. 앞차와 간격은 넉넉히, 제가 길을 미리미리 말해 줄게요." else null
+            Sit.READY -> if (m.novice) "자, 출발해 볼까요? 브레이크 꾹 밟고, D로 바꾼 다음, 발을 천천히 떼면 돼요." else null
+            Sit.DRIVE -> if (m.novice) "출발! 앞차랑 간격은 넉넉하게요. 길은 제가 미리미리 알려 줄게요." else null
             Sit.STOP -> gossip().let { g -> if (m.novice && tipIdx++ % 2 == 0) "신호 대기 중엔 브레이크를 계속 꾹. ${g.second}" else g.second }
             Sit.PARK -> parkLine()
             Sit.OFF -> offLine()
@@ -639,7 +662,7 @@ class StageFeature : Feature {
                 val e = items.firstOrNull { it.key == "energy" && it.state != CarCheck.State.NA }
                 val r = items.firstOrNull { it.key == "range" && it.state != CarCheck.State.NA }
                 val sum = listOfNotNull(e?.let { "${it.label} ${it.value}" }, r?.let { "${it.label} ${it.value}" }).joinToString(", ")
-                hub.say("안녕하세요, 현비서예요. 차부터 살펴볼게요. " + (if (sum.isNotBlank()) "$sum, 좋아요. " else "") + "타이어 공기압은 계기판에서 한 번 봐 주세요.", "happy", false, 1, tag = "온보딩·점검")
+                hub.say("안녕, 저 현비서예요! 차부터 같이 살펴봐요. " + (if (sum.isNotBlank()) "$sum, 좋아요. " else "") + "타이어 공기압은 계기판에서 한 번만 봐 줘요.", "happy", false, 1, tag = "온보딩·점검")
                 hub.main.postDelayed({ if (gen == onboardGen && m.overlay == "onboard" && m.onboardStep == 0) askSkill() }, 9000)
             }
         }.start()
@@ -662,7 +685,7 @@ class StageFeature : Feature {
             hub.view.faceOverride = if (s == "novice") "thumbs_up" else "cool"
             if (!hub.prefs.getBoolean("stage.onboarded", false)) { m.points += WELCOME; save() }
             hub.prefs.edit().putBoolean("stage.onboarded", true).apply()
-            hub.say(if (s == "novice") "초보 모드로 맞췄어요. 출발, 차선, 주차까지 하나씩 말로 챙길게요. 환영 포인트 100점도 드렸어요."
+            hub.say(if (s == "novice") "초보 모드로 맞췄어요. 출발, 정차, 주차까지 하나씩 말로 챙길게요. 환영 포인트 100점도 드렸어요."
                     else "숙련 모드로 맞췄어요. 꼭 필요한 것만 짧게 말할게요. 환영 포인트 100점은 꾸미기에 써 보세요.", "happy", false, 1, tag = "온보딩·완료")
             val gen = onboardGen
             hub.main.postDelayed({ if (gen == onboardGen && m.overlay == "onboard" && m.onboardStep == 2) finishOnboarding() }, 12_000)
@@ -765,11 +788,12 @@ class StageFeature : Feature {
     // ======================================================================
     override fun onHeard(text: String): Boolean {
         val t = text.replace(" ", "")
+        playHeard(t)?.let { return it }
         if (Regex("^(다음|이전|앞)(화면|장|페이지)?(보여줘|으로|넘겨)?$").matches(t)) { page(if (t.startsWith("다음")) "next" else "prev"); hub.say(StageModel.pages(m.sit)[pageIdx()].title, "", false, 2, reply = true, tag = "페이지"); return true }
         // 글레오 함수 3개(Gleo Interface 후보) — 오늘 브리핑 · 안전점수 · 꾸미기
         if (Regex("오늘(뭐있|브리핑|어때)|브리핑해").containsMatchIn(t)) {
             m.gleoLast = "오늘 브리핑"
-            hub.say("오늘은 ${m.weatherShort.ifBlank { "날씨 확인 중" }}이에요. ${news.firstOrNull()?.let { "주요 소식은 $it." } ?: ""} 첫 일정은 9시 반 주간 회의예요.", "", false, 1, reply = true, tag = "글레오·브리핑"); return true }
+            hub.say("오늘은 ${m.weatherShort.ifBlank { "날씨 확인 중" }}이에요. ${news.firstOrNull()?.let { "주요 소식은 $it." } ?: ""}", "", false, 1, reply = true, tag = "글레오·브리핑"); return true }
         if (Regex("운전(어땠|점수)|안전점수|내점수").containsMatchIn(t)) {
             m.gleoLast = "안전점수"
             hub.say("오늘 급정거 ${harsh}번, 별 ${sign(m.todayPoints)}개예요. 저는 지금 ${m.moodLabel} 기분이고, 레벨 ${m.level} ${m.levelTitle}예요.", "happy", false, 1, reply = true, tag = "글레오·점수"); return true }
@@ -932,6 +956,54 @@ class StageFeature : Feature {
         m.heroAt = SystemClock.elapsedRealtime(); m.reactAt = m.heroAt
         m.reactFace = when (t.tone) { "warn" -> "worried"; "good" -> "happy"; else -> "surprised" }
     }
+    // ---------- 먼저 건넨 제안에 답하기 — 넌센스 퀴즈 · 뉴스 세 줄. 서버(두뇌) 없이 앱 안에서 끝까지 된다(칼리 11-12 마무리) ----------
+    private var offerAt = 0L
+    private var quizOrder = listOf<Int>(); private var quizN = -1; private var quizOk = 0; private var quizTry = 0
+    private fun offerSay() { offerAt = SystemClock.elapsedRealtime(); hub.say(m.offer().first, "happy", true, 2, tag = "제안") }
+    private fun quizOn() = quizN >= 0
+    private fun startQuiz() {
+        quizOrder = QUIZ.indices.shuffled().take(3); quizN = 0; quizOk = 0; offerAt = 0L
+        hub.log("stage|quiz|start"); askQuiz("좋아요, 넌센스 퀴즈 시작! 세 문제예요. ")
+    }
+    private fun askQuiz(lead: String) {
+        quizTry = 0; val q = QUIZ[quizOrder[quizN]]
+        m.prompt = "${quizN + 1}번. ${q.q}" to "말로 대답해요 · \"힌트\" · \"패스\" · \"그만\""
+        hub.say("$lead${quizN + 1}번. ${q.q}", "happy", true, 1, reply = true, tag = "퀴즈"); refresh(); hub.render()
+    }
+    private fun nextQuiz(lead: String) {
+        quizN++
+        if (quizN >= quizOrder.size) {
+            val end = when (quizOk) { 3 -> "세 문제 다 맞혔어요, 천재인데요!"; 0 -> "이번엔 제가 이겼네요. 다음에 또 해요!"; else -> "세 문제 중 ${quizOk}개 맞혔어요. 잘했어요!" }
+            endQuiz("$lead$end")
+        } else askQuiz(lead)
+    }
+    private fun endQuiz(line: String) { hub.log("stage|quiz|end|$quizOk"); quizN = -1; m.prompt = null; hub.say(line, "happy", false, 1, reply = true, tag = "퀴즈"); refresh(); hub.render() }
+    private fun newsBrief() {
+        offerAt = 0L
+        val l = m.newsList.take(3); val ord = listOf("첫째", "둘째", "셋째")
+        hub.say(if (l.isEmpty()) "뉴스를 아직 못 불러왔어요. 조금 있다 다시 말해 줘요." else "오늘 주요 뉴스 ${l.size}가지예요. " + l.mapIndexed { i, s -> "${ord[i]}, ${s.trimEnd('.')}." }.joinToString(" ") + " 여기까지예요.", "", false, 1, reply = true, tag = "뉴스")
+    }
+    /** 놀이·제안에 대한 말 — 처리했으면 true, 아니면 null(다음 규칙으로) */
+    private fun playHeard(t: String): Boolean? {
+        if (quizOn()) {
+            val q = QUIZ[quizOrder[quizN]]
+            return when {
+                Regex("그만|끝내|안해|안할래|스톱|멈춰").containsMatchIn(t) -> { endQuiz("알겠어요, 퀴즈는 여기까지! 맞힌 건 ${quizOk}개예요."); true }
+                q.a.any { t.contains(it) } -> { quizOk++; award("🎉", "넌센스 퀴즈 정답", 2); nextQuiz("딩동댕, 정답! ${q.a[0]}. "); true }
+                Regex("힌트").containsMatchIn(t) && quizTry == 0 -> { quizTry = 1; hub.say("힌트 줄게요. ${q.hint}", "", true, 1, reply = true, tag = "퀴즈"); true }
+                Regex("몰라|모르겠|패스|정답|알려줘|다음").containsMatchIn(t) || quizTry >= 1 -> { nextQuiz("아쉬워요, 정답은 ${q.a[0]}. "); true }
+                else -> { quizTry = 1; hub.say("땡! 힌트 줄게요. ${q.hint}", "", true, 1, reply = true, tag = "퀴즈"); true }
+            }
+        }
+        if (Regex("넌센스|퀴즈").containsMatchIn(t)) { startQuiz(); return true }
+        if (Regex("뉴스(세|들려|읽어|알려|브리핑|틀어)|주요뉴스").containsMatchIn(t)) { newsBrief(); return true }
+        if (t.length <= 8 && pending == null && ((offerAt != 0L && SystemClock.elapsedRealtime() - offerAt < 180_000) || m.sit == Sit.IGNITION || m.sit == Sit.READY || m.sit == Sit.DRIVE || m.sit == Sit.STOP)) {   // 건넨 제안(시동 인사 · 주행 말풍선에 늘 떠 있음)에 대한 짧은 대답
+            if (Regex("^(응|어|네|예|좋아|그래|콜|오케이|ㅇㅇ|해줘|해봐|틀어|들려|시작|할래|하자|맞춰)").containsMatchIn(t)) { if (m.offerKind() == "quiz") startQuiz() else newsBrief(); return true }
+            if (Regex("^(아니|됐어|괜찮|나중|싫어|안해|노)").containsMatchIn(t)) { offerAt = 0L; hub.say("알겠어요. 필요하면 불러 줘요.", "", false, 1, reply = true, tag = "제안"); return true }
+        }
+        return null
+    }
+
     private fun talk(s: String, prio: Int = 2, mood: String = "", listen: Boolean = false) = hub.say(s, mood, listen, prio, tag = "반응")
 
     private fun react() {
@@ -954,12 +1026,12 @@ class StageFeature : Feature {
         } }
         st.passenger.v.let { p -> if (changed("passenger", p) && p == true) {
             event("chat", "옆자리에 누가 탔어요")
-            story(Tile("chat", "동승자 모드", "옆자리에 친구가 탔네요, 반가워요. 같이 들을 노래 틀어 드릴까요? 혼잣말은 줄일게요.", "조수석 착석(Pleos Seat)", "accent"))
-            talk("옆자리에 친구가 탔네요. 반가워요. 같이 들을 노래 틀어 드릴까요?", 2, "happy")
+            story(Tile("chat", "동승자 모드", m.offer().first, "조수석 착석(Pleos Seat)", "accent"))
+            offerSay()   // 누가 탔는지에 맞춘 제안 하나(StageModel.offer) — 대답을 듣는다
         } }
         st.rearKid.v.let { p -> if (changed("kid", p) && p == true) {
-            story(Tile("music", "뒷좌석 손님", "뒷자리에 꼬마 손님인가요? 동요랑 끝말잇기 준비해 뒀어요.", "뒷좌석 착석(Pleos Seat)", "good"))
-            talk("뒷자리에 꼬마 손님인가요? 동요랑 끝말잇기 준비해 뒀어요.", 2, "happy")
+            story(Tile("music", "뒷좌석 손님", m.offer().first, "뒷좌석 착석(Pleos Seat)", "good"))
+            offerSay()
         } }
         st.belt.v.let { b -> if (changed("belt", b) && b == false && (m.sit == Sit.READY || driving)) { event("warn", "벨트를 매 주세요"); hub.say("벨트부터 매요. 매면 바로 출발해요.", "care", false, 1, tag = "반응·벨트") } }
         st.lowBeam.v.let { l -> if (changed("lights", l) && l == false && driving && (hour >= 18 || hour < 6)) { event("warn", "전조등이 꺼져 있어요"); talk("어두워졌어요. 전조등 켜 볼까요?", 1, "care") } }
@@ -1126,9 +1198,9 @@ class StageFeature : Feature {
                 val i = favPick(list); val f = list[i]
                 m.favIdx = i
                 m.goName = f.name
-                m.goSub = favMin(f)?.let { (mn, why) -> "지금 출발하면 약 ${if (mn >= 60) "${mn / 60}시간 ${mn % 60}분" else "${mn}분"} · ${hm(nowMin + mn)} 도착 · $why" }
+                m.goSub = favMin(f)?.let { (mn, why) -> "약 ${if (mn >= 60) "${mn / 60}시간 ${mn % 60}분" else "${mn}분"} · ${hm(nowMin + mn)} 도착" }
                     ?: "지금 위치를 읽으면 걸리는 시간을 알려 드려요"
-                m.goTag = "즐겨찾기" + if (list === DEMO_FAVS) " · 예시" else ""
+                m.goTag = if (list === DEMO_FAVS) "예시" else ""
                 m.goAction = "go:$i"
             }
             else -> { m.goName = ""; m.goSub = "\"회사 가자\"처럼 말하면 길 안내를 시작해요"; m.goTag = ""; m.goAction = "" }
@@ -1177,23 +1249,20 @@ class StageFeature : Feature {
     private fun sign(n: Int) = if (n >= 0) "+$n" else "−${-n}"
     private fun look() = m.look()
 
+    /** 시동 인사 — 날씨·음료·걸리는 시간 인사는 빼고 제안부터(칼리 11-12). 주행 화면 말풍선과 같은 제안(StageModel.offer) */
     private fun ignitionLine(): String {
-        val t = tempC
-        val base = look().greet + "${greet()}. " + (t?.let { "밖이 ${it}도라 " + (if (t <= 8) "목도리 둘렀어요. " else "") } ?: "") + "${drink().first} 한 잔 어때요?"
-        // 즐겨찾기 도착지 → 가는 길 이야기 주제 고르기(말로)
-        goBox()
-        val go = if (m.favIdx >= 0 && m.goSub.startsWith("지금 출발하면")) " ${m.goName}까지 ${m.goSub.substringBefore(" · ").removePrefix("지금 출발하면 ")} 걸려요." else ""
-        val ask = " 가는 길에 어떤 이야기를 들려 드릴까요? 주제를 골라 주세요. 뉴스, 증시, 차 컨디션이 있어요."
-        return (if (m.novice) "$base 출발 전에 시트랑 미러부터 맞춰요." else base) + go + ask
+        goBox()   // 화면 맨 위 '어디로 갈까요?' 칸 채우기
+        offerAt = SystemClock.elapsedRealtime()
+        return m.offer().first
     }
 
     private fun parkLine(): String {
         val plus = m.ledger.filter { it.delta > 0 }.sumOf { it.delta }; val minus = -m.ledger.filter { it.delta < 0 }.sumOf { it.delta }
-        val p = look().greet + "주차 완료, 수고했어요. " + (if (minus > 0) "플러스 ${plus}점, 마이너스 ${minus}점 해서 ${m.tripPoints}점이에요." else "안전운전 포인트 ${m.tripPoints}점 받았어요.")
+        val p = look().greet + "주차 끝, 고생했어요! " + (if (minus > 0) "플러스 ${plus}점, 마이너스 ${minus}점 해서 ${m.tripPoints}점이에요." else "안전운전 포인트 ${m.tripPoints}점 받았어요.")
         return if (m.novice) "$p 핸들 똑바로 풀고, P, 주차 브레이크까지 확인해요." else p
     }
 
-    private fun offLine() = look().greet + "오늘 %.1f킬로미터 달렸어요. 휴대폰이랑 지갑 챙기셨죠? 내일 또 만나요.".format(dayKm)
+    private fun offLine() = look().greet + "오늘 %.1f킬로미터 달렸어요. 휴대폰이랑 지갑 챙겼죠? 내일 또 봐요!".format(dayKm)
 
     /** 신호 대기 수다 — 주변 상권·동네 이야기. 카카오 로컬은 서버 도착 추천에만 열려 있어 지금은 예시 이야기(곧 서버 places 로 바꿀 자리) */
     private fun gossip(): Pair<String, String> {
@@ -1315,7 +1384,15 @@ class StageFeature : Feature {
             val idx = objs.filter { it.has("index") }.map { Quote(it.optString("index"), it.optString("price"), it.optString("ratio").toFloatOrNull() ?: 0f) }
             val top = objs.filter { it.has("name") }.map { Quote(it.optString("name"), it.optString("price"), it.optString("ratio").toFloatOrNull() ?: 0f) }
             hub.main.post { m.indices = idx; m.stocks = top; m.stockAsof = s.optString("asof"); hub.log("stage|stock|${idx.size}+${top.size}") }
-        }.onFailure { hub.log("stage|stock|FAIL|${it.message}") }
+        }.onFailure { hub.log("stage|stock|FAIL|${it.message}")
+            runCatching {   // 서버가 없으면 앱이 직접(네이버 증권 공개 지수 — 코스피 · 나스닥)
+                val idx = listOf("코스피" to "https://m.stock.naver.com/api/index/KOSPI/basic", "나스닥" to "https://api.stock.naver.com/index/.IXIC/basic").map { (nm, u) ->
+                    val j = getJson(u); val down = j.optJSONObject("compareToPreviousPrice")?.optString("code") in setOf("4", "5")
+                    val r = j.optString("fluctuationsRatio").trimStart('-').toFloatOrNull() ?: 0f
+                    Quote(nm, j.optString("closePrice"), if (down) -r else r) }
+                hub.main.post { m.indices = idx; m.stockAsof = "네이버 증권"; hub.log("stage|stock|direct|${idx.size}"); refresh(); hub.render() }
+            }.onFailure { e -> hub.log("stage|stock|direct|FAIL|${e.message}") }
+        }
     }.start()
 
     private fun getJson(u: String): JSONObject {
@@ -1346,6 +1423,19 @@ class StageFeature : Feature {
             Triple("TURN_ENTER_IC", 1200, "경부고속도로 진입"), Triple("TURN_KEEP_L", 4200, "서울 방면 왼쪽 길"),
             Triple("TURN_EXIT_IC", 2600, "양재IC 나가기"), Triple("TURN_LEFT", 1500, "테헤란로 방면 좌회전"), Triple("TURN_ARRIVE", 800, "코엑스 도착"))
         /** 신호 대기 수다(예시) — 짧게, 말로 듣기 좋게 */
+        /** 넌센스 퀴즈 — 문제 · 정답(받아 적은 말에 이 중 하나가 들어 있으면 정답, 띄어쓰기 없이) · 힌트 */
+        private class Quiz(val q: String, val a: List<String>, val hint: String)
+        private val QUIZ = listOf(
+            Quiz("세상에서 가장 뜨거운 바다는 뭘까요?", listOf("열바다"), "숫자 십이 들어가요."),
+            Quiz("왕이 넘어지면 뭐라고 할까요?", listOf("킹콩"), "왕은 영어로 킹이에요."),
+            Quiz("아몬드가 죽으면 뭐가 될까요?", listOf("다이아몬드"), "죽다는 영어로 다이예요."),
+            Quiz("소가 웃으면 뭐라고 할까요?", listOf("우하하"), "소는 한자로 우예요."),
+            Quiz("세상에서 가장 가난한 왕은 누구일까요?", listOf("최저임금"), "왕을 다른 말로 임금이라고 해요."),
+            Quiz("오리가 얼면 뭐가 될까요?", listOf("언덕"), "오리는 영어로 덕이에요."),
+            Quiz("세상에서 가장 빠른 닭은 뭘까요?", listOf("후다닭", "후다닥"), "급하게 뛰어가는 소리예요."),
+            Quiz("차를 발로 차면 뭐가 될까요?", listOf("카놀라유", "카놀라"), "차는 영어로 카, 그리고 깜짝 놀라요."),
+            Quiz("바나나가 웃으면 뭐가 될까요?", listOf("바나나킥"), "웃음소리 킥킥, 과자 이름이에요."),
+            Quiz("딸기가 직장을 잃으면 뭐가 될까요?", listOf("딸기시럽"), "직장을 잃는 걸 실업이라고 해요."))
         private val GOSSIP = listOf(
             "판교 이야기" to "판교라는 이름은 옛날 이 근처 냇가에 놓인 널빤지 다리, 널다리에서 왔대요.",
             "근처 가게" to "이 길 건너 빵집은 아침 일곱 시 소금빵이 십 분 만에 동난대요. 다음엔 일찍 와 볼까요?",

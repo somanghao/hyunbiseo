@@ -115,7 +115,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         if (isCar) {
             sttBase = intent?.getStringExtra("stt") ?: link.base.replace(":8790", ":8791"); ear = Ear({ sttBase }, this)
             prefs.edit().remove("earAlways").apply()
-            naviSplit = prefs.getBoolean("naviSplit", true)   // 옛 '눌러서 말하기' 설정 — 이제 늘 상시 듣기(사용자 11-09)
+            naviSplit = prefs.getBoolean("naviSplit", false)   // 옛 '눌러서 말하기' 설정 — 이제 늘 상시 듣기(사용자 11-09)
             sense = CarSense(act, this).also { it.start() }
             navi?.start(::onNaviConnected)
         } else {
@@ -186,7 +186,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     }
 
     /** 내비가 덮으면 반반으로(기본, 앱 설정 naviSplit · `--ez navisplit false` = 예전처럼 현비서를 다시 앞으로). Pleos 홈 비공식 방송 → wiki/hyun-pleos-capabilities.md §⑧ */
-    private var naviSplit = true
+    private var naviSplit = false   // 기본 끔(칼리 11-12) — 반반은 Pleos 홈 비공식 방송이라 시연·제출 기본에서 뺀다. 켜려면 --ez navisplit true
     private var autoSplit = false                 // 우리가 반반으로 만들었나 — 안내가 끝나면 1칸으로 되돌린다
 
     /** 헤드업 알림은 Pleos 시스템이 왼쪽 위(11시)에 띄워 내비 회전 안내를 가린다 — 앱이 위치를 못 정함(11-09 실측) →
@@ -249,6 +249,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     // ======================================================================
     fun onIntent(i: Intent, first: Boolean) {
         i.getStringExtra("server")?.let { link.base = it }
+        i.getStringExtra("voice")?.let { vt -> prefs.edit().putString("voiceType", vt).apply(); voice?.speaker(vt) }   // 목소리(화자) 바꾸기 — --es voice <화자 이름> · 저장해 두고 켤 때마다 적용
         if (i.hasExtra("hun")) { hunMode = i.getBooleanExtra("hun", false); log("front|hunMode=$hunMode") }
         if (i.hasExtra("navisplit")) { naviSplit = i.getBooleanExtra("navisplit", true); prefs.edit().putBoolean("naviSplit", naviSplit).apply(); log("front|naviSplit=$naviSplit") }
         i.getStringExtra("line")?.let { l ->       // "P3|말" — 스케줄러 시험
@@ -664,7 +665,9 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private fun logLevel(why: String) { log("stt|level|$why|max=${"%.2f".format(maxLevel)}"); maxLevel = 0f }
 
     // ---------- Voice.Events (아무 스레드 → main) ----------
-    override fun onVoiceReady() { main.post { helloWhenReady(0) } }
+    /** 기본 목소리(Pleos TTS 화자) — 한국어 4종(seoyoon 기본 · haeun · eunwoo · sanghyeok, 에뮬 11-12 실측) 중 haeun(칼리 11-12 "귀여운 목소리") */
+    private val VOICE_TYPE = "haeun"
+    override fun onVoiceReady() { main.post { voice?.speaker(prefs.getString("voiceType", null) ?: VOICE_TYPE); helloWhenReady(0) } }
 
     /** 첫 인사 — 서버 health를 한 번 받은 뒤에(안 그러면 두뇌가 있어도 규칙 인사가 나간다, 폰 실측) · 최대 8초 */
     private fun helloWhenReady(tries: Int) {
