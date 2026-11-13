@@ -130,7 +130,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1800 && !m.viewForced)
         val outroX = if (m.sit == Sit.OFF && now - m.sitAt < 1800) (now - m.sitAt) / 1800f else -1f
         // 내비가 주화면(내비 레이아웃 · 주행 중) — 캐릭터는 왼쪽 위 작은 배지, 내비가 화면을 넓게(댄 11-09)
-        val navMain = !intro && v.card == null && m.overlay !in setOf("brief", "todo", "car", "log") && (m.view == "nav" || (m.view == null && (driving || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면
+        val navMain = !intro && v.card == null && m.overlay !in setOf("brief", "todo", "car", "log", "rest") && (m.view == "nav" || (m.view == null && (driving || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면
         if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
         val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
         val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
@@ -174,7 +174,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 if (nk > 0f) c.saveLayerAlpha(0f, 0f, w, h, ((1f - nk) * 255).toInt()) else c.save()
                 header(c)
                 val card = v.card
-                val sheetOn = m.overlay in setOf("brief", "todo", "car", "log")
+                val sheetOn = m.overlay in setOf("brief", "todo", "car", "log", "rest")
                 val pagerOn = !glance() && m.overlay == null && v.card == null && StageModel.pages(m.sit).size > 1
                 val bottom = h - 48 * U - 64 * U - 20 * U - (if (pagerOn) 64 * U else 0f)
                 var top = 96 * U
@@ -774,7 +774,49 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     }
 
     /** 다른 화면 — 오른쪽 큰 카드 한 장(목록). 브리핑 · 할 일 · 내 차 · 기록 */
+    /** 쉼표(슬립 모드) — 고르기(15분 · 30분) → 남은 시간 · 차 안 세팅 결과 · 5분 더 / 일어나기 */
+    private fun restSheet(c: Canvas, z: RectF) {
+        glassCard(c, z, 24 * U)
+        val pad = 44 * U; val x0 = z.left + pad; val x1 = z.right - pad; val iw = x1 - x0
+        if (m.restEndAt == 0L) {
+            icon(c, "cup", x0 + 22 * U, z.top + pad + 22 * U, 44 * U, ACC)
+            text(c, "쉼표 — 얼마나 쉴까요?", x0 + 62 * U, z.top + pad + 38 * U, 40 * U, FG, bold, maxW = iw - 62 * U)
+            text(c, (if (m.restName.isNotBlank()) "${m.restName} · " else "") + "시작하면 조명을 낮추고 시트를 눕혀요", x0, z.top + pad + 86 * U, 24 * U, MUTED, medium, maxW = iw)
+            val by = z.top + pad + 130 * U; val bh = min(210 * U, (z.bottom - by - pad - 80 * U))
+            val cs = cols(RectF(x0, by, x1, by + bh), 1f, 1f)
+            listOf(Triple("15분", "가볍게 쉬기", "rest:15"), Triple("30분", "푹 자기", "rest:30")).forEachIndexed { i, (big, sub, act) ->
+                val r = cs[i]; p.shader = null; p.style = Paint.Style.FILL; p.color = if (i == 1) ACC else SURF2; c.drawRoundRect(r, 28 * U, 28 * U, p)
+                text(c, big, r.centerX(), r.centerY() + 6 * U, 72 * U, if (i == 1) Color.WHITE else FG, bold, Paint.Align.CENTER)
+                text(c, sub, r.centerX(), r.centerY() + 56 * U, 26 * U, if (i == 1) Glass.a(Color.WHITE, 220) else MUTED, medium, Paint.Align.CENTER)
+                hits += r to act }
+            button(c, "안 쉴래요", RectF(x0, z.bottom - pad - 56 * U, x0 + 170 * U, z.bottom - pad), false, "rest:close")
+            text(c, "말로도 돼요 · \"30분\" · \"15분\"", x1, z.bottom - pad - 18 * U, 22 * U, FAINT, medium, Paint.Align.RIGHT)
+            return
+        }
+        val left = (m.restEndAt - SystemClock.elapsedRealtime()).coerceAtLeast(0L); val s = ((left + 999) / 1000).toInt()
+        val wake = java.util.Calendar.getInstance().apply { add(java.util.Calendar.SECOND, s) }
+        text(c, "쉼표 ${m.restMin}분 · %02d:%02d에 깨워 줄게요".format(wake.get(java.util.Calendar.HOUR_OF_DAY), wake.get(java.util.Calendar.MINUTE)), z.centerX(), z.top + pad + 34 * U, 28 * U, MUTED, medium, Paint.Align.CENTER, maxW = iw)
+        val big = "%d:%02d".format(s / 60, s % 60)
+        text(c, big, z.centerX(), z.top + z.height() * 0.42f, min(200 * U, z.height() * 0.3f), FG, bold, Paint.Align.CENTER)
+        // 남은 시간 막대
+        val bar = RectF(x0 + iw * 0.1f, z.top + z.height() * 0.5f, x1 - iw * 0.1f, z.top + z.height() * 0.5f + 10 * U)
+        p.shader = null; p.style = Paint.Style.FILL; p.color = SURF2; c.drawRoundRect(bar, 5 * U, 5 * U, p)
+        val pr = if (m.restTotalMs > 0) 1f - left.toFloat() / m.restTotalMs else 0f
+        p.color = ACC; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * pr.coerceIn(0f, 1f), bar.bottom), 5 * U, 5 * U, p)
+        // 차 안 세팅 — 실제로 된 것과 직접 해야 하는 것을 구분해 보인다
+        val cab = m.restCabin
+        val chips = if (cab == null) listOf("차 안을 맞추는 중…" to MUTED) else listOf(
+            (if (cab["light"] == true) "조명 낮춤" else "실내등은 직접 꺼 주세요") to (if (cab["light"] == true) GOOD else MUTED),
+            (if (cab["seat"] == true) "시트 눕힘" else "시트는 직접 눕혀 주세요") to (if (cab["seat"] == true) GOOD else MUTED))
+        val cy = z.top + z.height() * 0.5f + 70 * U
+        text(c, chips.joinToString("   ·   ") { it.first }, z.centerX(), cy, 26 * U, if (chips.all { it.second == GOOD }) GOOD else MUTED, medium, Paint.Align.CENTER, maxW = iw)
+        val bw = min(300 * U, iw * 0.42f); val by = z.bottom - pad - 72 * U
+        button(c, "5분 더", RectF(z.centerX() - bw - 12 * U, by, z.centerX() - 12 * U, by + 72 * U), false, "rest:more")
+        button(c, "이제 일어날래요", RectF(z.centerX() + 12 * U, by, z.centerX() + 12 * U + bw, by + 72 * U), true, "rest:end")
+    }
+
     private fun sheet(c: Canvas, zone: RectF, which: String) {
+        if (which == "rest") { restSheet(c, zone); return }
         glassCard(c, zone, 24 * U)
         val pad = 40 * U; val x0 = zone.left + pad; val x1 = zone.right - pad
         val (title, sub) = when (which) {

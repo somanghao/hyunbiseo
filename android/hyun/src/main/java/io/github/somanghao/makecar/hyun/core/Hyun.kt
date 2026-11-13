@@ -324,10 +324,11 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     // 이벤트 · 대화(두뇌)
     // ======================================================================
     /** 주행 이벤트 — 두뇌가 있으면 묻고, 없으면 기능의 규칙 문장(fallback) */
+    /** 차의 시동 인사(hello)는 두뇌가 켜져 있어도 앱 규칙으로 — 좌석을 보고 고른 제안 하나(StageModel.offer)로 시작한다(칼리 11-13) */
     fun fire(ev: String, extra: JSONObject? = null) {
         trip.fired += ev
         log("event|$ev${extra?.let { "|$it" } ?: ""}")
-        if (!brainOn) { fallbackEvent(ev, extra)?.let { say(it, "", ev in LISTEN_EVENTS, Speaker.eventPrio(ev), tag = "$ev·규칙") }; return }
+        if (!brainOn || ((ev == "hello" || ev == "long_drive") && isCar)) { fallbackEvent(ev, extra)?.let { say(it, "", ev in LISTEN_EVENTS, Speaker.eventPrio(ev), tag = "$ev·규칙") }; return }
         ask("event", ev, extra)
     }
 
@@ -817,7 +818,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         private const val TURN_GATE_M = 300.0
         private const val TURN_GATE_MAX_MS = 45_000L
         private val OPEN_TURNS = setOf("TURN_UNKNOWN", "TURN_STRAIGHT", "TURN_ARRIVE")
-        private val LISTEN_EVENTS = setOf("no_dest")   // 규칙 문장이 질문인 이벤트 — 말한 뒤 듣기
+        private val LISTEN_EVENTS = setOf("no_dest", "long_drive")   // 규칙 문장이 질문인 이벤트 — 말한 뒤 듣기
         // 받아 적기가 첫 글자를 비슷한 소리로 적는다(실측: "변비서") — 비슷한 첫소리는 받되 그냥 "비서"는 받지 않는다
         private val WAKE = Regex("(헤이\\s*)?(현|형|혁|헌|변|편|연|견|션|선|련|헨|핸|행)\\s*(비|빈|피)\\s*(서|사|소|써)(야|아|씨|님|요)?[\\s,.!?~]*")
         const val REQ_PERMS = 7

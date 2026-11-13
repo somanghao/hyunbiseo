@@ -8,6 +8,8 @@ import ai.pleos.playground.vehicle.constant.area.DoorValue
 import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.constant.area.WindowValue
+import ai.pleos.playground.vehicle.constant.control.LightSwitch
+import ai.pleos.playground.vehicle.constant.control.MoveControl
 import ai.pleos.playground.vehicle.constant.unit.TemperatureUnit
 import android.car.Car
 import android.car.VehiclePropertyIds
@@ -145,6 +147,16 @@ class CarStatus(private val ctx: Context) {
         private val driver = SeatArea(SeatValue.ROW_1_LEFT)
         override fun start() { v = Vehicle(ctx).also { it.initialize() } }
         private fun ok() { alive = true }
+        /** 쉼표(슬립 모드) 실내 세팅 — 실내등·앰비언트 끄기/켜기 · 운전석 등받이 눕히기/세우기(2.5초 움직이고 멈춤). 된 것만 res 에 true */
+        fun rest(on: Boolean, res: MutableMap<String, Boolean>) {
+            val x = v ?: return
+            val sw = if (on) LightSwitch.OFF else LightSwitch.ON
+            runCatching { x.getLight().setCabinLightSwitch(sw, { s -> res["light"] = true; log("status|rest|cabinLight|$s") }, { e -> log("status|rest|cabinLight|FAIL|${e.message}") }) }.onFailure { log("status|rest|cabinLight|${it.javaClass.simpleName} ${it.message}") }
+            runCatching { x.getLight().setAmbientLightSwitch(driver, sw, { _, s -> res["light"] = true; log("status|rest|ambient|$s") }, { e -> log("status|rest|ambient|FAIL|${e.message}") }) }.onFailure { log("status|rest|ambient|${it.javaClass.simpleName} ${it.message}") }
+            val dir = if (on) MoveControl.BACKWARD else MoveControl.FORWARD
+            runCatching { x.getSeat().moveSeatBackrestAngle(driver, dir, { _, d -> res["seat"] = true; log("status|rest|seat|$d") }, { e -> log("status|rest|seat|FAIL|${e.message}") }) }.onFailure { log("status|rest|seat|${it.javaClass.simpleName} ${it.message}") }
+            Thread { Thread.sleep(2500); runCatching { x.getSeat().moveSeatBackrestAngle(driver, MoveControl.STOP, { _, _ -> }, { }) } }.start()
+        }
         fun setTemp(c: Float): Boolean = runCatching {
             if (!alive) return false
             v?.getHVAC()?.setHvacTemperature(driver, c, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> log("status|hvac.set|${e.message}") }); true
@@ -181,5 +193,13 @@ class CarStatus(private val ctx: Context) {
         override fun stop() { runCatching { v?.release() } }
     }
 
+    /** 쉼표(슬립 모드) — 차 안을 쉬기 좋게(on) / 원래대로(off). 약 3초 뒤 무엇이 실제로 됐는지 돌려준다(light · seat).
+     *  차량 제어는 실차·앱마켓에서 사전 승인이 필요하다 — 거부되거나 Pleos 가 없으면 false 라서 부르는 쪽이 "직접 해 주세요" 안내로 바꾼다 */
+    fun restCabin(on: Boolean, done: (Map<String, Boolean>) -> Unit) {
+        val res = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+        val p = pleos
+        if (p != null && p.alive) p.rest(on, res)
+        Thread { Thread.sleep(3200); done(mapOf("light" to (res["light"] == true), "seat" to (res["seat"] == true))) }.start()
+    }
     private fun log(s: String) = Log.i("HYUN", s)
 }

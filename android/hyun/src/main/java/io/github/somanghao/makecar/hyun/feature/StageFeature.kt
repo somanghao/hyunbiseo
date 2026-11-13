@@ -115,6 +115,11 @@ class StageModel {
     fun offerKind() = if (status?.rearKid?.v == true || status?.passenger?.v == true) "quiz" else "news"
     /** 진행 중인 놀이의 화면 문구(큰 줄 · 작은 줄) — 있으면 주행 말풍선이 제안 대신 이걸 보인다 */
     var prompt: Pair<String, String>? = null
+    // 쉼표(슬립 모드) — 제안 → 쉼터 도착 → 15·30분 고르기 → 타이머 · 차 안 세팅 → 깨우기
+    var restAccepted = false                  // "쉬어 갈래" 한 뒤 — 차를 세우면 고르기 화면
+    var restName = ""                         // 다음 쉼터 이름(있으면)
+    var restMin = 0; var restEndAt = 0L; var restTotalMs = 0L   // 진행 중이면 restEndAt > 0(elapsedRealtime)
+    var restCabin: Map<String, Boolean>? = null                 // 차 안 세팅 결과(light · seat) — null = 맞추는 중
     var pageDir = 0; var pageAt = 0L          // 페이저 — 마지막으로 넘긴 방향(+1 다음 · −1 이전)과 시각(밀어 넘기는 연출)
     val level get() = (1 + kotlin.math.sqrt(xp / 25.0).toInt()).coerceAtMost(10)
     fun xpFor(l: Int) = 25 * (l - 1) * (l - 1)
@@ -346,7 +351,7 @@ class StageFeature : Feature {
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
-    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment") || i.hasExtra("page")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("rest") || i.hasExtra("restsec") || i.hasExtra("restmin") || i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment") || i.hasExtra("page")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
 
     /**
      * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive
@@ -394,6 +399,9 @@ class StageFeature : Feature {
             else Sit.of(k)?.let { s -> m.forced = true; if (s == Sit.DRIVE) startTripIfNeeded(); enter(s, why = "강제") }
         }
         i.getStringExtra("nav")?.let { setNav(it == "on" || it == "true") }
+        if (i.hasExtra("restmin")) restMinDrive = i.getIntExtra("restmin", 60)   // 시연: 먼저 권하는 기준(분)
+        if (i.hasExtra("restsec")) restSec = i.getIntExtra("restsec", 0)   // 시연: 쉼표 길이를 초로 줄임
+        i.getStringExtra("rest")?.let { when (it) { "offer" -> restOffer(); "arrive" -> { m.restAccepted = true; restChoose() }; "15" -> restStart(15); "30" -> restStart(30); "end" -> restEnd(false) } }   // 시연: 쉼표 단계 바로 가기
         if (i.action == ACTION) i.getStringExtra("skin")?.let { setSkin(it) }
         (i.getStringExtra("idea") ?: i.getStringExtra("moment"))?.let { setIdea(it); refresh(); hub.render(); return }
         i.getStringExtra("page")?.let { page(it); return }
@@ -460,6 +468,7 @@ class StageFeature : Feature {
             }
             if (!restSaid && hub.trip.driveS > NOVICE_REST_S) { restSaid = true; hub.say("50분 가까이 달렸어요. 다음 쉼터에서 잠깐 쉬어 가요.", "care", false, 1, tag = "초보·쉼표") }
         }
+        restTick()
         if (m.sit == Sit.DRIVE && m.overlay != null && m.overlay != "debug") m.overlay = null   // 주행 중엔 덮개 화면을 닫는다
         m.view?.let { vw -> if (!m.viewForced && !StageModel.allowed(vw, m.sit)) { m.view = null; hub.log("stage|view|$vw 닫음(${m.sit.key})") } }   // 허용 규칙(미리보기는 예외)
         status?.let { st -> if (pollN++ % 2 == 0) Thread { st.poll() }.start(); st.appTrip(tripS / 60, (tripM / 1000).toFloat()) }
@@ -620,7 +629,7 @@ class StageFeature : Feature {
             Sit.READY -> if (m.novice) "자, 출발해 볼까요? 브레이크 꾹 밟고, D로 바꾼 다음, 발을 천천히 떼면 돼요." else null
             Sit.DRIVE -> if (m.novice) "출발! 앞차랑 간격은 넉넉하게요. 길은 제가 미리미리 알려 줄게요." else null
             Sit.STOP -> gossip().let { g -> if (m.novice && tipIdx++ % 2 == 0) "신호 대기 중엔 브레이크를 계속 꾹. ${g.second}" else g.second }
-            Sit.PARK -> parkLine()
+            Sit.PARK -> if (m.restAccepted) { restChoose(); null } else parkLine()
             Sit.OFF -> offLine()
         }
         // 시동: 브리핑 영역을 말로 고르게 — 듣기 켜기
@@ -721,6 +730,7 @@ class StageFeature : Feature {
             a.startsWith("buy:") -> buyOrUse("concept:" + a.substringAfter(":"))
             a.startsWith("sit:") -> apply(Intent().putExtra("sit", a.substringAfter(":")))
             a == "mic" -> hub.view.onMic()
+            a.startsWith("rest:") -> when (a.substringAfter(":")) { "15" -> restStart(15); "30" -> restStart(30); "more" -> restMore(); "end" -> restEnd(false); else -> { m.overlay = null; m.restAccepted = false } }
             a.startsWith("hero:") -> { m.heroIdx = a.substringAfter(":").toInt(); m.heroAt = SystemClock.elapsedRealtime() + 20_000; m.reactAt = SystemClock.elapsedRealtime(); m.reactFace = "happy" }
             a.startsWith("say:") -> hub.heard(a.substringAfter(":"))
             a.startsWith("sim:") -> { m.status?.sim(a.substringAfter(":")) }
@@ -857,7 +867,7 @@ class StageFeature : Feature {
         c.put("safePoints", m.points)
     }
 
-    override fun fallback(ev: String, extra: JSONObject?): String? = if (ev == "hello") ignitionLine() else null
+    override fun fallback(ev: String, extra: JSONObject?): String? = when (ev) { "hello" -> ignitionLine(); "long_drive" -> if (restArea() != null && hub.trip.driveS >= restNextS) { restAskAt = SystemClock.elapsedRealtime(); restNextS = hub.trip.driveS + 30 * 60; restOfferLine() } else null; else -> null }
 
     // ======================================================================
     // 상황별 이야기 — 숫자는 캐릭터의 말로(댄 11-08 "대시보드 말고 컴패니언"). 한 번에 한 이야기(hero) + 작은 칩 1~2
@@ -956,6 +966,100 @@ class StageFeature : Feature {
         m.heroAt = SystemClock.elapsedRealtime(); m.reactAt = m.heroAt
         m.reactFace = when (t.tone) { "warn" -> "worried"; "good" -> "happy"; else -> "surprised" }
     }
+    // ---------- 쉼표(슬립 모드) — docs/specs/rest.md. 카메라가 없으니 '졸음 감지'라고 하지 않는다 — 1시간 넘게 달렸고 앞에 쉼터가 있으면 가볍게 권한다 ----------
+    private var restSec = 0                     // 시연용 쉼표 길이(초, 0 = 실제 분)
+    private var restAskAt = 0L                  // 쉬어 갈까요? 를 물은 시각 — 짧은 대답을 받는다
+    private var restNextS = 0.0                 // 다음 제안까지(연속 주행 초)
+    private var restWarned = false
+    private var restMinDrive = 60               // 먼저 권하는 기준 — 연속 주행 분(칼리 11-14: 1시간 넘게 달렸고 앞에 쉼터가 있을 때만 가볍게)
+    /** 경로 위 다음 쉼터(휴게소·졸음쉼터) — 이름 · 거기까지 m */
+    private fun restArea(): Pair<String, Int>? {
+        var acc = 0
+        for (t in hub.view.turns) { acc += t.m; if (t.type.contains("SERVICEAREA") || t.type.contains("RESTAREA")) return t.desc.substringBefore(" 방면").ifBlank { "쉼터" } to acc }
+        return null
+    }
+    /** 가볍게 권하는 한마디 — 쉼터가 앞에 있으면 이름·거리와 함께 */
+    private fun restOfferLine(): String {
+        val mins = (hub.trip.driveS / 60).toInt()
+        val head = when { mins >= 120 -> "${mins / 60}시간 넘게 달렸네요."; mins >= 60 -> "한 시간 넘게 달렸네요."; else -> "" }
+        val a = restArea(); m.restName = a?.first ?: ""
+        return (head + if (a != null) " ${hub.view.dist(a.second)} 앞에 ${a.first}가 있는데, 잠깐 쉬었다 갈까요?" else " 다음 쉼터에서 잠깐 쉬었다 갈까요?").trim()
+    }
+    private fun restOffer() { restAskAt = SystemClock.elapsedRealtime(); hub.log("stage|rest|offer|${(hub.trip.driveS / 60).toInt()}분|${restArea()?.first ?: "쉼터 없음"}"); hub.say(restOfferLine(), "", true, 2, reply = true, tag = "쉼표·제안") }
+    private fun restChoose() {
+        m.restAccepted = false; m.restEndAt = 0L; m.overlay = "rest"; restAskAt = 0L
+        hub.log("stage|rest|choose")
+        hub.say("${m.restName.ifBlank { "쉼터" }}에 도착했어요. 15분 쉴까요, 30분 푹 잘까요?", "care", true, 1, reply = true, tag = "쉼표·고르기"); refresh(); hub.render()
+    }
+    private fun restStart(min: Int) {
+        val total = (if (restSec > 0) restSec else min * 60) * 1000L
+        m.restMin = min; m.restTotalMs = total; m.restEndAt = SystemClock.elapsedRealtime() + total; m.restCabin = null; m.overlay = "rest"; restWarned = false; restAskAt = 0L
+        hub.log("stage|rest|start|$min|${total / 1000}s")
+        val st = m.status
+        val done: (Map<String, Boolean>) -> Unit = { res -> hub.main.post {
+            if (m.restEndAt == 0L) return@post
+            m.restCabin = res; hub.log("stage|rest|cabin|$res")
+            val did = listOfNotNull("조명을 낮추고".takeIf { res["light"] == true }, "시트를 눕혔어요".takeIf { res["seat"] == true })
+            val ask = listOfNotNull("실내등은 꺼 두고".takeIf { res["light"] != true }, "시트는 조금 눕혀 보세요".takeIf { res["seat"] != true })
+            hub.say("${min}분 쉼표 시작할게요. " + (if (did.isNotEmpty()) did.joinToString(" ").let { if (res["seat"] == true) "$it. " else "$it 뒀어요. " } else "") + (if (ask.isNotEmpty()) ask.joinToString(" ") + ". " else "") + "시간 되면 깨워 줄게요. 푹 쉬어요.", "care", false, 1, reply = true, tag = "쉼표·시작")
+            refresh(); hub.render() } }
+        if (st != null) st.restCabin(true, done) else done(mapOf("light" to false, "seat" to false))
+        refresh(); hub.render()
+    }
+    private fun restMore() { if (m.restEndAt == 0L) return; m.restEndAt += 5 * 60_000L; m.restTotalMs += 5 * 60_000L; restWarned = false; hub.say("네, 5분 더 쉬어요.", "", false, 1, reply = true, tag = "쉼표"); refresh(); hub.render() }
+    private fun restEnd(natural: Boolean) {
+        if (m.restEndAt == 0L && m.overlay != "rest") return
+        val was = m.restEndAt != 0L
+        m.restEndAt = 0L; m.overlay = null; m.restAccepted = false; restNextS = hub.trip.driveS + 30 * 60
+        hub.log("stage|rest|end|${if (natural) "time" else "early"}")
+        if (was) { m.status?.restCabin(false) { res -> hub.log("stage|rest|restore|$res") }
+            if (natural) award("☕", "쉼표로 쉬어 가기", 5)
+            val go = hub.view.dest?.let { d -> " ${d}까지 ${hub.view.remain.ifBlank { "조금" }} 남았어요." } ?: ""
+            hub.say(if (natural) "일어날 시간이에요! 기지개 한번 켜고 물 한 모금 마셔요.$go" else "쉼표는 여기까지 할게요. 천천히 출발해요.$go", "happy", false, 1, reply = true, tag = "쉼표·끝") }
+        refresh(); hub.render()
+    }
+    /** 1초마다 — 먼저 권하기 · 쉼표 타이머 · 깨우기 */
+    private fun restTick() {
+        val now = SystemClock.elapsedRealtime()
+        if (m.restEndAt != 0L) {
+            val left = m.restEndAt - now
+            if (hub.speedMs > hub.moveMs) { restEnd(false); return }   // 차가 움직이면 끝
+            if (!restWarned && left <= kotlin.math.min(60_000L, m.restTotalMs / 4)) { restWarned = true; hub.say("곧 일어날 시간이에요.", "", false, 2, tag = "쉼표·깨우기") }
+            if (left <= 0) { restEnd(true); return }
+            hub.render(); return
+        }
+        // 먼저 권하기 — 1시간 넘게 달렸고, 경로 앞에 쉼터(휴게소·졸음쉼터)가 있을 때만. 거절하거나 쉬고 나면 30분 뒤에 다시
+        if (hub.speedMs > hub.moveMs && m.overlay != "rest" && !m.restAccepted && hub.trip.driveS >= restNextS && hub.trip.driveS >= restMinDrive * 60 && restArea() != null) { restNextS = hub.trip.driveS + 30 * 60; restOffer() }
+    }
+    /** 쉼표에 대한 말 — 처리했으면 true, 아니면 null */
+    private fun restHeard(t: String): Boolean? {
+        val now = SystemClock.elapsedRealtime()
+        if (m.restEndAt != 0L) return when {
+            Regex("5분더|오분더|조금더|더잘래").containsMatchIn(t) -> { restMore(); true }
+            Regex("그만|일어날|일어났|깼어|출발|끝").containsMatchIn(t) -> { restEnd(false); true }
+            else -> null
+        }
+        if (m.overlay == "rest") return when {   // 고르기 화면
+            Regex("30|삼십|푹|길게").containsMatchIn(t) -> { restStart(30); true }
+            Regex("15|십오|짧게|잠깐").containsMatchIn(t) -> { restStart(15); true }
+            Regex("아니|안쉬|됐어|닫아|괜찮").containsMatchIn(t) -> { m.overlay = null; hub.say("알겠어요. 쉬고 싶으면 말해 줘요.", "", false, 1, reply = true, tag = "쉼표"); refresh(); hub.render(); true }
+            else -> null
+        }
+        if (Regex("슬립모드|수면모드|쉼표시작|쉼표모드|눈좀붙|잠깐잘|한숨잘|자고갈").containsMatchIn(t)) {
+            if (movingNow()) { m.restAccepted = true; hub.say("달리는 중이라 지금은 못 켜요. 차를 세우면 바로 쉼표 모드를 켜 줄게요.", "care", false, 1, reply = true, tag = "쉼표") }
+            else if (Regex("30|삼십").containsMatchIn(t)) restStart(30) else if (Regex("15|십오").containsMatchIn(t)) restStart(15) else restChoose()
+            return true
+        }
+        if (Regex("졸려|졸리|피곤|쉬고싶|쉬어가|쉬었다").containsMatchIn(t)) { if (movingNow()) restOffer() else restChoose(); return true }
+        if (restAskAt != 0L && now - restAskAt < 90_000 && t.length <= 10) {
+            if (Regex("^(응|어|네|예|좋아|그래|콜|오케이|쉬어|쉴래|쉬자|가자)").containsMatchIn(t)) { restAskAt = 0L; m.restAccepted = true
+                hub.say("좋아요. 도착해서 차를 세우면 쉼표 모드를 켜 줄게요.", "happy", false, 1, reply = true, tag = "쉼표"); return true }
+            if (Regex("^(아니|됐어|괜찮|나중|싫어|안)").containsMatchIn(t)) { restAskAt = 0L; restNextS = hub.trip.driveS + 30 * 60
+                hub.say("알겠어요, 30분 뒤에 다시 물어볼게요.", "", false, 1, reply = true, tag = "쉼표"); return true }
+        }
+        return null
+    }
+
     // ---------- 먼저 건넨 제안에 답하기 — 넌센스 퀴즈 · 뉴스 세 줄. 서버(두뇌) 없이 앱 안에서 끝까지 된다(칼리 11-12 마무리) ----------
     private var offerAt = 0L
     private var quizOrder = listOf<Int>(); private var quizN = -1; private var quizOk = 0; private var quizTry = 0
@@ -985,6 +1089,7 @@ class StageFeature : Feature {
     }
     /** 놀이·제안에 대한 말 — 처리했으면 true, 아니면 null(다음 규칙으로) */
     private fun playHeard(t: String): Boolean? {
+        restHeard(t)?.let { return it }
         if (quizOn()) {
             val q = QUIZ[quizOrder[quizN]]
             return when {
@@ -1280,6 +1385,11 @@ class StageFeature : Feature {
             m.navDest = v.dest ?: ""; m.navRemain = v.remain; m.navEta = v.eta
             v.turns.getOrNull(1).let { n -> m.navNextType = n?.type ?: ""; m.navNextM = n?.m ?: 0; m.navNext = n?.desc ?: "" }
             m.navMin = Regex("(\\d+)분").find(v.remain)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            return
+        }
+        if (v.dest != null && !m.simNav) {   // 실제 목적지는 있는데 회전 안내가 아직 안 왔다 — 모의 경로를 진짜처럼 보이지 않게 기다리는 표시만
+            m.mockRoute = false; m.navTurnType = ""; m.navTurnM = 0; m.navTurn = "길을 찾는 중이에요"
+            m.navDest = v.dest ?: ""; m.navRemain = v.remain; m.navEta = v.eta; m.navNextType = ""; m.navNextM = 0; m.navNext = ""; m.navMin = 0
             return
         }
         m.mockRoute = true
