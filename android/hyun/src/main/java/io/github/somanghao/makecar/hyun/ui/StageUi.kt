@@ -1806,7 +1806,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         "kidquiz" -> "뒷자리 친구, 사자는 어떻게 울까?"; "date" -> "오늘은 조용히 분위기만 챙길게요"; "parent" -> "어머님, 편하게 모실게요"; "childlock" -> "뒷문 잠금 확인했어요"
         "holiday" -> "새벽에 출발하면 덜 막혀요"; "firstsnow" -> "첫눈이에요! 천천히 가요"; "blossom" -> "꽃길로 돌아갈까요?"; "heat" -> "먼저 창문부터 내려요"; "suneung" -> "수험생들 응원해요"
         "level" -> "${m.levelTitle}, 레벨 ${m.level}이에요"; "mood" -> "지금 기분은 ${m.moodLabel}"; "anniv" -> "우리 만난 지 100일이에요"; "memory" -> "그때 기억나요?"
-        "cost" -> "이번 주 4천 원 아꼈어요"; "service" -> "엔진오일 갈 때가 됐어요"; "tireseason" -> "다음 주 영하예요"; "ubi" -> "이 점수면 보험 할인 구간이에요"
+        "cost" -> "이번 주 4천 원 아꼈어요"; "service" -> "엔진오일 교체 시기가 다가와요"; "tireseason" -> "다음 주 영하예요"; "ubi" -> "이 점수면 보험 할인 구간이에요"
         "sharecard" -> "이번 주 카드 만들었어요"; "league" -> "엄마가 1등이에요, 따라잡아요"; "commute" -> "출근길 편성 끝"; "parkhunt" -> "공영주차장이 더 가까워요"
         "schoolzone" -> "스쿨존이에요, 30 이하로"; "voicegame" -> "스무고개 할까요?"; "senior" -> "글씨 크게 바꿨어요"; else -> "글레오가 저를 부를 수 있어요"
     }
@@ -2082,13 +2082,20 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 wk.forEachIndexed { i, v2 -> val hh = 140 * U * v2 / 40000f; p.color = if (i == 1) ACC else SURF2; c.drawRoundRect(RectF(bx + i * 110 * U, r.bottom - 50 * U - hh, bx + i * 110 * U + 80 * U, r.bottom - 50 * U), 8 * U, 8 * U, p)
                     text(c, if (i == 0) "지난주" else "이번 주", bx + i * 110 * U + 40 * U, r.bottom - 20 * U, 20 * U, MUTED, medium, Paint.Align.CENTER) }
                 lab(c, "주행 거리 ✅ · 단가는 공공 충전 요금 연동 예정", r.left + 32 * U, r.bottom - 26 * U, col = FAINT) }
-            "service" -> row(230 * U) { r -> box(c, r); exTag(c, r)
-                text(c, "정비할 때가 됐어요", r.left + 32 * U, r.top + 86 * U, 44 * U, FG, bold)
-                listOf("엔진오일" to 0.92f, "와이퍼" to 0.8f, "에어컨 필터" to 0.55f).forEachIndexed { i, (n2, pr) -> val y = r.top + 130 * U + i * 30 * U
-                    text(c, n2, r.left + 32 * U, y + 8 * U, 22 * U, MUTED, medium); val bar = RectF(r.left + 180 * U, y - 4 * U, r.left + 520 * U, y + 6 * U)
-                    p.color = SURF2; c.drawRoundRect(bar, 5 * U, 5 * U, p); p.color = if (pr > 0.85f) WARN else ACC; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * pr, bar.bottom), 5 * U, 5 * U, p) }
-                text(c, "가는 길 블루핸즈 1.4km", r.right - 32 * U, r.top + 140 * U, 26 * U, ACC, semi, Paint.Align.RIGHT)
-                lab(c, "공기압은 계기판에서(외부 앱엔 막힘)", r.right - 32 * U - 330 * U, r.bottom - 22 * U, 330 * U, FAINT) }
+            "service" -> row(330 * U) { r -> box(c, r)   // 엔진오일 교체 알림 — 누적 주행거리 기준(마지막 교체 뒤 달린 거리 / 권장 주기)
+                val left = m.oilLeftKm; val demo = m.oilDemo
+                if (demo) exTag(c, r)
+                val x0 = r.left + 40 * U; val iw = r.width() - 80 * U
+                icon(c, "warn", x0 + 22 * U, r.top + 62 * U, 40 * U, WARN)
+                text(c, if (left <= 0) "엔진오일 교체할 때가 됐어요" else "엔진오일 교체 시기가 다가와요", x0 + 58 * U, r.top + 76 * U, 38 * U, FG, bold, maxW = iw - 120 * U)
+                val used = (StageModel.OIL_KM - left).coerceAtLeast(0)
+                text(c, if (left <= 0) "권장 주기를 넘겼어요" else "${"%,d".format(left)}km 남았어요", x0, r.top + 150 * U, 56 * U, if (left <= 300) WARN else FG, bold)
+                text(c, "마지막 교체 뒤 ${"%,d".format(used)}km · 권장 ${"%,d".format(StageModel.OIL_KM)}km", x0, r.top + 196 * U, 24 * U, MUTED, medium, maxW = iw)
+                val bar = RectF(x0, r.top + 222 * U, r.right - 40 * U, r.top + 236 * U)
+                p.shader = null; p.style = Paint.Style.FILL; p.color = SURF2; c.drawRoundRect(bar, 7 * U, 7 * U, p)
+                p.color = WARN; c.drawRoundRect(RectF(bar.left, bar.top, bar.left + bar.width() * (used.toFloat() / StageModel.OIL_KM).coerceIn(0.03f, 1f), bar.bottom), 7 * U, 7 * U, p)
+                text(c, "갈고 나면 \"엔진오일 갈았어\"라고 말해 주세요", x0, r.bottom - 34 * U, 22 * U, FAINT, medium, maxW = iw - 250 * U)
+                button(c, "주말에 다시 알림", RectF(r.right - 40 * U - 230 * U, r.bottom - 76 * U, r.right - 40 * U, r.bottom - 22 * U), false, "oil:later") }
             "tireseason" -> row(230 * U) { r -> box(c, r); exTag(c, r)
                 val cx = r.left + 110 * U; val cy = r.centerY()
                 p.color = 0xFF2B2F36.toInt(); c.drawCircle(cx, cy, 80 * U, p); p.color = 0xFF9AA3B2.toInt(); c.drawCircle(cx, cy, 36 * U, p)

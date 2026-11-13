@@ -115,6 +115,8 @@ class StageModel {
     fun offerKind() = if (status?.rearKid?.v == true || status?.passenger?.v == true) "quiz" else "news"
     /** 진행 중인 놀이의 화면 문구(큰 줄 · 작은 줄) — 있으면 주행 말풍선이 제안 대신 이걸 보인다 */
     var prompt: Pair<String, String>? = null
+    // 엔진오일 교체 알림 — 마지막 교체 뒤 달린 거리로 계산(누적 주행거리를 못 읽으면 시연 값)
+    var oilLeftKm = OIL_KM; var oilDemo = false
     // 쉼표(슬립 모드) — 제안 → 쉼터 도착 → 15·30분 고르기 → 타이머 · 차 안 세팅 → 깨우기
     var restAccepted = false                  // "쉬어 갈래" 한 뒤 — 차를 세우면 고르기 화면
     var restName = ""                         // 다음 쉼터 이름(있으면)
@@ -207,6 +209,8 @@ class StageModel {
         val SLOT_NAMES = mapOf("head" to "머리", "eyes" to "눈", "face" to "얼굴", "neck" to "목", "hair" to "머리핀", "effect" to "효과")
         fun all() = CONCEPTS + FACES + DECOR
         /** 취미 레이아웃 9 — 키 → 이름 */
+        const val OIL_KM = 10_000        // 엔진오일 권장 교체 주기(km) — 차종 정비 주기를 받기 전의 기본값
+        const val OIL_SOON_KM = 1_000    // 이만큼 남으면 시동 때 먼저 알린다
         val CATS = listOf("news" to "뉴스", "nav" to "내비게이션", "webtoon" to "웹툰", "music" to "음악·팟캐스트", "sports" to "스포츠",
             "stock" to "주식", "weather" to "날씨·차림", "local" to "동네 이야기", "schedule" to "일정·할 일")
         private val STILL = setOf(Sit.IGNITION, Sit.READY, Sit.PARK, Sit.OFF)
@@ -351,7 +355,7 @@ class StageFeature : Feature {
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
-    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("rest") || i.hasExtra("restsec") || i.hasExtra("restmin") || i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment") || i.hasExtra("page")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("oil") || i.hasExtra("rest") || i.hasExtra("restsec") || i.hasExtra("restmin") || i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment") || i.hasExtra("page")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
 
     /**
      * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive
@@ -399,6 +403,7 @@ class StageFeature : Feature {
             else Sit.of(k)?.let { s -> m.forced = true; if (s == Sit.DRIVE) startTripIfNeeded(); enter(s, why = "강제") }
         }
         i.getStringExtra("nav")?.let { setNav(it == "on" || it == "true") }
+        if (i.hasExtra("oil")) { oilDemoLeft = i.getIntExtra("oil", 800).takeIf { it >= -5000 }; oilSaidDay = -1; hub.prefs.edit().remove("oil.snoozeUntil").apply(); oilUpdate() }   // 시연: 엔진오일 남은 거리(km)
         if (i.hasExtra("restmin")) restMinDrive = i.getIntExtra("restmin", 60)   // 시연: 먼저 권하는 기준(분)
         if (i.hasExtra("restsec")) restSec = i.getIntExtra("restsec", 0)   // 시연: 쉼표 길이를 초로 줄임
         i.getStringExtra("rest")?.let { when (it) { "offer" -> restOffer(); "arrive" -> { m.restAccepted = true; restChoose() }; "15" -> restStart(15); "30" -> restStart(30); "end" -> restEnd(false) } }   // 시연: 쉼표 단계 바로 가기
@@ -730,6 +735,7 @@ class StageFeature : Feature {
             a.startsWith("buy:") -> buyOrUse("concept:" + a.substringAfter(":"))
             a.startsWith("sit:") -> apply(Intent().putExtra("sit", a.substringAfter(":")))
             a == "mic" -> hub.view.onMic()
+            a == "oil:later" -> oilLater()
             a.startsWith("rest:") -> when (a.substringAfter(":")) { "15" -> restStart(15); "30" -> restStart(30); "more" -> restMore(); "end" -> restEnd(false); else -> { m.overlay = null; m.restAccepted = false } }
             a.startsWith("hero:") -> { m.heroIdx = a.substringAfter(":").toInt(); m.heroAt = SystemClock.elapsedRealtime() + 20_000; m.reactAt = SystemClock.elapsedRealtime(); m.reactFace = "happy" }
             a.startsWith("say:") -> hub.heard(a.substringAfter(":"))
@@ -1060,10 +1066,47 @@ class StageFeature : Feature {
         return null
     }
 
+    // ---------- 엔진오일 교체 알림 — 누적 주행거리(Pleos Odometer)에서 마지막 교체 때 거리를 빼 남은 거리를 센다 ----------
+    private var oilSaidDay = -1; private var oilAskAt = 0L; private var oilDemoLeft: Int? = null
+    /** 남은 거리 갱신 — 시연 값(--ei oil N)이 있으면 그것, 아니면 누적 주행거리 − 마지막 교체. 처음 보면 지금을 기준으로 삼는다 */
+    private fun oilUpdate() {
+        val demo = oilDemoLeft; val odo = m.status?.odoKm?.v
+        if (demo != null) { m.oilLeftKm = demo; m.oilDemo = true; return }
+        m.oilDemo = false
+        if (odo == null) { m.oilLeftKm = StageModel.OIL_KM; return }
+        var last = hub.prefs.getInt("oil.lastKm", -1)
+        if (last < 0 || last > odo) { last = odo; hub.prefs.edit().putInt("oil.lastKm", odo).apply() }
+        m.oilLeftKm = StageModel.OIL_KM - (odo - last)
+    }
+    private fun oilDue(): Boolean { oilUpdate(); return m.oilLeftKm <= StageModel.OIL_SOON_KM && oilSaidDay != Calendar.getInstance().get(Calendar.DAY_OF_YEAR) && System.currentTimeMillis() >= hub.prefs.getLong("oil.snoozeUntil", 0L) }
+    private fun oilLater() {
+        val c = Calendar.getInstance(); while (c.get(Calendar.DAY_OF_WEEK) != Calendar.SATURDAY || c.timeInMillis <= System.currentTimeMillis()) c.add(Calendar.DAY_OF_YEAR, 1)
+        c.set(Calendar.HOUR_OF_DAY, 0); c.set(Calendar.MINUTE, 0)
+        hub.prefs.edit().putLong("oil.snoozeUntil", c.timeInMillis).apply(); oilAskAt = 0L; if (m.idea == "service") m.idea = null
+        hub.log("stage|oil|later"); hub.say("알겠어요, 토요일에 다시 알려 줄게요.", "", false, 1, reply = true, tag = "오일"); refresh(); hub.render()
+    }
+    private fun oilHeard(t: String): Boolean? {
+        if (Regex("(엔진)?오일.*(갈았|교체했|바꿨|교환했)").containsMatchIn(t)) {
+            val odo = m.status?.odoKm?.v; oilDemoLeft = null; oilAskAt = 0L
+            if (odo != null) hub.prefs.edit().putInt("oil.lastKm", odo).remove("oil.snoozeUntil").apply()
+            oilUpdate(); if (m.idea == "service") m.idea = null
+            hub.log("stage|oil|changed|$odo")
+            hub.say(if (odo != null) "기록해 뒀어요. 다음 교체는 ${"%,d".format(StageModel.OIL_KM)}킬로미터 뒤예요." else "기록해 뒀어요. 지금은 누적 주행거리를 읽지 못해서, 읽히는 대로 여기서부터 셀게요.", "happy", false, 1, reply = true, tag = "오일"); refresh(); hub.render(); return true
+        }
+        if (Regex("엔진오일|오일교체|오일언제").containsMatchIn(t)) { oilUpdate(); m.idea = "service"
+            hub.say(if (m.status?.odoKm?.v == null && oilDemoLeft == null) "지금은 누적 주행거리를 읽지 못해서 남은 거리를 알 수 없어요." else "엔진오일은 ${"%,d".format(m.oilLeftKm.coerceAtLeast(0))}킬로미터 남았어요.", "", false, 1, reply = true, tag = "오일"); refresh(); hub.render(); return true }
+        if (oilAskAt != 0L && SystemClock.elapsedRealtime() - oilAskAt < 90_000 && t.length <= 10) {
+            if (Regex("^(응|어|네|예|좋아|그래|알려)").containsMatchIn(t)) { oilLater(); return true }
+            if (Regex("^(아니|됐어|괜찮|안)").containsMatchIn(t)) { oilAskAt = 0L; hub.say("알겠어요. 갈고 나면 엔진오일 갈았어, 라고 말해 줘요.", "", false, 1, reply = true, tag = "오일"); return true }
+        }
+        return null
+    }
+
     // ---------- 먼저 건넨 제안에 답하기 — 넌센스 퀴즈 · 뉴스 세 줄. 서버(두뇌) 없이 앱 안에서 끝까지 된다(칼리 11-12 마무리) ----------
     private var offerAt = 0L
     private var quizOrder = listOf<Int>(); private var quizN = -1; private var quizOk = 0; private var quizTry = 0
-    private fun offerSay() { offerAt = SystemClock.elapsedRealtime(); hub.say(m.offer().first, "happy", true, 2, tag = "제안") }
+    private fun offerSay() { if (oilAskAt != 0L && SystemClock.elapsedRealtime() - oilAskAt < 60_000) return   // 오일 알림에 대답을 기다리는 중이면 겹쳐 말하지 않는다
+        offerAt = SystemClock.elapsedRealtime(); hub.say(m.offer().first, "happy", true, 2, tag = "제안") }
     private fun quizOn() = quizN >= 0
     private fun startQuiz() {
         quizOrder = QUIZ.indices.shuffled().take(3); quizN = 0; quizOk = 0; offerAt = 0L
@@ -1090,6 +1133,7 @@ class StageFeature : Feature {
     /** 놀이·제안에 대한 말 — 처리했으면 true, 아니면 null(다음 규칙으로) */
     private fun playHeard(t: String): Boolean? {
         restHeard(t)?.let { return it }
+        oilHeard(t)?.let { return it }
         if (quizOn()) {
             val q = QUIZ[quizOrder[quizN]]
             return when {
@@ -1357,6 +1401,11 @@ class StageFeature : Feature {
     /** 시동 인사 — 날씨·음료·걸리는 시간 인사는 빼고 제안부터(칼리 11-12). 주행 화면 말풍선과 같은 제안(StageModel.offer) */
     private fun ignitionLine(): String {
         goBox()   // 화면 맨 위 '어디로 갈까요?' 칸 채우기
+        if (oilDue()) {   // 엔진오일 교체가 가까우면 제안보다 먼저(하루 한 번) — 화면도 그 카드로
+            oilSaidDay = Calendar.getInstance().get(Calendar.DAY_OF_YEAR); m.idea = "service"; oilAskAt = SystemClock.elapsedRealtime()
+            return if (m.oilLeftKm <= 0) "엔진오일 교체할 때가 됐어요. 이번 주 안에 정비소에 들러요. 주말에 다시 알려 줄까요?"
+                   else "엔진오일 교체 시기가 다가와요. ${m.oilLeftKm / 100 * 100}킬로미터쯤 남았어요. 주말에 다시 알려 줄까요?"
+        }
         offerAt = SystemClock.elapsedRealtime()
         return m.offer().first
     }
