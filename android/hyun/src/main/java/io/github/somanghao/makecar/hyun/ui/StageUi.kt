@@ -584,7 +584,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private fun scene(c: Canvas, w: Float, h: Float, t0: Float, still: Boolean) {
         val t = if (still) t0 * 0.2f else t0
         val hour = java.util.Calendar.getInstance().let { it.get(java.util.Calendar.HOUR_OF_DAY) + it.get(java.util.Calendar.MINUTE) / 60f }
-        val nightSky = darkUi || hour >= 19.5f || hour < 5f
+        val nightSky = if (m.nightOverride == false) false else (darkUi || hour >= 19.5f || hour < 5f)   // --es night off면 저녁에도 밝은 하늘(11-14 녹화 — 19:30 넘으면 카드만 밝고 배경이 밤)
         sceneDark = nightSky || (k.id != "pleos" && k.darkCard)
         var top: Int; var bot: Int
         when {

@@ -245,6 +245,10 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         sidesAt = now
         val vis = HomeWindow.visible(act)
         if (vis.size != 2 || vis[0] != ComponentName(act, act.javaClass).flattenToString() || !vis[1].startsWith(HomeWindow.NAVI.packageName + "/")) return
+        if (!naviSplit) {   // '한 화면' 설정 — 홈이 현비서를 반반 왼쪽에 넣었으면 반반으로 바꾸지 말고 현비서를 전체로(11-14 녹화 U)
+            log("front|sides|한 화면 설정 — 현비서 전체로"); sidesAt = now + 3000
+            HomeWindow.slots(act, ComponentName(act, act.javaClass), HomeWindow.TWO); return
+        }
         log("front|sides|현비서 왼쪽 → 내비 왼쪽 · 현비서 오른쪽")
         sidesAt = now + 3000
         HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.TWO)
