@@ -54,8 +54,14 @@ def last_line(msg):
     """취향 소식 이벤트 — 앱이 맥락 ask에 실어 보낸 지시를 마지막 줄로(평소 취향으로 고른 주제를 검색해 먼저 알려 줌)"""
     if msg.get("kind") == "event" and msg.get("text") in TASTE_EVENTS:
         ask = (msg.get("ctx") or {}).get("ask", "")
-        return f"[먼저 건네는 말 — 평소 취향으로 고른 소식, 웹 검색으로 확인한 것만] {ask}"
+        return f"[먼저 건네는 말 — 평소 취향으로 고른 소식, 웹 검색으로 확인한 것만 · prio 2(먼저 건네는 소식 — 수다 3 아님)] {ask}"
     return None
+
+
+def post(rep, msg, b, dry, rec):
+    """취향 소식은 운전자가 평소 찾던 것 — 두뇌가 수다(P3)로 붙이면 신호대기에 말로 못 나간다(11-14 녹화 H) → P2 고정"""
+    if msg.get("kind") == "event" and msg.get("text") in TASTE_EVENTS:
+        rep["prio"] = 2
 
 
 def rules_for_search():

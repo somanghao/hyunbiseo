@@ -975,7 +975,7 @@ class StageFeature : Feature {
             // 같은 동네 이야기는 10분에 한 번 — 다음 신호대기엔 평소 찾아보던 선수·팀 소식을 먼저(취향 + 웹 검색, 사용자 11-14)
             if (hub.brainOn && (sportsAt == 0L || now - sportsAt > 30 * 60_000L)) {
                 sportsAt = now
-                hub.fire("taste_sports", JSONObject().put("ask", "신호 대기 중 — [취향]·[기억]에서 운전자가 평소 찾아보던 스포츠 선수·팀(예: 손흥민·이강인)을 골라 최근 소식을 웹 검색으로 확인하고, '평소 찾아보시던 ○○ 소식이 있어요'로 시작해 두세 문장(최근 경기 결과·다음 경기 날짜와 한국 시각). 확인된 사실만, 질문 없이. card(kind=list)에 선수마다 한 줄 '선수 — 소식 요지'"))
+                hub.fire("taste_sports", JSONObject().put("ask", "신호 대기 중 — [취향]·[기억]에서 운전자가 가장 자주 찾아본 스포츠 선수 두 명(예: 손흥민·이강인)을 골라 둘 다 최근 소식을 웹 검색으로 확인하고, '평소 찾아보시던 ○○, ○○ 소식이 있어요'로 시작해 선수마다 한 문장(최근 경기 결과나 다음 경기 날짜·한국 시각). 확인된 사실만, 질문 없이. card(kind=list)에 선수마다 한 줄 '선수 — 소식 요지'"))
             }
             return tip
         }
@@ -1247,6 +1247,28 @@ class StageFeature : Feature {
             endQuiz("$lead$end")
         } else askQuiz(lead)
     }
+    /** 퀴즈 정답 판정 — 받아 적기가 소리 하나 틀려도 정답('바나나 킵'·'가놀라유'·'열바닥'·'우아하다' — 아이 목소리·Whisper, 11-14).
+     *  세 글자 이상 정답만, 받아 적은 글 안 같은 길이 구간과 자모 하나 차이까지 · 짧은 정답(킹콩·언덕)은 그대로 포함 비교 */
+    private fun quizHit(heard: String, ans: List<String>): Boolean {
+        val t = heard.replace(" ", "")
+        if (ans.any { t.contains(it) }) return true
+        val tj = jamo(t)
+        return ans.filter { it.length >= 3 }.any { a ->
+            val aj = jamo(a); val n = aj.length
+            (0..maxOf(-1, tj.length - n)).any { i -> (0 until n).count { tj[i + it] != aj[it] } <= 1 }
+        }
+    }
+
+    private fun jamo(s: String): String = buildString {
+        for (c in s) {
+            val k = c.code - 0xAC00
+            if (k in 0 until 11172) {
+                append((0x1100 + k / 588).toChar()); append((0x1161 + (k % 588) / 28).toChar())
+                if (k % 28 != 0) append((0x11A7 + k % 28).toChar())
+            } else if (!c.isWhitespace() && c !in ".,!?~") append(c)
+        }
+    }
+
     private fun endQuiz(line: String) { hub.log("stage|quiz|end|$quizOk"); quizN = -1; m.prompt = null; hub.say(line, "happy", false, 1, reply = true, tag = "퀴즈"); refresh(); hub.render() }
     /** 혼자 탔을 때 제안에 "응" — 평소 취향(관심 뉴스)으로 주제를 골라 두뇌가 웹 검색해 3건(사용자 11-14). 두뇌가 없으면 헤드라인 세 줄 */
     private fun tasteNews() {
@@ -1268,7 +1290,7 @@ class StageFeature : Feature {
             val q = QUIZ[quizOrder[quizN]]
             return when {
                 Regex("그만|끝내|안해|안할래|스톱|멈춰").containsMatchIn(t) -> { endQuiz("알겠어요, 퀴즈는 여기까지! 맞힌 건 ${quizOk}개예요."); true }
-                q.a.any { t.contains(it) } -> { quizOk++; award("🎉", "넌센스 퀴즈 정답", 2); nextQuiz("딩동댕, 정답! 별 2개 드릴게요. "); true }   // 소개자료 7장 대사 — 별 +2는 award 로 쌓인다
+                quizHit(t, q.a) -> { quizOk++; award("🎉", "넌센스 퀴즈 정답", 2); nextQuiz("딩동댕, 정답! 별 2개 드릴게요. "); true }   // 소개자료 7장 대사 — 별 +2는 award 로 쌓인다
                 Regex("힌트").containsMatchIn(t) && quizTry == 0 -> { quizTry = 1; hub.say("힌트 줄게요. ${q.hint}", "", true, 1, reply = true, tag = "퀴즈"); true }
                 Regex("몰라|모르겠|패스|정답|알려줘|다음").containsMatchIn(t) || quizTry >= 1 -> { nextQuiz("아쉬워요, 정답은 ${q.a[0]}. "); true }
                 else -> { quizTry = 1; hub.say("땡! 힌트 줄게요. ${q.hint}", "", true, 1, reply = true, tag = "퀴즈"); true }
