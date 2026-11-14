@@ -181,6 +181,26 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         } else { log("front|covered|명령 ${since}ms 뒤 → 현비서 다시 앞으로"); toFront() }
     }
 
+    /** 말로 화면 방식 바꾸기(사용자 11-14) — "반반으로"·"내비랑 같이" = [내비 | 현비서] · "현비서 화면으로"·"현비서 크게" = 현비서가 앞(내비는 뒤에서 안내 계속).
+     *  다음 경로부터도 그 방식(naviSplit 저장). 반반 = Pleos 홈 비공식 방송 */
+    private fun screenMode(text: String): Boolean {
+        if (!isCar) return false
+        val t = text.replace(" ", "")
+        val split = Regex("반반(으로|화면|해)|내비(랑|와|하고)?(같이|나란히|옆에)").containsMatchIn(t)
+        val solo = Regex("현비서(화면|크게|만)|한화면(으로)?|내비(숨겨|닫아|치워)").containsMatchIn(t)
+        if (!split && !solo) return false
+        naviSplit = split; prefs.edit().putBoolean("naviSplit", naviSplit).apply(); log("front|mode|${if (split) "반반" else "현비서"}|말")
+        if (split) {
+            if (view.dest != null) runCatching { HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.ONE); autoSplit = true }
+            say(if (view.dest != null) "내비랑 나란히 볼게요." else "길 안내를 시작하면 내비랑 나란히 볼게요.", "", false, 1, reply = true, tag = "화면")
+        } else {
+            if (HomeWindow.visible(act).any { it.contains("navigation") }) runCatching { HomeWindow.hide(act, HomeWindow.NAVI.packageName) }
+            main.postDelayed({ if (!fg) toFront() }, 800)
+            say("현비서 화면으로 볼게요. 길 안내는 뒤에서 계속해요.", "", false, 1, reply = true, tag = "화면")
+        }
+        return true
+    }
+
     private fun toFront() {
         runCatching { act.startActivity(Intent(act, act.javaClass).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) }
             .onFailure { log("front|FAIL|${it.javaClass.simpleName} ${it.message}") }
@@ -345,6 +365,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         lastTalkAt = SystemClock.elapsedRealtime()
         reasked = false
         view.mode = Mode.READY
+        if (screenMode(text)) { render(); return }
         if (features.any { it.onHeard(text) }) { render(); return }
         if (!brainOn) { say(offlineAnswer(text), "", false, 1, reply = true, tag = "규칙 답"); return }
         view.mode = Mode.THINKING

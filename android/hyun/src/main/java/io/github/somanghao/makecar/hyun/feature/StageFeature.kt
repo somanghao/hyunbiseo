@@ -645,7 +645,7 @@ class StageFeature : Feature {
         hub.log("stage|sit|${prev.key}→${s.key}|$why")
         // 지난 상황의 팁·말이 줄에 남아 뒤늦게 나오지 않게(11-11 영상: 주차 중 '신호 대기 중엔…', 주행 중 '출발 순서예요')
         if (prev != s) hub.dropQueued("상황 바뀜 ${prev.key}→${s.key}") { t ->
-            (t.startsWith("상황·") && t != "상황·${s.key}") || (s != Sit.DRIVE && s != Sit.STOP && (t == "초보·차로" || t == "초보·과속"))
+            (t.startsWith("상황·") && t != "상황·${s.key}") || (s != Sit.DRIVE && s != Sit.STOP && (t == "초보·차로" || t == "초보·과속")) || (s != Sit.STOP && t.contains("stop_local"))   // 신호대기 동네 이야기는 신호대기가 끝나면 버린다(11-14: 2분 뒤 주행 중에 "신호 대기 중이네요")
         }
         hub.view.faceOverride = null
         if (why != "미리보기" && !m.viewForced && prev != s) { clearIdeaFx(); m.idea = null; m.view = null; m.pageDir = 0 }   // 상황이 바뀌면 그 상황의 1장부터(허브 미리보기는 예외)
