@@ -12,8 +12,18 @@
 | APK | **[`apk/현비서팀_현비서_release.apk`](apk/현비서팀_현비서_release.apk)** — 차 앱(release · 서명됨, 심사 대상) · 함께 쓰는 폰 앱 [`apk/현비서팀_현비서폰_release.apk`](apk/현비서팀_현비서폰_release.apk)(선택 — 차에서 물어본 것이 폰으로 이어짐) · 같은 파일 [GitHub Release `nash-20261114`](https://github.com/somanghao/hyunbiseo/releases/tag/nash-20261114) |
 | 개발 · 테스트 에뮬레이터 | **Pleos Connect Emulator v2.1.0** — AVD `Pleos_Connect_v2.1` · 시스템 이미지 `android-34/pleos_car_emulator/x86_64`(Android 14 · AAOS) |
 | 화면 규격 | **2560 × 1440 가로 · 160 dpi(mdpi)** — 앱은 내비와 나란히(반반)와 앱 전체 화면 둘 다 지원 |
-| 테스트 환경 | Windows 11 · JDK 21(빌드할 때) · Python 3(서버 — 3.14에서 확인) · Claude Code 로그인(두뇌) · faster-whisper(받아 적기 — GPU 있으면 large-v3) |
+| 테스트 환경 | Windows 11 · JDK 21(빌드할 때) · Python 3(서버 — 3.14에서 확인) · Claude Code 로그인 또는 Anthropic API 키(두뇌) · faster-whisper(받아 적기 — GPU 있으면 large-v3) |
 | 접수양식 · 영상 · 소개 자료 | [`docs/submission/`](docs/submission/) — 접수양식(기획서) docx · 구현 영상 · 소개 자료 PPTX · PDF |
+
+### 심사하실 때 — PC 서버 안내
+
+현비서는 **차 앱(APK)** 과 **서버(두뇌 · 받아 적기 — `server/hyun`)** 두 부분으로 동작합니다. 개발 · 녹화 때 서버는 팀 PC에서 돌렸고, **심사위원께서는 그 PC에 접속하실 수 없습니다.**
+
+- **APK만 설치하면** 말로 대화 · 검색 · 취향 학습처럼 서버가 맡는 기능은 동작하지 않습니다.
+- **직접 확인하시려면** 에뮬레이터를 켠 PC에서 서버도 함께 실행해 주세요(아래 실행 방법 2). 두뇌는 **본인 Claude Code 로그인** 또는 **Anthropic API 키** 중 하나가 필요합니다. API 키는 서버를 켠 뒤 `http://127.0.0.1:8790/hyun/login` 에서 등록하고 `pip install anthropic`이 필요합니다. 받아 적기에는 faster-whisper가 필요합니다.
+- **전체 동작은 구현 영상**([`docs/submission/현비서_구현영상.mp4`](docs/submission/))에서 보실 수 있습니다. 이 APK와 서버를 실제로 연결해 실제 음성 대화로 녹화했습니다.
+- **2차 PT**에서는 서버를 포함한 실제 동작을 현장에서 시연합니다.
+- 실제 서비스 구조에서는 이 서버 자리를 **현대차 클라우드**가 맡습니다(소개 자료 15장). PC 서버는 개발 · 시연용입니다.
 
 ### 실행 방법
 
@@ -25,6 +35,7 @@
 2. **PC 서버 켜기**(두뇌 · 받아 적기 — 앱은 에뮬 안에서 `http://10.0.2.2:8790`으로 붙는다)
    ```bash
    claude                                                    # 처음 한 번 — 이 PC에서 Claude Code 로그인(두뇌가 이 계정으로 답한다)
+                                                             #   또는 서버를 켠 뒤 http://127.0.0.1:8790/hyun/login 에서 Anthropic API 키 등록(pip install anthropic)
    python -I -X utf8 -u server/hyun/hyun_server.py           # 두뇌 · 정보 통로 :8790
    <faster-whisper venv>/python -I -X utf8 -u server/hyun/stt_server.py   # 받아 적기 :8791
    ```
