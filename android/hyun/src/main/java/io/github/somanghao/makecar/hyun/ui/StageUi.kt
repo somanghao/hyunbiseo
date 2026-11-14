@@ -141,7 +141,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val intro = (m.sit == Sit.IGNITION && now - m.sitAt < 1800 && !m.viewForced)
         val outroX = if (m.sit == Sit.OFF && now - m.sitAt < 1800) (now - m.sitAt) / 1800f else -1f
         // 내비가 주화면(주행 중) — 맨 위 말풍선 · 큰 지도(칼리 11-12, 소개자료 5장). 말로 받은 카드는 주행 중엔 그리지 않는다(shownCard)
-        val navMain = !intro && shownCard == null && m.overlay !in setOf("brief", "todo", "car", "log", "rest") && (m.view == "nav" || (m.view == null && (driving || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면
+        val navMain = !intro && shownCard == null && m.overlay !in setOf("brief", "todo", "car", "log", "rest") && (m.view == "nav" || (m.view == null && !m.infoMain && (driving || (m.sit == Sit.READY && m.navActive && ideaNow() == null))))   // D 에서 경로가 있으면 저절로 내비 주화면 · '정보 크게'면 위 작은 내비 띠 + 정보 칸
         if (navMain != lastNavMain) { lastNavMain = navMain; navMainAt = now }
         val nx = ((now - navMainAt) / 480f).coerceIn(0f, 1f); val ne = 1f - (1f - nx) * (1f - nx) * (1f - nx)
         val nk = if (navMain) ne else 1f - ne            // 0 = 보통 화면 · 1 = 내비 주화면
@@ -1388,12 +1388,32 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         if (card != null && now - glCardAt < GLANCE_CARD_MS) { glanceCard(c, body, card); return }
         val tipH = if (m.sit == Sit.STOP && m.novice) 84 * U + G else 0f
         val rest = RectF(body.left, body.top, body.right, body.bottom - tipH)
+        if (m.infoMain) { driveInfo(c, rest); return }   // '정보 크게' — 회전은 위 작은 내비 띠에 있으니 여기선 정보만(사용자 11-14)
         if (hasRoute()) {
             val hh = (rest.height() - G) * 0.55f
             nextTurnTile(c, RectF(rest.left, rest.top, rest.right, rest.top + hh))
             tripTile(c, RectF(rest.left, rest.top + hh + G, rest.right, rest.bottom))
         } else tripTile(c, RectF(rest.left, rest.top, rest.right, rest.top + min(rest.height(), 320 * U)))
         if (tipH > 0f) { val r = RectF(body.left, body.bottom - 84 * U, body.right, body.bottom); box(c, r); text(c, "브레이크를 계속 꾹", r.left + 48 * U, r.centerY() + 12 * U, 34 * U, FG, medium) }
+    }
+
+    /** 주행 정보판('정보 크게', 답 카드가 없을 때) — 뉴스 헤드라인 · 코스피·나스닥 · 이번 주행을 크게. 전부 실제 값(연합 RSS · 장 마감 지수 · 앱이 잰 주행) */
+    private fun driveInfo(c: Canvas, r: RectF) {
+        val h1 = (r.height() - 2 * G) * 0.36f; val h2 = (r.height() - 2 * G) * 0.28f
+        val nr = RectF(r.left, r.top, r.right, r.top + h1); box(c, nr)
+        val x0 = nr.left + 40 * U; val iw = nr.width() - 80 * U
+        lab(c, "뉴스", x0, nr.top + 50 * U)
+        val n = leadNews()
+        wrap(c, n ?: "헤드라인을 불러오는 중이에요", x0, nr.top + 110 * U, 46 * U, FG, iw, 2, bold, lh = 1.3f)
+        val sr = RectF(r.left, nr.bottom + G, r.right, nr.bottom + G + h2)
+        val cs = cols(sr, 1f, 1f)
+        listOf("코스피", "나스닥").forEachIndexed { i, nm ->
+            val b = cs[i]; box(c, b)
+            val q = m.indices.firstOrNull { it.name.contains(nm) }
+            lab(c, nm, b.left + 40 * U, b.top + 50 * U)
+            text(c, q?.let { pct(it.ratio) } ?: "—", b.left + 40 * U, b.top + min(b.height() * 0.72f, 140 * U), 64 * U, q?.let { updown(it.ratio) } ?: FAINT, bold, maxW = b.width() - 80 * U)
+        }
+        tripTile(c, RectF(r.left, sr.bottom + G, r.right, r.bottom))
     }
 
     /** 오늘 주행 — 이번 주행 거리·시간 · 별 · 오늘의 퀘스트(전부 앱이 잰 실제 값) */

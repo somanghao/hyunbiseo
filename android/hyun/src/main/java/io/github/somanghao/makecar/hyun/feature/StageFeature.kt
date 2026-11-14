@@ -59,6 +59,7 @@ data class AccPart(val w: Float, val dx: Float, val dy: Float, val rot: Float, v
 /** 화면(StageUi)이 읽는 상태 — 기능이 채우고 화면은 그리기만 */
 class StageModel {
     var offerAt = 0L                          // 먼저 건넨 제안 시각(대답하면 0) — 화면 말풍선이 '지금 살아 있는 제안'만 띄우게
+    var infoMain = false                      // 주행 중 '정보 크게' — 내비는 위 작은 띠, 나머지는 현비서 정보(사용자 11-14)
     var sit = Sit.IGNITION
     var sitAt = SystemClock.elapsedRealtime()
     var forced = false
@@ -372,7 +373,11 @@ class StageFeature : Feature {
 
     override fun stop() { runCatching { hub.act.unregisterReceiver(receiver) }; status?.stop() }
 
-    override fun onIntent(i: Intent, first: Boolean) { if (i.hasExtra("oil") || i.hasExtra("rest") || i.hasExtra("restsec") || i.hasExtra("restmin") || i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment") || i.hasExtra("page")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
+    override fun onIntent(i: Intent, first: Boolean) {
+        // 주행 중 '정보 크게'(사용자 11-14) — 내비 주화면 대신 위 작은 내비 띠 + 아래 정보 칸 전체. 저장해 두고 켤 때마다(--ez infomain true|false)
+        if (first) m.infoMain = hub.prefs.getBoolean("stage.infoMain", false)
+        if (i.hasExtra("infomain")) { m.infoMain = i.getBooleanExtra("infomain", false); hub.prefs.edit().putBoolean("stage.infoMain", m.infoMain).apply(); hub.log("stage|infoMain|${m.infoMain}"); hub.render() }
+        if (i.hasExtra("oil") || i.hasExtra("rest") || i.hasExtra("restsec") || i.hasExtra("restmin") || i.hasExtra("sit") || i.hasExtra("screen") || i.hasExtra("skill") || i.hasExtra("points") || i.hasExtra("reset") || i.hasExtra("turn") || i.hasExtra("steer") || i.hasExtra("cruise") || i.hasExtra("concept") || i.hasExtra("preview") || i.hasExtra("night") || i.hasExtra("sim") || i.hasExtra("hero") || i.hasExtra("equip") || i.hasExtra("tab") || i.hasExtra("nav") || i.hasExtra("idea") || i.hasExtra("moment") || i.hasExtra("page")) hub.main.postDelayed({ apply(i) }, if (first) 2500 else 0) }
 
     /**
      * 허브 주행 상태 조작용 — adb shell am broadcast -a io.github.somanghao.makecar.hyun.SIM --es wiper on --es passenger on --ei soc 18 --es sit drive

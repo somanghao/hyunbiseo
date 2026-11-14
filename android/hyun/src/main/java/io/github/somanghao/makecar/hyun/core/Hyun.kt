@@ -178,7 +178,10 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
             runCatching { HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.ONE) }.onFailure { log("front|split|FAIL|${it.message}") }
             autoSplit = true; sidesAt = SystemClock.elapsedRealtime() + 3000
             main.postDelayed({ if (!fg) { log("front|split|안 보임 → 다시 앞으로(대비책)"); toFront() } }, 1500)   // 홈 방송이 안 먹는 빌드 대비 — FrontActivity 유예 10초 안
-        } else { log("front|covered|명령 ${since}ms 뒤 → 현비서 다시 앞으로"); toFront() }
+        } else {   // 현비서 한 화면 — 내비가 경로를 잡은 화면(목적지 설정됨)을 3초 보여 준 뒤 현비서를 다시 앞으로(사용자 11-14: 1초면 안 보였다)
+            log("front|covered|명령 ${since}ms 뒤 → 3초 뒤 현비서 다시 앞으로")
+            main.postDelayed({ log("front|back|현비서 앞으로"); toFront() }, 3000)
+        }
     }
 
     /** 말로 화면 방식 바꾸기(사용자 11-14) — "반반으로"·"내비랑 같이" = [내비 | 현비서] · "현비서 화면으로"·"현비서 크게" = 현비서가 앞(내비는 뒤에서 안내 계속).
