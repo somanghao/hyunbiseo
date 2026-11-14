@@ -191,7 +191,13 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         if (!split && !solo) return false
         naviSplit = split; prefs.edit().putBoolean("naviSplit", naviSplit).apply(); log("front|mode|${if (split) "반반" else "현비서"}|말")
         if (split) {
-            if (view.dest != null) runCatching { HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.ONE); autoSplit = true }
+            if (view.dest != null) {
+                if (HomeWindow.visible(act).any { it.contains("navigation") }) runCatching { HomeWindow.slots(act, HomeWindow.NAVI, HomeWindow.ONE); autoSplit = true }
+                else {   // 내비가 숨어 있으면(현비서 한 화면) — 내비를 앞으로 부르면 덮이는 순간 keepFront가 반반으로 나눈다(보이는 창에만 방송이 먹는다)
+                    primeFront("반반으로")
+                    runCatching { act.startActivity(Intent().setComponent(HomeWindow.NAVI).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) }.onFailure { log("front|navi|FAIL|${it.message}") }
+                }
+            }
             say(if (view.dest != null) "내비랑 나란히 볼게요." else "길 안내를 시작하면 내비랑 나란히 볼게요.", "", false, 1, reply = true, tag = "화면")
         } else {
             if (HomeWindow.visible(act).any { it.contains("navigation") }) runCatching { HomeWindow.hide(act, HomeWindow.NAVI.packageName) }
