@@ -60,4 +60,6 @@ interface Feature {
 
     /** 두뇌가 없거나 늦을 때 이 이벤트의 규칙 문장, 모르면 null */
     fun fallback(ev: String, extra: JSONObject?): String? = null
+    /** 이 이벤트의 두뇌 답이 늦게 와 이미 때가 지났나(예: 신호대기 동네 이야기가 출발·주차 뒤에 옴) — true면 말하지 않는다 */
+    fun stale(ev: String): Boolean = false
 }

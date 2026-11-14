@@ -410,6 +410,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         // 이벤트를 보낸 뒤 목적지가 바뀌었으면(곧 도착 제안에 "응" → 식당으로) 옛 길의 답(출발 안내·카드)은 말하지 않는다 — 11-08 E2E e18:
         // 식당으로 바꾼 뒤 '코엑스까지 34분'이 나옴. 목적지가 없다가 생긴 것(시동 인사 뒤 내비 목적지 읽힘)은 그대로
         if (kind == "event" && destAtSend != null && destAtSend != trip.dest) { log("reply|$id|stale|$text|$destAtSend→${trip.dest}"); render(); return }
+        if (kind == "event" && features.any { it.stale(text) }) { log("reply|$id|stale|$text|때 지남"); render(); return }
         val talk = kind == "talk"
         val base = if (talk) 1 else Speaker.eventPrio(text)
         if (view.mode == Mode.THINKING && waitingId == 0) view.mode = Mode.READY

@@ -970,6 +970,8 @@ class StageFeature : Feature {
         return listOfNotNull(tip, localLine(a)).joinToString(" ")
     }
 
+    override fun stale(ev: String) = ev == "stop_local" && m.sit != Sit.STOP   // 신호대기가 끝난 뒤 온 동네 이야기는 버린다
+
     override fun fallback(ev: String, extra: JSONObject?): String? = when (ev) { "hello" -> ignitionLine(); "stop_local" -> localArea()?.let { localLine(it) }; "long_drive" -> if (restArea() != null && hub.trip.driveS >= restNextS) { restAskAt = SystemClock.elapsedRealtime(); restNextS = hub.trip.driveS + 30 * 60; restOfferLine() } else null; else -> null }
 
     // ======================================================================
