@@ -50,6 +50,8 @@ class Speaker(private val log: (String) -> Unit) {
 
     fun offer(l: Line) {
         if (l.prio == 3 && !l.reply && !policy.allowP3) { log("prio|drop|P3|${policy.name} 모드는 수다 없음|${l.text}"); return }
+        // 같은 안내(대답 아님)가 이미 줄 서 있으면 또 쌓지 않는다 — 급정거 팁이 세 번 줄 섰다가 정차하자 연달아 나왔다(11-14 녹화 W)
+        if (l.prio > 0 && !l.reply && queue.any { it.text == l.text }) { log("prio|drop|P${l.prio}|이미 줄 섬|${l.text}"); return }
         log("prio|in|P${l.prio}${if (l.reply) "·답" else ""}|${l.tag}|${l.text}")
         if (l.prio == 0) queue.removeAll { it.prio == 0 && it.text == l.text }   // 같은 경고 반복 금지
         queue += l
