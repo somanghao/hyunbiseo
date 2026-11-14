@@ -1104,7 +1104,11 @@ class StageFeature : Feature {
     /** 경로 위 다음 쉼터(휴게소·졸음쉼터) — 이름 · 거기까지 m */
     private fun restArea(): Pair<String, Int>? {
         var acc = 0
-        for (t in hub.view.turns) { acc += t.m; if (t.type.contains("SERVICEAREA") || t.type.contains("RESTAREA")) return t.desc.substringBefore(" 방면").ifBlank { "쉼터" } to acc }
+        for (t in hub.view.turns) {
+            acc += t.m
+            // Pleos는 '하이패스센터'도 휴게소 진입(TURN_ENTER_SERVICEAREA)으로 준다 — 쉬는 곳이 아니라 뺀다(11-14 녹화 "하이패스센터에서 쉬었다 갈까요?")
+            if ((t.type.contains("SERVICEAREA") || t.type.contains("RESTAREA")) && !Regex("하이패스|요금소|톨게이트|영업소").containsMatchIn(t.desc)) return t.desc.substringBefore(" 방면").ifBlank { "쉼터" } to acc
+        }
         return null
     }
     /** 가볍게 권하는 한마디 — 쉼터가 앞에 있으면 이름·거리와 함께 */
@@ -1298,7 +1302,10 @@ class StageFeature : Feature {
         }
         if (Regex("넌센스|퀴즈").containsMatchIn(t)) { startQuiz(); return true }
         if (Regex("뉴스(세|들려|읽어|알려|브리핑|틀어)|주요뉴스").containsMatchIn(t)) { newsBrief(); return true }
-        if (t.length <= 8 && pending == null && ((offerAt != 0L && SystemClock.elapsedRealtime() - offerAt < 180_000) || m.sit == Sit.IGNITION || m.sit == Sit.READY || m.sit == Sit.DRIVE || m.sit == Sit.STOP)) {   // 건넨 제안(시동 인사 · 주행 말풍선에 늘 떠 있음)에 대한 짧은 대답
+        // 건넨 제안에 대한 짧은 대답 — 제안이 살아 있고(3분) 현비서의 마지막 말이 그 제안일 때만. 그 뒤 두뇌가 물은 말("족발집 안내해 드릴까요?")에 한 "응"을
+        // 시동 때 뉴스 제안 수락으로 잡던 것 고침(11-14 녹화 T — 주행 중엔 늘 제안으로 받았다)
+        val offerLast = hub.view.hyunLine.isBlank() || hub.view.hyunLine == m.offer().first
+        if (t.length <= 8 && pending == null && offerLast && ((offerAt != 0L && SystemClock.elapsedRealtime() - offerAt < 180_000) || m.sit == Sit.IGNITION || m.sit == Sit.READY)) {
             if (Regex("^(응|어|네|예|좋아|그래|콜|오케이|ㅇㅇ|해줘|해봐|틀어|들려|시작|할래|하자|맞춰)").containsMatchIn(t)) { if (m.offerKind() == "quiz") startQuiz() else tasteNews(); return true }
             if (Regex("^(아니|됐어|괜찮|나중|싫어|안해|노)").containsMatchIn(t)) { offerAt = 0L; hub.say("알겠어요. 필요하면 불러 줘요.", "", false, 1, reply = true, tag = "제안"); return true }
         }
