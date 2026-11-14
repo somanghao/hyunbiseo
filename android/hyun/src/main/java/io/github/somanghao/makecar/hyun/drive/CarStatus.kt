@@ -31,7 +31,8 @@ class CarStatus(private val ctx: Context) {
     enum class From { PLEOS, AAOS, APP, MOCK }
     class V<T>(@Volatile var v: T? = null, @Volatile var from: From = From.MOCK) {
         @Volatile var pinned = false
-        fun set(x: T?, f: From) { if (x != null && (!pinned || f == From.MOCK)) { v = x; from = f } }
+        /** Pleos 값을 받은 뒤엔 AAOS 값이 덮어쓰지 않는다 — 에뮬 AAOS 배터리(늘 100%)와 Pleos EvBattery(VC 80%)가 주기마다 번갈아 들어와 차 컨디션이 80↔100으로 깜빡였다(11-14) */
+        fun set(x: T?, f: From) { if (x != null && (!pinned || f == From.MOCK) && !(f == From.AAOS && from == From.PLEOS)) { v = x; from = f } }
         fun pin(x: T?) { pinned = x != null; v = x; from = From.MOCK }
         fun or(def: T): T = v ?: def
     }

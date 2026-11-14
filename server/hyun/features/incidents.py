@@ -199,11 +199,16 @@ def _opposite(it, route_brg):
     return diff > 110
 
 
+def _road_key(name):
+    """도로 이름 맞추기 — 내비 '인천국제공항고속도로' ↔ 도로공사 '인천공항선', '수도권제1순환고속도로' ↔ '수도권제1순환선'(11-14: 표기가 달라 공항선 공사를 걸러 냈다)"""
+    return re.sub(r"(고속도로|고속국도|선)$", "", (name or "").strip()).replace("국제", "")
+
+
 def corridor(items, lat, lng, dlat, dlng, w=3.0, roads=None, jam=False):
     kx, ky = _km((lat + dlat) / 2)
     bx, by = (dlng - lng) * kx, (dlat - lat) * ky
     L = math.hypot(bx, by) or 1e-9
-    road_keys = [re.sub(r"(고속도로|고속국도|선)$", "", r.strip()) for r in (roads or []) if r.strip()]
+    road_keys = [k for k in (_road_key(r) for r in (roads or [])) if k]
     brg = _bearing(lat, lng, dlat, dlng)
     out = []
     for it in items:
@@ -216,7 +221,8 @@ def corridor(items, lat, lng, dlat, dlng, w=3.0, roads=None, jam=False):
         side = abs(px * by - py * bx) / L
         if along < -0.5 or along > L + 0.5 or side > w:
             continue
-        if road_keys and it["road"] and not any(k and k in it["road"] for k in road_keys):
+        rk = _road_key(it["road"])
+        if road_keys and rk and not any(k in rk or rk in k for k in road_keys):
             continue
         out.append({**it, "ahead_km": round(along, 1), "side_km": round(side, 1), "sev": SEV.get(it["kind"], 2)})
     out.sort(key=lambda r: (r["ahead_km"], -r["sev"]))
