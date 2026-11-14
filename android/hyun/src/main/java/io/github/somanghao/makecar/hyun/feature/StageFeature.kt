@@ -58,6 +58,7 @@ data class AccPart(val w: Float, val dx: Float, val dy: Float, val rot: Float, v
 
 /** 화면(StageUi)이 읽는 상태 — 기능이 채우고 화면은 그리기만 */
 class StageModel {
+    var offerAt = 0L                          // 먼저 건넨 제안 시각(대답하면 0) — 화면 말풍선이 '지금 살아 있는 제안'만 띄우게
     var sit = Sit.IGNITION
     var sitAt = SystemClock.elapsedRealtime()
     var forced = false
@@ -1212,7 +1213,7 @@ class StageFeature : Feature {
     }
 
     // ---------- 먼저 건넨 제안에 답하기 — 넌센스 퀴즈 · 뉴스 세 줄. 서버(두뇌) 없이 앱 안에서 끝까지 된다(칼리 11-12 마무리) ----------
-    private var offerAt = 0L
+    private var offerAt: Long get() = m.offerAt; set(v) { m.offerAt = v }
     private var quizOrder = listOf<Int>(); private var quizN = -1; private var quizOk = 0; private var quizTry = 0
     private fun offerSay() { if (oilAskAt != 0L && SystemClock.elapsedRealtime() - oilAskAt < 60_000) return   // 오일 알림에 대답을 기다리는 중이면 겹쳐 말하지 않는다
         offerAt = SystemClock.elapsedRealtime(); hub.say(m.offer().first, "happy", true, 2, tag = "제안") }

@@ -1605,6 +1605,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         }
         val speaking = v.mode == HyunView.Mode.SPEAKING && v.hyunLine.isNotBlank()
         val listening = v.mode == HyunView.Mode.LISTENING
+        // 지난 제안이 말풍선에 계속 남지 않게 — 말하는·생각하는 중, 진행 중인 퀴즈, 건넨 지 45초 안의 제안일 때만(사용자 11-14 "페이지 화면이 바로 나와야지")
+        val fresh = m.prompt != null || (m.offerAt != 0L && now - m.offerAt < 45_000L)
+        if (!speaking && v.mode != HyunView.Mode.THINKING && !fresh) return
         // 말풍선 — 둥근 판 + 캐릭터 쪽(왼쪽) 꼬리
         val bg = if (darkUi) Glass.a(SURF, 245) else Glass.a(Color.WHITE, 250)
         p.shader = null; p.style = Paint.Style.FILL; p.color = bg
