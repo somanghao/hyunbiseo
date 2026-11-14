@@ -802,7 +802,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     private val DOCK = listOf("brief" to "브리핑", "car" to "내 차", "deco" to "테마", "skin" to "스킨", "log" to "기록")   // '할 일'은 예시 목록뿐이라 뺐다(사용자 11-14 가짜 없애기) — 일정·할 일 연동 때 다시
     private fun dock(c: Canvas, w: Float, h: Float) {
-        // 칸 폭 = 내용 칸에서 마이크(오른쪽 아래 지름 80 + 여유)를 뺀 만큼(내쉬 2ba2fd3 이후 앱 칸이 좁아짐) — 좁으면 글자 줄이고, 더 좁으면 아이콘만
+        // 칸 폭 = 내용 칸에서 마이크(오른쪽 아래 지름 80 + 여유)를 뺀 만큼(내쉬 b9bf485 이후 앱 칸이 좁아짐) — 좁으면 글자 줄이고, 더 좁으면 아이콘만
         val avail = min(zoneR, w - 48 * U - 80 * U - 24 * U) - zoneL   // 마이크 왼쪽까지
         val dh = 64 * U; val iw = min(128 * U, avail / DOCK.size)
         val iconOnly = iw < 92 * U; val fs = if (iw >= 120 * U) 22 * U else 19 * U
