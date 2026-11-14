@@ -84,6 +84,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
 
     fun animating() = m.sit == Sit.DRIVE && ((m.status?.turn?.v ?: 0) != 0 || SystemClock.elapsedRealtime() - m.carEventAt < 6500 || SystemClock.elapsedRealtime() - navMainAt < 900)
     private var lastNavMain = false; private var navMainAt = 0L
+    private var stripKey = ""; private var stripAt = 0L   // 위 교통 띠 — 회전 값이 바뀐 시각(같은 값 20초면 접는다, 사용자 11-12·11-14)
 
     // ---------- 배경 그림 · 흐린 판(카드 뒤) ----------
     private var artKey = ""
@@ -196,7 +197,11 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 val pagerOn = !glance() && m.overlay == null && card == null && StageModel.pages(m.sit).size > 1
                 val bottom = h - 48 * U - 64 * U - 20 * U - (if (pagerOn) 64 * U else 0f)
                 var top = if (narrow) 16 * U + smH + 40 * U else 96 * U
-                if (m.navActive && !navMain && m.prompt == null) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }   // 퀴즈 중엔 운전 안내 줄 숨김(사용자 11-14)
+                // 위 교통 띠 — 회전(종류·거리 50m 단위·길 이름)이 바뀌면 다시 나오고, 같은 값 20초면 접어 대화·정보가 화면을 쓴다(사용자 11-12 규칙 · 11-14 "중간중간 바뀌어야")
+                val sk = "${m.navTurnType}|${(m.navTurnM / 50).toInt()}|${m.navTurn}"
+                if (sk != stripKey) { stripKey = sk; stripAt = now }
+                val stripOn = !m.infoMain || !glance() || now - stripAt < 20_000L
+                if (m.navActive && !navMain && m.prompt == null && stripOn) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }   // 퀴즈 중엔 운전 안내 줄 숨김(사용자 11-14)
                 val full = RectF(zoneL, top, zoneR, bottom)
                 // 넘길 때 — 내용 칸만 옆에서 밀려 들어온다(캐릭터·내비 띠·독은 그대로)
                 val sx = ((now - m.pageAt) / 340f).coerceIn(0f, 1f); val se = 1f - (1f - sx) * (1f - sx) * (1f - sx)
@@ -1477,13 +1482,18 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                     if (ps.size > 1) { text(c, ps[0], lx, ty + rh * 0.36f, 24 * U, MUTED, medium, maxW = a.right - lx); text(c, ps[1], lx, ty + rh * 0.8f, fit(ps[1], 36 * U, a.right - lx, bold), FG, bold, maxW = a.right - lx) }
                     else wrap(c, s, lx, ty + rh * 0.6f, 32 * U, FG, a.right - lx, 1, bold) }
             }
-            k.images.any { it.isNotBlank() } -> {   // 웹툰 순위 — 상위 5 · 작은 표지
-                val rows = k.items.take(5); val rh = min(a.height() / 5f, 96 * U)
-                rows.forEachIndexed { i, s -> val ty = a.top + rh * i
-                    val th = RectF(a.left + 56 * U, ty + rh * 0.08f, a.left + 56 * U + rh * 0.84f * 0.75f, ty + rh * 0.92f)
-                    text(c, "${i + 1}", a.left + 40 * U, ty + rh * 0.66f, 36 * U, if (i < 3) ACC else MUTED, bold, Paint.Align.RIGHT)
+            k.images.any { it.isNotBlank() } -> {   // 웹툰 순위 — 10개면 좌우 5개씩(1~5위 | 6~10위, 사용자 11-14) · 작은 표지
+                val n = min(10, k.items.size); val colN = if (n > 5) 2 else 1
+                val gap = 32 * U; val cw = (a.width() - gap * (colN - 1)) / colN
+                val rh = min(a.height() / 5f, 96 * U)
+                for (i in 0 until n) {
+                    val x0 = a.left + (i / 5) * (cw + gap); val ty = a.top + rh * (i % 5); val s = k.items[i]
+                    val th = RectF(x0 + 56 * U, ty + rh * 0.08f, x0 + 56 * U + rh * 0.84f * 0.75f, ty + rh * 0.92f)
+                    text(c, "${i + 1}", x0 + 40 * U, ty + rh * 0.66f, 36 * U, if (i < 3) ACC else MUTED, bold, Paint.Align.RIGHT)
                     k.images.getOrNull(i)?.takeIf { it.isNotBlank() }?.let { photoFit(c, it, th, 8 * U) }
-                    text(c, parts(s)[0], th.right + 24 * U, ty + rh * 0.64f, fit(parts(s)[0], 36 * U, a.right - th.right - 24 * U, bold), FG, bold, maxW = a.right - th.right - 24 * U) }
+                    val tx = th.right + 20 * U; val tw = x0 + cw - tx
+                    text(c, parts(s)[0], tx, ty + rh * 0.64f, fit(parts(s)[0], 34 * U, tw, bold), FG, bold, maxW = tw)
+                }
             }
             k.items.any { walkRe.containsMatchIn(it) } -> {   // 장소 — 상위 3 · 걸어서 N분 강조
                 val rows = k.items.take(3); val rh = min(a.height() / 3f, 130 * U)
@@ -1508,11 +1518,15 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                     val rest = ps.getOrNull(1).orEmpty()
                     text(c, rest, a.right, ty + rh * 0.62f, fit(rest, 40 * U, a.width() * 0.58f, bold), col, bold, Paint.Align.RIGHT, maxW = a.width() * 0.58f) }
             }
-            else -> {   // 그 밖 목록 — 상위 5 제목만
-                val rows = k.items.take(5); val rh = min(a.height() / 5f, 96 * U)
-                rows.forEachIndexed { i, s -> val ty = a.top + rh * i
-                    text(c, "${i + 1}", a.left + 28 * U, ty + rh * 0.64f, 36 * U, if (i < 3) ACC else MUTED, bold, Paint.Align.RIGHT)
-                    text(c, parts(s)[0], a.left + 56 * U, ty + rh * 0.64f, fit(parts(s)[0], 36 * U, a.width() - 56 * U, bold), FG, bold, maxW = a.width() - 56 * U) }
+            else -> {   // 그 밖 목록 — 제목만, 6개 넘으면 좌우 5개씩(최대 10)
+                val n = min(10, k.items.size); val colN = if (n > 5) 2 else 1
+                val gap = 32 * U; val cw = (a.width() - gap * (colN - 1)) / colN
+                val rh = min(a.height() / 5f, 96 * U)
+                for (i in 0 until n) {
+                    val x0 = a.left + (i / 5) * (cw + gap); val ty = a.top + rh * (i % 5); val s = k.items[i]
+                    text(c, "${i + 1}", x0 + 40 * U, ty + rh * 0.64f, 36 * U, if (i < 3) ACC else MUTED, bold, Paint.Align.RIGHT)
+                    text(c, parts(s)[0], x0 + 60 * U, ty + rh * 0.64f, fit(parts(s)[0], 34 * U, cw - 60 * U, bold), FG, bold, maxW = cw - 60 * U)
+                }
             }
         }
     }
