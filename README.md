@@ -4,6 +4,41 @@
 
 > **이 저장소가 앱·서버·시험 코드의 정본입니다**(private, 2026-11-09~). 팀은 브랜치(`feat/<모듈>`)·PR로 작업합니다 — 규칙·명령·담당은 [`CLAUDE.md`](CLAUDE.md). `docs/*.md`(`docs/specs/` 빼고)는 작업 저장소(makecar-hy) 설계 문서의 사본입니다.
 
+## 심사용 제출 정보 (2026 현대자동차그룹 차량용 앱 개발 공모전)
+
+| 항목 | 내용 |
+|---|---|
+| 앱 이름 · 한 줄 소개 | **현비서** — 몇 명이 탔는지, 무엇을 좋아하는지 알고 먼저 말을 거는 조수석 대화 비서 (팀 **현비서팀**) |
+| APK | **[`apk/현비서팀_현비서_release.apk`](apk/현비서팀_현비서_release.apk)** — 차 앱(release · 서명됨, 심사 대상) · 함께 쓰는 폰 앱 [`apk/현비서팀_현비서폰_release.apk`](apk/현비서팀_현비서폰_release.apk)(선택 — 차에서 물어본 것이 폰으로 이어짐) · 같은 파일 [GitHub Release `nash-20261114`](https://github.com/somanghao/hyunbiseo/releases/tag/nash-20261114) |
+| 개발 · 테스트 에뮬레이터 | **Pleos Connect Emulator v2.1.0** — AVD `Pleos_Connect_v2.1` · 시스템 이미지 `android-34/pleos_car_emulator/x86_64`(Android 14 · AAOS) |
+| 화면 규격 | **2560 × 1440 가로 · 160 dpi(mdpi)** — 앱은 내비와 나란히(반반)와 앱 전체 화면 둘 다 지원 |
+| 테스트 환경 | Windows 11 · JDK 21(빌드할 때) · Python 3(서버 — 3.14에서 확인) · Claude Code 로그인(두뇌) · faster-whisper(받아 적기 — GPU 있으면 large-v3) |
+| 소개 자료 · 영상 | [`docs/submission/`](docs/submission/) — 구현 영상 · 소개 자료 PPTX · PDF |
+
+### 실행 방법
+
+1. **에뮬 켜기 + PC 마이크 연결**
+   ```bash
+   emulator -avd Pleos_Connect_v2.1 -no-snapshot -no-boot-anim -gpu host
+   adb -s emulator-5554 emu avd hostmicon
+   ```
+2. **PC 서버 켜기**(두뇌 · 받아 적기 — 앱은 에뮬 안에서 `http://10.0.2.2:8790`으로 붙는다)
+   ```bash
+   claude                                                    # 처음 한 번 — 이 PC에서 Claude Code 로그인(두뇌가 이 계정으로 답한다)
+   python -I -X utf8 -u server/hyun/hyun_server.py           # 두뇌 · 정보 통로 :8790
+   <faster-whisper venv>/python -I -X utf8 -u server/hyun/stt_server.py   # 받아 적기 :8791
+   ```
+3. **APK 설치 · 실행**
+   ```bash
+   adb -s emulator-5554 install -r -g apk/현비서팀_현비서_release.apk
+   adb -s emulator-5554 shell am start --user 10 -n io.github.somanghao.makecar.hyun/.HyunActivity
+   ```
+4. **"현비서야" 하고 말 걸기** — 예: "천안아산역 가자" · "오늘 뉴스 들려줘" · "앞길 어때?". 주행 상황(기어 D · 속도)은 Pleos Virtual Console로 바꾼다.
+
+- 대화 · 검색 · 취향은 PC 서버(위 2)가 떠 있어야 동작한다.
+- 폰 앱(선택): 안드로이드 폰 에뮬에 `adb install -r -g apk/현비서팀_현비서폰_release.apk` → `adb reverse tcp:8790 tcp:8790` → `adb shell am start -n io.github.somanghao.makecar.hyunphone/.MainActivity --es server http://10.0.2.2:8790`
+- release 빌드는 시험용 방송 수신기(디버그 전용)가 꺼져 있다 — 자동 시험(`tools/hyun_e2e`)은 아래 '실행'의 디버그 빌드로.
+
 ![휴게소 소개 — 왼쪽 사진 · 오른쪽 표](records/hyun-e2e/20261108-1740/shots/e03_1.jpg)
 
 | 반반 화면(내비와 나란히) · 교통 표 | 인물 기사 — 사진 · 기사 표 |

@@ -4,6 +4,11 @@ android/build/
 android/*/build/
 android/local.properties
 *.apk
+# 제출용 release APK만 올린다(공모전 규정 — apk/팀명_앱이름_release.apk)
+!apk/*_release.apk
+# 서명 키는 절대 올리지 않는다(키는 저장소 밖 ~/.android/)
+*.jks
+*.keystore
 # 현비서 서버 기록(대화·취향·키) — 저장소에 올리지 않는다
 server/hyun/data/
 server/hyun/data-e2e/

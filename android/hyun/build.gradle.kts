@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +7,13 @@ plugins {
 
 // 현비서 — 조수석에서 목적지까지 함께 가는 대화형 비서. 두뇌는 PC의 Claude Code 세션(server/hyun/)이고,
 // 앱은 듣기(STT)·말하기(TTS)·주행 맥락(속도·기어·목적지·배터리·날씨)·안전 규칙을 맡는다.
+// 제출용 release 서명 — 키는 저장소 밖 ~/.android/hyunbiseo-release.properties(storeFile·storePassword·keyAlias·keyPassword).
+// 그 파일이 없는 PC에선 서명 없이 빌드된다(디버그 빌드는 상관없음).
+val releaseKey = Properties().apply {
+    val f = File(System.getProperty("user.home"), ".android/hyunbiseo-release.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "io.github.somanghao.makecar.hyun"
     compileSdk = 35
@@ -24,6 +33,20 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    signingConfigs {
+        if (releaseKey.isNotEmpty()) create("release") {
+            storeFile = file(releaseKey.getProperty("storeFile"))
+            storePassword = releaseKey.getProperty("storePassword")
+            keyAlias = releaseKey.getProperty("keyAlias")
+            keyPassword = releaseKey.getProperty("keyPassword")
+        }
+    }
+    buildTypes {
+        release {
+            if (releaseKey.isNotEmpty()) signingConfig = signingConfigs.getByName("release")
+        }
     }
 }
 
