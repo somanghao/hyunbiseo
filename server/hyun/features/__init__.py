@@ -16,12 +16,13 @@
 순서가 뜻이 있다 — 질문 블록: 길 → 주변 장소 → 기억 → 취향 → 최근 대화 → 브리핑 → 정보 통로 · 답 등록: 길 → 교통 표 → 주변 장소 → 카드(손질·사진) → 기억 → 취향 → 브리핑 → 폰 → 폰 연동.
 앱 쪽 짝 = android/hyun/…/feature/ (Registry.kt). 설계 → .claude/docs/wiki/hyun-architecture.md
 """
-from features import (briefing, cards, chat, feeds, history, login, memory, phone, phonelink, places, restarea, route, search, taste, taste_refine,
-                      testaudio, traffic)
+from features import (briefing, cards, chat, feeds, history, incidents, login, memory, phone, phonelink, places, restarea, route, search, taste,
+                      taste_refine, testaudio, traffic)
 
 ALL = [
     route,          # 목적지 · 경유지 · 우회 · 안내 끝 · [길·교통] 블록 · 주행 이벤트 규칙
     traffic,        # 길·교통 질문 → 내비 값으로 교통 표(카드)
+    incidents,      # 앞길 돌발 — 내비 위치·목적지 회랑의 실제 사고·고장·공사(도로공사 · 서울 TOPIS · ITS 키) · /hyun/incidents
     places,         # 도착 추천 · 주변 장소(카카오 로컬 실시간) — 식사 시간 곧 도착·도착 · "근처 맛집" → 서버가 카드
     cards,          # 카드 형식(목록 · 표지 격자 · 소개) · 개수 맞추기 · 사진(위키미디어 공용) · /hyun/img
     memory,         # 기억(호칭 · 일화) · [기억] 블록 · /hyun/memory
