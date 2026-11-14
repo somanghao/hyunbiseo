@@ -214,7 +214,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                         category(c, RectF(full.left, full.top + 68 * U, full.right, full.bottom), m.view!!)
                     }
                     m.prompt != null && m.sit == Sit.STOP -> quizScreen(c, full)   // 신호대기 넌센스 퀴즈 — 서 있을 때만 카드(달리면 말로만, 사용자 11-14)
-                    m.sit == Sit.DRIVE || m.sit == Sit.STOP -> driveGlance(c, full)   // 주행·신호대기 — 한눈 정보(11-12)
+                    m.sit == Sit.DRIVE || m.sit == Sit.STOP || (m.sit == Sit.READY && m.navActive) -> driveGlance(c, full)   // 주행·신호대기 — 한눈 정보(11-12) · D 출발 전이라도 이미 안내 중이면 목적지 카드·"안내해 줘" 말 안내 없이 바로(사용자 11-14)
                     !driving -> if (m.prompt != null) quizScreen(c, full) else stateScreen(c, full)
                 }
                 c.restore()
