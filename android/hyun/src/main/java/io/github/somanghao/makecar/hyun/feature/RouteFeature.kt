@@ -67,7 +67,7 @@ class RouteFeature : Feature {
                 f += "depart"; hub.navi?.call("scan") { getRouteStateInfo() }; hub.main.postDelayed({ hub.fire("depart") }, 2500)
             }
             "arrived" !in f && "depart" in f && trip.remainM <= 150 && hub.speedMs < 2f -> hub.fire("arrived")
-            "near" !in f && "depart" in f && trip.totalM >= 2500 && trip.remainM <= 1000 -> hub.fire("near")
+            "near" !in f && "depart" in f && trip.totalM >= 2500 && (trip.remainM <= 1000 || trip.remainS in 1.0..300.0) -> hub.fire("near")   // 곧 도착 = 남은 5분 또는 1km(사용자 11-14 "도착 5분 전에 저녁 물어보기")
             "halfway" !in f && "depart" in f && trip.totalM >= 3000 && trip.progress >= 0.5 -> hub.fire("halfway")
         }
     }
