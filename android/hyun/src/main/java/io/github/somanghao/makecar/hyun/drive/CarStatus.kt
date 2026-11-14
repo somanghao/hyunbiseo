@@ -168,8 +168,8 @@ class CarStatus(private val ctx: Context) {
             runCatching { x.getHVAC().checkHvacTemperatureCurrentCapabilities({ _: CapabilityConfig, l: List<SeatArea> -> nowArea = pick(l); log("status|pleos|cap|now|$l") }, { e: Exception -> log("status|pleos|cap|now|FAIL ${e.message}") }) }
         }
         private fun ok() { if (!alive) log("status|pleos|alive"); alive = true }
-        private val REAR = listOf(SeatValue.ROW_2_LEFT, SeatValue.ROW_2_CENTER, SeatValue.ROW_2_RIGHT)
-        private val rearSeats = arrayOfNulls<Boolean>(3)
+        private val REAR = listOf(SeatValue.ROW_2_LEFT, SeatValue.ROW_2_RIGHT)   // 뒷줄 가운데는 뺐다 — 에뮬은 가운데 자리를 늘 '착석'으로 줘서(VC에 그 자리가 없음) 혼자여도 뒷자리에 누가 있는 걸로 나왔다(11-14)
+        private val rearSeats = arrayOfNulls<Boolean>(2)
         /** 뒷줄 자리별 착석 → 사람 수(rearN) · 누군가 있나(rearKid) */
         private fun rearCount() {
             val known = rearSeats.filterNotNull(); if (known.isEmpty()) return
