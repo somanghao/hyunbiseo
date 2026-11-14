@@ -352,6 +352,7 @@ class StageFeature : Feature {
         m.skill = pr.getString("stage.skill", null)
         m.points = pr.getInt("stage.points", 0); m.xp = pr.getInt("stage.xp", m.points); m.mood = pr.getInt("stage.mood", 60)
         m.concept = pr.getString("stage.concept", "pleos")!!; m.face = pr.getString("stage.face", "neutral")!!; m.acc = pr.getString("stage.acc", "")!!
+        m.nightOverride = when (pr.getString("stage.night", "")) { "on" -> true; "off" -> false; else -> null }   // 시연 흰/밤 화면 고정 — 앱을 다시 켜도 유지(11-14: 다시 켤 때 20시 넘으면 잠깐 어두웠다)
         m.owned = pr.getStringSet("stage.owned", m.owned)!!.toSet() + m.owned
         m.decor = pr.getStringSet("stage.decor", emptySet())!!.toSet()
         pr.edit().remove("stage.avatar").apply()   // 시험용 아바타 선택(robo/puff) 흔적 지우기
@@ -409,7 +410,7 @@ class StageFeature : Feature {
         }
         i.getStringExtra("turn")?.let { t -> m.status?.sim("turn=$t") }   // 깜빡이 시연(표준 AAOS 는 외부 앱에 안 열림)
         i.getStringExtra("concept")?.let { c -> if (Concept.ALL.any { it.id == c }) { m.concept = c; m.owned = m.owned + "concept:$c"; save() } }
-        i.getStringExtra("night")?.let { m.nightOverride = when (it) { "on" -> true; "off" -> false; else -> null } }
+        i.getStringExtra("night")?.let { m.nightOverride = when (it) { "on" -> true; "off" -> false; else -> null }; hub.prefs.edit().putString("stage.night", if (it == "on" || it == "off") it else "").apply() }
         i.getStringExtra("sim")?.let { sp -> val done = m.status?.sim(sp).orEmpty(); hub.log("stage|sim|$done") }
         i.getStringExtra("preview")?.let { m.preview = it.takeIf { p -> Concept.ALL.any { c -> c.id == p } }; m.previewAt = SystemClock.elapsedRealtime() }
         i.getStringExtra("tab")?.let { m.decoTab = it }   // 시연: 상점 탭(concept · decor · face)
