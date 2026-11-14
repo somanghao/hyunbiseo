@@ -222,6 +222,8 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
 
     private fun coveredTalk(l: Speaker.Line) {
         if (hunMode) { log("hun|P${l.prio}|${l.text}"); HeadsUp.show(act, l.text, l.prio == 0); return }
+        // 사고 예고는 내비를 반으로 줄이지 않고 내비 위 헤드업(정식 알림)으로 — 운전자가 [반반으로]·[현비서 보기]를 고른다(사용자 11-14)
+        if (l.tag == "incident") { log("hun|incident|P${l.prio}|${l.text}"); HeadsUp.show(act, l.text, l.prio == 0); return }
         val vis = HomeWindow.visible(act)
         val me = ComponentName(act, act.javaClass).flattenToString()
         val other = vis.singleOrNull()?.takeIf { it != me }   // 1칸 전체에 다른 앱 하나(내비 등) — 그 앱을 1칸으로

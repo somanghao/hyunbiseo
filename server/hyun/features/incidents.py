@@ -233,6 +233,9 @@ def say_line(r):
     return f"약 {r['ahead_km']:g}km 앞 {where} {lane}{r['kind']}{tail}".replace("  ", " ")
 
 
+SRC_NAME = {"도로공사": "한국도로공사", "서울 TOPIS": "서울 TOPIS", "ITS": "국가교통정보센터"}
+
+
 def ahead(lat, lng, dlat, dlng, w=3.0, roads=None, jam=False):
     pad = w / 111.0 + 0.02
     box = (min(lng, dlng) - pad, min(lat, dlat) - pad, max(lng, dlng) + pad, max(lat, dlat) + pad)
@@ -245,6 +248,10 @@ def ahead(lat, lng, dlat, dlng, w=3.0, roads=None, jam=False):
     items, L = corridor(allv, lat, lng, dlat, dlng, w=w, roads=roads, jam=jam)
     for r in items:
         r["say"] = say_line(r)
+        # 화면 꼬리 '한국도로공사 · 13:41 접수' · 같은 돌발을 앱이 한 번만 말하게 고유 id(출처 · 접수 시각 · 좌표)
+        r["src_label"] = SRC_NAME.get(r["src"], r["src"])
+        r["at_label"] = f"{r['at'][-5:]} 접수" if r.get("at") else ""
+        r["id"] = f"{r['src']}|{r.get('at', '')}|{r['lat']:.4f},{r['lng']:.4f}"
     return {"asof": datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S"), "route_km": L, "width_km": w, "sources": srcs, "items": items}
 
 

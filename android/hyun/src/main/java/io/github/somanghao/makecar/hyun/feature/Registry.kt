@@ -20,6 +20,7 @@ object Registry {
         GleoFeature(),         // Gleo Interface — ASK_HYUN · HYUN_STATUS · HYUN_QUIET(차)
         RouteFeature(),        // 목적지 · 경유지 · 안내 끝 · 주행 이벤트(출발 · 절반 · 곧 도착 · 도착 · 목적지 없이 출발)
         ScoutFeature(),        // 경로 정찰 · 우회 타이밍 · 되돌리기 · 적응 주기 · 휴게소 알림(차)
+        IncidentFeature(),     // 사고 예고 — 내비 위치·목적지로 실제 돌발(도로공사 · TOPIS · ITS, 서버 incidents)을 주기적으로 · 먼저 말하기(차)
         TurnFeature(),         // 회전 안내(TBT) 화면 — 내비 판 · 반반 길 카드의 회전 줄(차)
         ArriveFeature(),       // 도착 추천 — 식사 시간 곧 도착 한 줄 · 시연 시계 · 맥락 좌표(차, 서버 places)
         WeatherFeature(),      // 날씨(위치 → Open-Meteo, 키 없음)

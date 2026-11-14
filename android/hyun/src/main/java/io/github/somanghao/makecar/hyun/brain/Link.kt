@@ -47,6 +47,12 @@ class Link(var base: String) {
     fun pushBlocking(after: Long, timeoutS: Int = 25): JSONObject? =
         once("GET", "/hyun/push?after=$after&timeout=$timeoutS", null, (timeoutS + 10) * 1000)
 
+    /** 사고 예고 — 내 경로 회랑 안 실제 돌발(서버가 도로공사·TOPIS·ITS에서 가져와 거른다). 첫 호출은 출처를 여러 쪽 받아 몇 초 걸린다 */
+    fun incidents(lat: Double, lng: Double, dlat: Double, dlng: Double, roads: List<String>, done: (JSONObject?) -> Unit) = io.execute {
+        val r = if (roads.isEmpty()) "" else "&roads=" + java.net.URLEncoder.encode(roads.joinToString(","), "UTF-8")
+        done(http("GET", "/hyun/incidents?lat=%.5f&lng=%.5f&dlat=%.5f&dlng=%.5f&w=3".format(lat, lng, dlat, dlng) + r, readMs = 20_000))
+    }
+
     /** 폰 연동 — 차에서 나눈 이야기 {items:[{t, ago, src, who, q, a, card}], phone} */
     fun history(n: Int, done: (JSONObject?) -> Unit) = io.execute { done(http("GET", "/hyun/history?src=car&n=$n")) }
 

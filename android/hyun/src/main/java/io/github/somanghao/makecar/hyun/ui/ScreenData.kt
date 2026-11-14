@@ -17,6 +17,9 @@ import io.github.somanghao.makecar.hyun.ui.HyunView.Turn
  *
  * HyunView는 `ScreenData by model`로 이 속성을 그대로 내보낸다 — 기존 `view.dest = …` · `v.turns = …` 호출은 그대로 둔다.
  */
+/** 사고 예고 한 건 — head "사고 예고 · 약 11km 앞" · body "영동선 인천방향 월곶분기점 3차로 사고" · foot "한국도로공사 · 13:41 접수 · 처리 중" · line(좁은 칸 한 줄) · sev 3 = 사고급 */
+data class Incident(val head: String, val body: String, val foot: String, val line: String, val sev: Int)
+
 interface ScreenData {
     var mode: Mode
     var mood: String
@@ -45,6 +48,7 @@ interface ScreenData {
     var progress: Double
     var via: String                      // "코엑스 거쳐"
     var trafficLine: String              // 내비 기준 경로 교통 한 줄
+    var incident: Incident?              // 사고 예고(IncidentFeature) — 내 경로 앞 가장 가까운 실제 돌발 · 없으면 null
     var turns: List<Turn>                // 내비 다음 안내들(TBT)
     val lines: MutableList<Line>         // 기능 한 줄 — 코어가 render마다 비우고 기능이 채운다
     var userLine: String
@@ -91,6 +95,7 @@ class ScreenModel : ScreenData {
     override var progress = 0.0
     override var via = ""
     override var trafficLine = ""
+    override var incident: Incident? = null
     override var turns: List<Turn> = emptyList()
     override val lines = mutableListOf<Line>()
     override var userLine = ""

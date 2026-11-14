@@ -1290,6 +1290,19 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private fun turnWord() = shortTurn(m.navTurnType, m.navTurn)
     /** 그다음 회전(내비 TBT 둘째 — 회전 · 거리 · 방면). 예전 차로 화살표 4칸은 회전 종류로 짐작해 그린 것이라 뺐다 — Pleos NaviHelper에 차선 정보가 없다(navi-data TBTInfo = 종류·거리·설명뿐, 11-11 바이너리 확인)
      *  그다음 회전이 없으면 남은 거리 · 목적지(이것도 내비 실제 값) */
+    /** 사고 예고 카드(IncidentFeature) — 내 경로 앞 실제 돌발 한 건. 머리(종류 · 거리) · 어디 · 출처·접수 시각(가짜 금지 — 서버가 받은 값만) */
+    private fun incidentTile(c: Canvas, r: RectF, inc: io.github.somanghao.makecar.hyun.ui.Incident) {
+        val col = if (inc.sev >= 3) RED else WARN
+        glassCard(c, r, 24 * U, col)
+        val pad = 40 * U
+        icon(c, "warn", r.left + pad + 28 * U, r.top + pad + 26 * U, 52 * U, col)
+        text(c, inc.head, r.left + pad + 76 * U, r.top + pad + 42 * U, fit(inc.head, 40 * U, r.width() - pad * 2 - 76 * U, bold), col, bold, maxW = r.width() - pad * 2 - 76 * U)
+        val bw = r.width() - pad * 2
+        val n = min(2, lineCount(inc.body, bw, 40 * U, bold))
+        wrap(c, inc.body, r.left + pad, r.centerY() + 22 * U - (n - 1) * 24 * U, 40 * U, FG, bw, 2, bold, lh = 1.2f)
+        if (inc.foot.isNotBlank()) text(c, inc.foot, r.left + pad, r.bottom - 30 * U, 26 * U, MUTED, medium, maxW = bw)
+    }
+
     private fun nextTurnTile(c: Canvas, r: RectF) {
         box(c, r)
         if (m.navNext.isNotBlank()) {
@@ -1507,7 +1520,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         val top = RectF(R.left, R.top, R.right, R.top + R.height() * 0.46f)
         val ev = m.carEvent
         val di = ideaNow()
-        if (di != null && m.sit == Sit.DRIVE) ideaBanner(c, top, di)   // 주행 중 아이디어 — 이 칸 한 줄
+        val inc = v.incident
+        if (inc != null && !(m.sit == Sit.DRIVE && ev != null && SystemClock.elapsedRealtime() - m.carEventAt < 6000)) incidentTile(c, top, inc)   // 사고 예고(차 상태 6초 알림만 먼저)
+        else if (di != null && m.sit == Sit.DRIVE) ideaBanner(c, top, di)   // 주행 중 아이디어 — 이 칸 한 줄
         else if (m.sit == Sit.DRIVE && ev != null && SystemClock.elapsedRealtime() - m.carEventAt < 6000) {   // 차 상태가 바뀌면 6초 동안 그 한 줄
             val col = when (ev.first) { "warn" -> RED; "signal" -> WARN; "cruise", "road", "flag" -> GOOD; else -> ACC }
             glassCard(c, top, 24 * U, col)
@@ -1551,7 +1566,9 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         text(c, dist, nx, tile.top + ts * 0.55f, fit(dist, 120 * U, top.right - nx - 32 * U, bold), FG, bold)
         text(c, turnWord(), nx, tile.top + ts * 0.55f + 64 * U, 44 * U, MUTED, medium, maxW = top.right - nx - 32 * U)
         wrap(c, m.navTurn, top.left + 40 * U, tile.bottom + 80 * U, 44 * U, FG, top.width() - 80 * U, 2, medium, lh = 1.25f)
-        if (m.navNext.isNotBlank()) text(c, "그다음 ${v.dist(m.navNextM)} 뒤 ${shortTurn(m.navNextType, m.navNext)}", top.left + 40 * U, top.bottom - 40 * U, 34 * U, ACC, medium, maxW = top.width() - 80 * U)
+        val inc = v.incident   // 사고 예고가 있으면 '그다음' 대신 빨간 한 줄
+        if (inc != null) text(c, inc.line, top.left + 40 * U, top.bottom - 40 * U, fit(inc.line, 34 * U, top.width() - 80 * U, bold), if (inc.sev >= 3) RED else WARN, bold, maxW = top.width() - 80 * U)
+        else if (m.navNext.isNotBlank()) text(c, "그다음 ${v.dist(m.navNextM)} 뒤 ${shortTurn(m.navNextType, m.navNext)}", top.left + 40 * U, top.bottom - 40 * U, 34 * U, ACC, medium, maxW = top.width() - 80 * U)
         val bot = RectF(r.left, top.bottom + G, r.right, r.bottom); box(c, bot)
         val eta = m.navEta.removePrefix("도착 ")
         text(c, eta, bot.left + 40 * U, bot.centerY() + 10 * U, fit(eta, 96 * U, bot.width() * 0.5f, bold), FG, bold)

@@ -31,6 +31,8 @@ class ScoutFeature : Feature {
     private lateinit var hub: Hyun
     private val scout = Scout()
     val summary get() = scout.summary              // 경로 교통 한 줄(출발 규칙 문장·글레오가 본다)
+    val aheadJams get() = scout.ahead              // 앞쪽 정체·사고 구간 문장(사고 예고가 같은 도로면 합쳐 말한다)
+    val routeRoads get() = scout.roads             // 내 경로 도로 이름(경로 순서) — 사고 예고가 직선 회랑에서 다른 길 돌발을 걸러 낸다
     fun english() = scout.english()
 
     private var scoutSec = 60                     // --ei scoutsec로 고정했을 때만(scoutFixed) — 평소엔 nextScanSec()가 상황별로
