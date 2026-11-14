@@ -2,7 +2,7 @@
 
 현대자동차그룹 차량용 앱 개발 공모전(2026) 출품작 「현비서」의 앱·서버·시험 코드입니다. Pleos Connect(AAOS 기반 인포테인먼트)에서 돌고, 운전자와 말로 대화하며 취향을 배우고, 내비 교통을 정찰해 먼저 알려 줍니다.
 
-> **이 저장소가 앱·서버·시험 코드의 정본입니다**(private, 2026-11-09~). 팀은 브랜치(`feat/<모듈>`)·PR로 작업합니다 — 규칙·명령·담당은 [`CLAUDE.md`](CLAUDE.md). `docs/*.md`(`docs/specs/` 빼고)는 작업 저장소(makecar-hy) 설계 문서의 사본입니다.
+> **이 저장소가 앱·서버·시험 코드의 정본입니다**(2026-11-09~ · 공모전 심사용 공개 2026-11-14). 팀은 브랜치(`feat/<모듈>`)·PR로 작업합니다 — 규칙·명령·담당은 [`CLAUDE.md`](CLAUDE.md). `docs/*.md`(`docs/specs/` 빼고)는 작업 저장소(makecar-hy) 설계 문서의 사본입니다.
 
 ## 심사용 제출 정보 (2026 현대자동차그룹 차량용 앱 개발 공모전)
 
@@ -13,7 +13,7 @@
 | 개발 · 테스트 에뮬레이터 | **Pleos Connect Emulator v2.1.0** — AVD `Pleos_Connect_v2.1` · 시스템 이미지 `android-34/pleos_car_emulator/x86_64`(Android 14 · AAOS) |
 | 화면 규격 | **2560 × 1440 가로 · 160 dpi(mdpi)** — 앱은 내비와 나란히(반반)와 앱 전체 화면 둘 다 지원 |
 | 테스트 환경 | Windows 11 · JDK 21(빌드할 때) · Python 3(서버 — 3.14에서 확인) · Claude Code 로그인(두뇌) · faster-whisper(받아 적기 — GPU 있으면 large-v3) |
-| 소개 자료 · 영상 | [`docs/submission/`](docs/submission/) — 구현 영상 · 소개 자료 PPTX · PDF |
+| 접수양식 · 영상 · 소개 자료 | [`docs/submission/`](docs/submission/) — 접수양식(기획서) docx · 구현 영상 · 소개 자료 PPTX · PDF |
 
 ### 실행 방법
 
