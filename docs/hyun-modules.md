@@ -1,4 +1,4 @@
-# 현비서 하부 모듈 — 11-06 팀 회의 결정 · 모듈 7 · 구현 계획
+# 현비서 하부 모듈 — 11-06 팀 회의 결정(7) → 11-08 사용자 재확인 **6**(캐릭터 = 온기 보상) · 구현 계획
 
 > 결정 근거 = 팀 회의 음성 「공모전 우선순위」(2026-11-06, 29분) → 받아쓰기 `reference/meetings/2026-11-06-공모전-우선순위.txt`(Whisper large-v3, 미교정 — 심표=쉼표·옹기=온기·월미=멀미)
 > 시각화·프로토타입 = `dashboard/hyun/features.html`(serve.py → `/dashboard/hyun/features.html`, 자체 데이터 — 결정이 바뀌면 이 문서와 페이지의 `MODS`·`VERDICT`·`TASKS`·`CHECKS`를 함께 고친다)
@@ -36,9 +36,9 @@
 ## 순서 — 코어 먼저 (사용자 결정 2026-11-06)
 
 - 현비서 자체(① 음성 대화 → ② 취향 → ③ 브리핑 → ④ 교통정보)를 먼저 완성하고 모듈은 11-11~13에 시연 장면 하나씩. **브리핑은 코어 ③으로 올라감**(정보 통로 → [[hyun-brain]])
-- 아래 표의 날짜는 처음 계획 — 바뀐 일정은 `dashboard/hyun/features.html` 간트(쉼표·오늘 할 일 11-11 · 온기·캐릭터 11-12 · 튜토리얼·엔터 11-13)
+- 아래 표의 날짜는 11-06 처음 계획(지남) — **일정 정본 = [[roadmap]] 마일스톤·§다음 — 현비서 모듈**(쉼표·오늘 할 일 11-11 · 온기·캐릭터 11-12 · 튜토리얼·엔터 11-13, hyunbiseo에서 팀이 누구나) · `dashboard/hyun/features.html` 간트는 시각화
 
-## 모듈 7 — 11-15 MVP · 신호 · 담당일
+## 모듈 — 11-15 MVP · 신호 · 처음 계획일(11-06 · 캐릭터 행은 11-08부터 온기 보상)
 
 | 모듈 | 11-15 MVP (시연 장면 1) | 신호 (상태) | 파일 | 날짜 |
 |---|---|---|---|---|
@@ -50,7 +50,7 @@
 | 엔터 | 끝말잇기(앱 판정: 끝 글자·두음법칙·단어장·반복 금지) · 회전 300m 앞 멈춤 · 동요 1곡 | TTS·좌석(실측) · TBT(실측) · STT 실인식(에뮬 ✗ → 앱 귀) · 오디오 포커스 덕킹(미시험) | `feature/PlayFeature.kt` · `assets/words-ko.txt` | 11-11~12 |
 | 브리핑 | 시동 때 날씨 + 전날 3꼭지(서버 RSS → 두뇌 요약, 출처 표기) | onDrivingInfo·Open-Meteo(실측) · 뉴스(가상·서버) | `server/hyun/features/briefing.py`(시동 순서 ✅ 코어 ③) · `feature/BriefFeature.kt`(예정) | 11-12 |
 
-- **모듈마다 기능 명세 + 화면 구성도 쌍을 먼저**(사용자 11-08) — 확인 뒤 구현 · 초안 6 = `dashboard/hyun/specs/index.html`(rest·tutor·ongi·today·play·brief, 각 `.md` 명세 + `.html` 구성도 4장, 열린 질문 절) — 구성도 생성기는 손으로 고침(파일 직접 편집) → [[hyun-architecture]] §새 기능 붙이는 법 0
+- **모듈마다 기능 명세 + 화면 구성도 쌍을 먼저**(사용자 11-08) — 확인 뒤 구현 · **명세 정본 = hyunbiseo `docs/specs/`**(11-09 · 이쪽 사본 `dashboard/hyun/specs/index.html`)(rest·tutor·ongi·today·play·brief, 각 `.md` 명세 + `.html` 구성도 4장, 열린 질문 절) — 구성도 생성기는 손으로 고침(파일 직접 편집) → [[hyun-architecture]] §새 기능 붙이는 법 0
 - 공통 기반: ✅ 모듈 호스트 = 기능 플러그인(11-07 리팩터 — 앱 `core/Feature.kt` 훅 + `feature/Registry.kt` 한 줄 · 서버 `features/<x>.py` + `ALL` 한 줄 → [[hyun-architecture]]) · 표의 파일 = 앱 `feature/<X>Feature.kt`(+ 필요하면 서버 기능 모듈) / 남은 것: 3상황 화면(시동 카드 ≤6 · 주행 한 줄 + 퀘스트 칩 + 마이크 · 정차 카드/덮개) + `Sense` 신호 확장(`Speaker` 회전 300m 침묵은 11-06 구현)
 - 프로브 확장(결과 전엔 기획서 5번에 쓰지 않음): TurnSignal · SeatBelt · Odometer trip 시간 · Cruise · 오디오 덕킹 (✅ `addWaypoint`·`getTBTInfo` 11-07 실측 → [[hyun-pleos-capabilities]] §현비서 기능별 SDK 검증 현황)
 - 밀리면 버릴 순서: 브리핑 서버 수집 → 동요 노래방 → 캐릭터 처음 만들기 화면
@@ -61,7 +61,7 @@
 - ~~엔터 세부 범위~~ → 끝말잇기 + 퀴즈(사용자 11-08, 위 §사용자 재확인)
 - ~~급제동 시 감점·아이템 회수 vs 벌 없이~~ → 벌 없음('이번 구간 포인트 없음'만 — 11-08 Claude 권고·사용자 위임, `dashboard/hyun/specs/ongi.md`)
 - ~~메타버스·주변 현비서 범위~~ → 기획서 6번(발전 가능성)에만(11-08 권고)
-- 모듈 6 열린 질문 전부 = 명세마다 '결정(11-08 · Claude 권고 — 사용자 위임)' 절 · **구현은 천천히**(사용자 11-08 — 계획만 먼저) · 튜토리얼 팁 20 초안 `dashboard/hyun/specs/tutor-tips.md`(법·규정 6개 팀 검토 표시)
+- 모듈 6 열린 질문 전부 = 명세마다 '결정(11-08 · Claude 권고 — 사용자 위임)' 절 · ~~구현은 천천히~~(사용자 11-08) → **11-09 팀이 hyunbiseo에서 나눠 구현**(사용자 '6가지 기능 추가해야', 11-11~13) · 튜토리얼 팁 20 초안 `dashboard/hyun/specs/tutor-tips.md`(법·규정 6개 팀 검토 표시)
 - ~~경로 정찰 v2 vs 모듈 순서~~ → 코어 ④로 결정(11-06)
 
 ## 팀 허브 (외부 참고)
