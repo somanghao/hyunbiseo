@@ -10,6 +10,8 @@ import ai.pleos.playground.vehicle.constant.area.DoorValue
 import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.constant.area.WindowValue
+import ai.pleos.playground.vehicle.constant.control.LightSwitch
+import ai.pleos.playground.vehicle.constant.control.MoveControl
 import ai.pleos.playground.vehicle.constant.unit.TemperatureUnit
 import android.car.Car
 import android.car.VehiclePropertyIds
@@ -54,7 +56,8 @@ class CarStatus(private val ctx: Context) {
     val windowOpen = V<Boolean>() // 운전석 창 열림
     val lowBeam = V<Boolean>()    // 전조등
     val passenger = V<Boolean>()  // 조수석 착석
-    val rearKid = V<Boolean>()    // 뒷좌석 착석
+    val rearKid = V<Boolean>()    // 뒷좌석 착석(뒷줄에 누군가)
+    val rearN = V<Int>()          // 뒷줄에 앉은 사람 수(자리별 착석을 센다 — 소개자료 '몇 명이 탔는지')
     val belt = V<Boolean>()       // 운전석 벨트
     val vin = V<String>()
 
@@ -83,7 +86,7 @@ class CarStatus(private val ctx: Context) {
             val k = kv.substringBefore('='); val v = kv.substringAfter('=', "")
             val on = v in setOf("on", "1", "true", "open", "yes")
             when (k) {
-                "reset" -> listOf(soc, rangeKm, turn, cruise, cruiseKmh, mode, cabinC, locked, steer, wiper, doorOpen, windowOpen, lowBeam, passenger, rearKid, belt)
+                "reset" -> listOf(soc, rangeKm, turn, cruise, cruiseKmh, mode, cabinC, locked, steer, wiper, doorOpen, windowOpen, lowBeam, passenger, rearKid, rearN, belt)
                     .forEach { it.pinned = false; it.v = null }
                 "soc" -> { soc.pin(v.toIntOrNull()); rangeKm.pin(v.toIntOrNull()?.let { it * 5 }) }
                 "range" -> rangeKm.pin(v.toIntOrNull())
@@ -97,7 +100,8 @@ class CarStatus(private val ctx: Context) {
                 "window" -> windowOpen.pin(on)
                 "lights" -> lowBeam.pin(on)
                 "passenger" -> passenger.pin(on)
-                "kid" -> rearKid.pin(on)
+                "kid" -> { rearKid.pin(on); rearN.pin(if (on) 1 else 0) }
+                "rear" -> { val n = v.toIntOrNull() ?: 0; rearN.pin(n); rearKid.pin(n > 0) }   // 뒷줄 사람 수(시연)
                 "belt" -> belt.pin(on)
                 "lock" -> locked.pin(on)
                 else -> continue
@@ -164,6 +168,25 @@ class CarStatus(private val ctx: Context) {
             runCatching { x.getHVAC().checkHvacTemperatureCurrentCapabilities({ _: CapabilityConfig, l: List<SeatArea> -> nowArea = pick(l); log("status|pleos|cap|now|$l") }, { e: Exception -> log("status|pleos|cap|now|FAIL ${e.message}") }) }
         }
         private fun ok() { if (!alive) log("status|pleos|alive"); alive = true }
+        private val REAR = listOf(SeatValue.ROW_2_LEFT, SeatValue.ROW_2_CENTER, SeatValue.ROW_2_RIGHT)
+        private val rearSeats = arrayOfNulls<Boolean>(3)
+        /** 뒷줄 자리별 착석 → 사람 수(rearN) · 누군가 있나(rearKid) */
+        private fun rearCount() {
+            val known = rearSeats.filterNotNull(); if (known.isEmpty()) return
+            val n = known.count { it }
+            if (rearN.v != n && !rearN.pinned) log("status|rear|$n|${rearSeats.joinToString(",")}")
+            rearN.set(n, From.PLEOS); rearKid.set(n > 0, From.PLEOS)
+        }
+        /** 쉼표(슬립 모드) 실내 세팅 — 실내등·앰비언트 끄기/켜기 · 운전석 등받이 눕히기/세우기(2.5초 움직이고 멈춤). 된 것만 res 에 true */
+        fun rest(on: Boolean, res: MutableMap<String, Boolean>) {
+            val x = v ?: return
+            val sw = if (on) LightSwitch.OFF else LightSwitch.ON
+            runCatching { x.getLight().setCabinLightSwitch(sw, { s -> res["light"] = true; log("status|rest|cabinLight|$s") }, { e -> log("status|rest|cabinLight|FAIL|${e.message}") }) }.onFailure { log("status|rest|cabinLight|${it.javaClass.simpleName} ${it.message}") }
+            runCatching { x.getLight().setAmbientLightSwitch(driver, sw, { _, s -> res["light"] = true; log("status|rest|ambient|$s") }, { e -> log("status|rest|ambient|FAIL|${e.message}") }) }.onFailure { log("status|rest|ambient|${it.javaClass.simpleName} ${it.message}") }
+            val dir = if (on) MoveControl.BACKWARD else MoveControl.FORWARD
+            runCatching { x.getSeat().moveSeatBackrestAngle(driver, dir, { _, d -> res["seat"] = true; log("status|rest|seat|$d") }, { e -> log("status|rest|seat|FAIL|${e.message}") }) }.onFailure { log("status|rest|seat|${it.javaClass.simpleName} ${it.message}") }
+            Thread { Thread.sleep(2500); runCatching { x.getSeat().moveSeatBackrestAngle(driver, MoveControl.STOP, { _, _ -> }, { }) } }.start()
+        }
         fun setTemp(c: Float): Boolean = runCatching {
             if (!alive) return false
             v?.getHVAC()?.setHvacTemperature(tempArea ?: driver, c, TemperatureUnit.CELSIUS, { _, _ -> }, { e -> log("status|hvac.set|${e.message}") }); true
@@ -202,7 +225,8 @@ class CarStatus(private val ctx: Context) {
                 x.getWindow().getCurrentWindowPosition(WindowArea(WindowValue.ROW_1_LEFT), { p -> p?.let { windowOpen.set(it > 10, From.PLEOS) } }, err)
                 x.getLight().getCurrentLowBeamLightState({ l -> l?.let { lowBeam.set(it.name == "ON", From.PLEOS) } }, err)
                 x.getSeat().getCurrentSeatOccupancy(SeatArea(SeatValue.ROW_1_RIGHT), { o -> o?.let { passenger.set(it, From.PLEOS) } }, err)
-                x.getSeat().getCurrentSeatOccupancy(SeatArea(SeatValue.ROW_2_LEFT, SeatValue.ROW_2_RIGHT), { o -> o?.let { rearKid.set(it, From.PLEOS) } }, err)
+                // 뒷줄은 자리마다 따로 읽어 사람 수를 센다 — 가운데 자리가 없는 차는 그 자리만 실패
+                REAR.forEachIndexed { i, seat -> x.getSeat().getCurrentSeatOccupancy(SeatArea(seat), { o -> o?.let { rearSeats[i] = it; rearCount() } }, err) }
                 x.getSeat().getCurrentSeatBeltBuckledState(driver, { b -> b?.let { belt.set(it, From.PLEOS) } }, err)
                 if (vin.v == null) x.getCarInfo().getVINInfo({ s -> s?.let { vin.set(it, From.PLEOS) } }, err)
             }.onFailure { fails += 8; if (fails <= 8) log("status|pleos|${it.javaClass.simpleName} ${it.message}") }
@@ -210,5 +234,13 @@ class CarStatus(private val ctx: Context) {
         override fun stop() { runCatching { v?.release() } }
     }
 
+    /** 쉼표(슬립 모드) — 차 안을 쉬기 좋게(on) / 원래대로(off). 약 3초 뒤 무엇이 실제로 됐는지 돌려준다(light · seat).
+     *  차량 제어는 실차·앱마켓에서 사전 승인이 필요하다 — 거부되거나 Pleos 가 없으면 false 라서 부르는 쪽이 "직접 해 주세요" 안내로 바꾼다 */
+    fun restCabin(on: Boolean, done: (Map<String, Boolean>) -> Unit) {
+        val res = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+        val p = pleos
+        if (p != null && p.alive) p.rest(on, res)
+        Thread { Thread.sleep(3200); done(mapOf("light" to (res["light"] == true), "seat" to (res["seat"] == true))) }.start()
+    }
     private fun log(s: String) = Log.i("HYUN", s)
 }

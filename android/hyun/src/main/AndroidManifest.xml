@@ -26,6 +26,9 @@
     <uses-permission android:name="pleos.car.permission.CONTROL_CAR_CLIMATE" />
     <uses-permission android:name="pleos.car.permission.READ_WINDSHIELD_WIPERS" />
     <uses-permission android:name="pleos.car.permission.READ_CAR_STEERING" />
+    <!-- 쉼표(슬립 모드) — 시트 등받이 · 실내 조명 제어(칼리). 제어(CONTROL_*)는 실차·앱마켓에서 사전 승인이 필요하다 — 거부되면 앱은 안내 문장으로 바꾼다 -->
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_SEATS" />
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS" />
     <!-- 목적지 설정(requestRoute) · 경로·위치 조회 -->
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />

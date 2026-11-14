@@ -187,7 +187,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     }
 
     /** 내비가 덮으면 반반으로(기본, 앱 설정 naviSplit · `--ez navisplit false` = 예전처럼 현비서를 다시 앞으로). Pleos 홈 비공식 방송 → wiki/hyun-pleos-capabilities.md §⑧ */
-    private var naviSplit = true
+    private var naviSplit = true   // 기본 켬(사용자 11-14) — 경로 안내 중엔 실제 Pleos 내비가 보이게 [내비 | 현비서]. 현비서는 지도를 그리지 못한다(도식뿐). 끄려면 --ez navisplit false
     private var autoSplit = false                 // 우리가 반반으로 만들었나 — 안내가 끝나면 1칸으로 되돌린다
 
     /** 헤드업 알림은 Pleos 시스템이 왼쪽 위(11시)에 띄워 내비 회전 안내를 가린다 — 앱이 위치를 못 정함(11-09 실측) →
@@ -250,6 +250,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     // ======================================================================
     fun onIntent(i: Intent, first: Boolean) {
         i.getStringExtra("server")?.let { link.base = it }
+        i.getStringExtra("voice")?.let { vt -> prefs.edit().putString("voiceType", vt).apply(); voice?.speaker(vt) }   // 목소리(화자) 바꾸기 — --es voice <화자 이름> · 저장해 두고 켤 때마다 적용
         if (i.hasExtra("hun")) { hunMode = i.getBooleanExtra("hun", false); log("front|hunMode=$hunMode") }
         if (i.hasExtra("navisplit")) { naviSplit = i.getBooleanExtra("navisplit", true); prefs.edit().putBoolean("naviSplit", naviSplit).apply(); log("front|naviSplit=$naviSplit") }
         if (i.getBooleanExtra("cooldownreset", false)) speaker.resetCooldown()   // 시연 — 영상에서 시간 압축(몇 분 간격 장면을 이어 찍기)
@@ -325,10 +326,11 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     // 이벤트 · 대화(두뇌)
     // ======================================================================
     /** 주행 이벤트 — 두뇌가 있으면 묻고, 없으면 기능의 규칙 문장(fallback) */
+    /** 차의 시동 인사(hello)는 두뇌가 켜져 있어도 앱 규칙으로 — 좌석을 보고 고른 제안 하나(StageModel.offer)로 시작한다(칼리 11-13) */
     fun fire(ev: String, extra: JSONObject? = null) {
         trip.fired += ev
         log("event|$ev${extra?.let { "|$it" } ?: ""}")
-        if (!brainOn) { fallbackEvent(ev, extra)?.let { say(it, "", ev in LISTEN_EVENTS, Speaker.eventPrio(ev), tag = "$ev·규칙") }; return }
+        if (!brainOn || ((ev == "hello" || ev == "long_drive") && isCar)) { fallbackEvent(ev, extra)?.let { say(it, "", ev in LISTEN_EVENTS, Speaker.eventPrio(ev), tag = "$ev·규칙") }; return }
         ask("event", ev, extra)
     }
 
@@ -701,7 +703,9 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
     private fun logLevel(why: String) { log("stt|level|$why|max=${"%.2f".format(maxLevel)}"); maxLevel = 0f }
 
     // ---------- Voice.Events (아무 스레드 → main) ----------
-    override fun onVoiceReady() { main.post { helloWhenReady(0) } }
+    /** 기본 목소리(Pleos TTS 화자) — 한국어 4종(seoyoon 기본 · haeun · eunwoo · sanghyeok, 에뮬 11-12 실측) 중 haeun(칼리 11-12 "귀여운 목소리") */
+    private val VOICE_TYPE = "haeun"
+    override fun onVoiceReady() { main.post { voice?.speaker(prefs.getString("voiceType", null) ?: VOICE_TYPE); helloWhenReady(0) } }
 
     /** 첫 인사 — 서버 health를 한 번 받은 뒤에(안 그러면 두뇌가 있어도 규칙 인사가 나간다, 폰 실측) · 최대 8초 */
     private fun helloWhenReady(tries: Int) {
@@ -853,7 +857,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         private const val TURN_GATE_M = 300.0
         private const val TURN_GATE_MAX_MS = 45_000L
         private val OPEN_TURNS = setOf("TURN_UNKNOWN", "TURN_STRAIGHT", "TURN_ARRIVE")
-        private val LISTEN_EVENTS = setOf("no_dest")   // 규칙 문장이 질문인 이벤트 — 말한 뒤 듣기
+        private val LISTEN_EVENTS = setOf("no_dest", "long_drive", "hello")   // 규칙 문장이 질문인 이벤트 — 말한 뒤 듣기. hello = 시동 첫마디(뉴스·퀴즈 제안·엔진오일 알림) → 10초 안 '응'만으로(소개자료 3장)
         // 받아 적기가 첫 글자를 비슷한 소리로 적는다(실측: "변비서") — 비슷한 첫소리는 받되 그냥 "비서"는 받지 않는다
         private val WAKE = Regex("(헤이\\s*)?(현|형|혁|헌|변|편|연|견|션|선|련|헨|핸|행)\\s*(비|빈|피)\\s*(서|사|소|써)(야|아|씨|님|요)?[\\s,.!?~]*")
         const val REQ_PERMS = 7
