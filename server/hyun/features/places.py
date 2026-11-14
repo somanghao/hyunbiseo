@@ -108,7 +108,8 @@ def meal_at(c, event):
     now = _min(c.get("clock") or c.get("t"))
     if now is None:
         return None, ""
-    at = now + (int(c.get("remainMin") or 0) if event == "near" else 0)
+    # 곧 도착(near)은 남은 5분·1km에서만 온다 — 남은 시간이 길게 들어오면(에뮬 위치 고정 등) 어긋난 값이라 10분으로 자른다(11-14)
+    at = now + (min(int(c.get("remainMin") or 0), 10) if event == "near" else 0)
     at %= 24 * 60
     hhmm = f"{at // 60:02d}:{at % 60:02d}"
     for name, a, b in MEALS:
