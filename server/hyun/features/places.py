@@ -208,7 +208,9 @@ def on_in(msg):
                                   "food": _food_query(text)}
         elif d and _asked_near(d) and not re.search(NO_WORDS, text):   # "응" — 물은 뒤 대답(음식을 안 말하면 취향 음식으로)
             t0 = _trips.get(_tkey(d)) or {}
-            msg["places_want"] = {"mode": "ask", "meal": t0.get("meal", ""), "arrive": t0.get("arrive", ""), "dest": d, "cafe": False, "food": ""}
+            # 먼저 물을 때 "평소 드시던 ○○집"이라 했으니 "응"이면 그 음식을 콕 집어(1.5km까지) — 비워 두면 1km 안 3곳을 못 채워 아무 음식점으로 넘어갔다(11-14 녹화 V: 족발 대신 일식·분식)
+            likes = _food_likes()
+            msg["places_want"] = {"mode": "ask", "meal": t0.get("meal", ""), "arrive": t0.get("arrive", ""), "dest": d, "cafe": False, "food": likes[0] if likes else ""}
         elif d:
             t = _trips.get(_tkey(d))
             if t and time.time() - t["at"] < PICK_MIN and t.get("items"):
