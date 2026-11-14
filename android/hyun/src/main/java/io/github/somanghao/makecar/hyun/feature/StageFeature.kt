@@ -364,6 +364,7 @@ class StageFeature : Feature {
         val need = CAR_PERMS.filter { hub.act.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         if (need.isNotEmpty()) runCatching { hub.act.requestPermissions(need.toTypedArray(), Hyun.REQ_PERMS) }
         if (!pr.getBoolean("stage.onboarded", false)) { hub.holdHello = true; startOnboarding() }
+        else { hub.holdHello = true; hub.main.postDelayed({ helloAfterCar(0) }, 1500) }   // 첫마디는 차 값(누적 주행거리)을 읽은 뒤 — 엔진오일 알림이 제안보다 먼저(소개자료 6장)
         enter(Sit.IGNITION, why = "앱 시작")
         fetchWeather(); fetchNews(); fetchRss(); fetchFeeds()
     }
@@ -737,6 +738,16 @@ class StageFeature : Feature {
             hub.main.postDelayed({ if (gen == onboardGen && m.overlay == "onboard" && m.onboardStep == 2) finishOnboarding() }, 12_000)
         } else if (say) hub.say(if (s == "novice") "초보 모드로 바꿨어요. 더 자주, 천천히 챙길게요." else "숙련 모드로 바꿨어요. 꼭 필요한 말만 할게요.", "", false, 1, reply = true, tag = "숙련도")
         refresh()
+    }
+
+    /** 시동 첫마디 — 누적 주행거리(Pleos)를 읽거나 6초가 지나면. 그전에 말하면 엔진오일 알림을 놓쳤다(11-14 실측: 인사 3초 · 첫 차 값 3.4초) */
+    private fun helloAfterCar(n: Int) {
+        if (m.overlay == "onboard") return
+        val ready = m.status?.odoKm?.v != null || n >= 6
+        if (!ready) { hub.main.postDelayed({ helloAfterCar(n + 1) }, 1000); return }
+        hub.holdHello = false
+        hub.log("stage|hello|odo=${m.status?.odoKm?.v}|${n}s")
+        if (m.sit == Sit.IGNITION) enter(Sit.IGNITION, why = "차 읽음 · 첫마디") else hub.fire("hello")
     }
 
     private fun finishOnboarding() {

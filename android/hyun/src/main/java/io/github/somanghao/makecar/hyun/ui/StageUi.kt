@@ -1579,15 +1579,17 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
         c.drawRoundRect(r, 40 * U, 40 * U, p)
         path.reset(); path.moveTo(r.left + 4 * U, r.centerY() - 20 * U); path.lineTo(r.left - 26 * U, r.centerY() + 6 * U); path.lineTo(r.left + 4 * U, r.centerY() + 22 * U); path.close(); c.drawPath(path, p)
         if (speaking) { p.style = Paint.Style.STROKE; p.strokeWidth = 3 * U; p.color = Glass.a(ACC, 200); c.drawRoundRect(r, 40 * U, 40 * U, p); p.style = Paint.Style.FILL; p.strokeWidth = 0f }
-        val x0 = r.left + 48 * U; val micW = 230 * U; val iw = r.width() - 96 * U - micW
+        val slim = r.width() < 1000 * U   // 반반(좁은 칸) — '말로 대답' 글자는 빼고 제안은 두 줄로(11-14: "오늘 주요 뉴…"로 잘렸다)
+        val x0 = r.left + 48 * U; val micW = if (slim) 110 * U else 230 * U; val iw = r.width() - 96 * U - micW
         when {
             speaking -> { val s = adult(v.hyunLine); val n2 = min(2, lineCount(s, iw, 36 * U, bold))
                 wrap(c, s, x0, r.centerY() + 13 * U - (n2 - 1) * 24 * U, 36 * U, FG, iw, 2, bold, lh = 1.3f) }
             v.mode == HyunView.Mode.THINKING -> text(c, "음… 생각 중이에요", x0, r.centerY() + 14 * U, 38 * U, FG, bold, maxW = iw)
             else -> {
                 val of = m.prompt?.let { Triple("", it.first, it.second) } ?: m.offer()   // 진행 중인 놀이(퀴즈 문제) · 없으면 누가 탔는지 보고 고른 제안 하나
-                text(c, of.second, x0, r.centerY() - 8 * U, fit(of.second, 38 * U, iw, bold), FG, bold, maxW = iw)
-                text(c, of.third, x0, r.centerY() + 40 * U, 28 * U, MUTED, medium, maxW = iw)
+                if (slim) { val n2 = min(2, lineCount(of.second, iw, 34 * U, bold)); wrap(c, of.second, x0, r.centerY() + 12 * U - (n2 - 1) * 22 * U, 34 * U, FG, iw, 2, bold, lh = 1.3f) }
+                else { text(c, of.second, x0, r.centerY() - 8 * U, fit(of.second, 38 * U, iw, bold), FG, bold, maxW = iw)
+                text(c, of.third, x0, r.centerY() + 40 * U, 28 * U, MUTED, medium, maxW = iw) }
             }
         }
         // 대답을 기다리는 마이크 — 듣는 중이면 또렷하게
@@ -1596,7 +1598,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
             p.color = Glass.a(ACC, if (listening) 70 else 34); c.drawCircle(mx, my, 50 * U, p)
             p.color = if (listening) ACC else Glass.a(ACC, 200); c.drawCircle(mx, my, 34 * U, p)
             micGlyph(c, mx, my, 16 * U, Color.WHITE); p.style = Paint.Style.FILL; p.strokeWidth = 0f
-            text(c, if (listening) "듣고 있어요" else "말로 대답", mx - 62 * U, my + 9 * U, 24 * U, if (listening) ACC else MUTED, medium, Paint.Align.RIGHT)
+            if (!slim) text(c, if (listening) "듣고 있어요" else "말로 대답", mx - 62 * U, my + 9 * U, 24 * U, if (listening) ACC else MUTED, medium, Paint.Align.RIGHT)
         }
     }
 
