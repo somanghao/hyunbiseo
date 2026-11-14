@@ -116,7 +116,7 @@ class StageModel {
         return when {
             kid -> Triple("우와, 온 가족이 다 탔네요! 오늘의 넌센스 퀴즈, 같이 맞춰 볼래요?", "오늘의 넌센스 퀴즈, 같이 맞춰 볼래요?", "${n}명 탔어요 · \"좋아\" 하면 시작해요")
             pas -> Triple("오, 옆자리에 친구가 탔네요! 둘이서 넌센스 퀴즈 한판 어때요?", "둘이서 넌센스 퀴즈 한판 어때요?", "${n}명 탔어요 · \"좋아\" 하면 시작해요")
-            else -> Triple("오늘 주요 뉴스 세 가지, 짧게 들려줄까요?", "오늘 주요 뉴스 세 가지, 짧게 들려줄까요?", "\"응\" 하면 바로 읽어 줘요 · \"퀴즈\"라고 해도 돼요")
+            else -> Triple("평소 보시던 뉴스 세 가지, 짧게 들려줄까요?", "평소 보시던 뉴스 세 가지, 짧게 들려줄까요?", "\"응\" 하면 취향대로 찾아 읽어 줘요 · \"퀴즈\"라고 해도 돼요")
         }
     }
     /** 지금 건넨 제안이 무엇인지 — quiz(동승자 있음) · news(혼자) */
@@ -951,6 +951,7 @@ class StageFeature : Feature {
 
     // ---------- 신호대기 동네 이야기 — 지금 지역명(NaviHelper 현재 위치 주소)에 맞춘 한마디. 두뇌가 있으면 두뇌가 그 동네 이야기, 없으면 규칙 문장 ----------
     private var localSaidAt = 0L; private var localSaidArea = ""
+    private var sportsAt = 0L   // 신호대기 관심 선수 소식(취향) — 30분에 한 번
     /** 지금 지역 — (구까지 전체 "수정구 시흥동", 짧게 "시흥동"). 주소를 아직 못 읽었으면 null */
     private fun localArea(): Pair<String, String>? {
         val a = hub.addr?.trim()?.takeIf { it.isNotBlank() } ?: return null
@@ -970,7 +971,14 @@ class StageFeature : Feature {
         val tip = if (m.novice && tipIdx++ % 2 == 0) "신호 대기 중엔 브레이크를 계속 꾹." else null
         val a = localArea() ?: return tip
         val now = SystemClock.elapsedRealtime()
-        if (a.first == localSaidArea && now - localSaidAt < 10 * 60_000L) return tip
+        if (a.first == localSaidArea && now - localSaidAt < 10 * 60_000L) {
+            // 같은 동네 이야기는 10분에 한 번 — 다음 신호대기엔 평소 찾아보던 선수·팀 소식을 먼저(취향 + 웹 검색, 사용자 11-14)
+            if (hub.brainOn && (sportsAt == 0L || now - sportsAt > 30 * 60_000L)) {
+                sportsAt = now
+                hub.fire("taste_sports", JSONObject().put("ask", "신호 대기 중 — [취향]·[기억]에서 운전자가 평소 찾아보던 스포츠 선수·팀(예: 손흥민·이강인)을 골라 최근 소식을 웹 검색으로 확인하고, '평소 찾아보시던 ○○ 소식이 있어요'로 시작해 두세 문장(최근 경기 결과·다음 경기 날짜와 한국 시각). 확인된 사실만, 질문 없이. card(kind=list)에 선수마다 한 줄 '선수 — 소식 요지'"))
+            }
+            return tip
+        }
         localSaidArea = a.first; localSaidAt = now
         if (hub.brainOn) { hub.fire("stop_local", JSONObject().put("area", a.first).put("ask", "신호 대기 중 — 이 동네(${a.first})에 맞는 짧은 한마디 하나. 확실한 사실만(모르면 지어내지 말고 일반 이야기), 두 문장 이내, 질문 없이")); return tip }
         return listOfNotNull(tip, localLine(a)).joinToString(" ")
@@ -1240,6 +1248,13 @@ class StageFeature : Feature {
         } else askQuiz(lead)
     }
     private fun endQuiz(line: String) { hub.log("stage|quiz|end|$quizOk"); quizN = -1; m.prompt = null; hub.say(line, "happy", false, 1, reply = true, tag = "퀴즈"); refresh(); hub.render() }
+    /** 혼자 탔을 때 제안에 "응" — 평소 취향(관심 뉴스)으로 주제를 골라 두뇌가 웹 검색해 3건(사용자 11-14). 두뇌가 없으면 헤드라인 세 줄 */
+    private fun tasteNews() {
+        if (!hub.brainOn) { newsBrief(); return }
+        offerAt = 0L
+        hub.fire("taste_news", JSONObject().put("ask", "운전자가 혼자 탄 시동 직후 — [취향]의 관심 뉴스 중 가장 자주·최근에 본 분야 하나(예: AI)를 골라 오늘 그 분야 뉴스 3건을 웹 검색으로 찾고, '평소 원하신 대로 ○○ 뉴스 3건 설명해 드릴게요'로 시작해 한 건에 한 문장씩(첫째·둘째·셋째). 확인된 기사만, 매체 이름 하나씩. card(kind=list)에 3줄 '제목 요지 — 매체'"))
+    }
+
     private fun newsBrief() {
         offerAt = 0L
         val l = m.newsList.take(3); val ord = listOf("첫째", "둘째", "셋째")
@@ -1262,7 +1277,7 @@ class StageFeature : Feature {
         if (Regex("넌센스|퀴즈").containsMatchIn(t)) { startQuiz(); return true }
         if (Regex("뉴스(세|들려|읽어|알려|브리핑|틀어)|주요뉴스").containsMatchIn(t)) { newsBrief(); return true }
         if (t.length <= 8 && pending == null && ((offerAt != 0L && SystemClock.elapsedRealtime() - offerAt < 180_000) || m.sit == Sit.IGNITION || m.sit == Sit.READY || m.sit == Sit.DRIVE || m.sit == Sit.STOP)) {   // 건넨 제안(시동 인사 · 주행 말풍선에 늘 떠 있음)에 대한 짧은 대답
-            if (Regex("^(응|어|네|예|좋아|그래|콜|오케이|ㅇㅇ|해줘|해봐|틀어|들려|시작|할래|하자|맞춰)").containsMatchIn(t)) { if (m.offerKind() == "quiz") startQuiz() else newsBrief(); return true }
+            if (Regex("^(응|어|네|예|좋아|그래|콜|오케이|ㅇㅇ|해줘|해봐|틀어|들려|시작|할래|하자|맞춰)").containsMatchIn(t)) { if (m.offerKind() == "quiz") startQuiz() else tasteNews(); return true }
             if (Regex("^(아니|됐어|괜찮|나중|싫어|안해|노)").containsMatchIn(t)) { offerAt = 0L; hub.say("알겠어요. 필요하면 불러 줘요.", "", false, 1, reply = true, tag = "제안"); return true }
         }
         return null

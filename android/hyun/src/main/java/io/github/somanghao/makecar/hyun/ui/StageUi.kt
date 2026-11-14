@@ -213,6 +213,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                         button(c, "닫기", RectF(full.left, full.top, full.left + 110 * U, full.top + 52 * U), false, "view:close")
                         category(c, RectF(full.left, full.top + 68 * U, full.right, full.bottom), m.view!!)
                     }
+                    m.prompt != null && m.sit == Sit.STOP -> quizScreen(c, full)   // 신호대기 넌센스 퀴즈 — 서 있을 때만 카드(달리면 말로만, 사용자 11-14)
                     m.sit == Sit.DRIVE || m.sit == Sit.STOP -> driveGlance(c, full)   // 주행·신호대기 — 한눈 정보(11-12)
                     !driving -> if (m.prompt != null) quizScreen(c, full) else stateScreen(c, full)
                 }

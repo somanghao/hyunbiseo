@@ -41,8 +41,21 @@ def needs_search(text):
     return bool(re.search(SEARCH_WORDS, t, re.I))
 
 
+TASTE_EVENTS = ("taste_news", "taste_sports")   # 앱이 먼저 건네는 취향 소식(사용자 11-14) — [취향]으로 주제를 골라 웹 검색
+
+
 def search(msg):
+    if msg.get("kind") == "event" and msg.get("text") in TASTE_EVENTS:
+        return True
     return msg.get("kind") == "talk" and needs_search(msg.get("text", ""))
+
+
+def last_line(msg):
+    """취향 소식 이벤트 — 앱이 맥락 ask에 실어 보낸 지시를 마지막 줄로(평소 취향으로 고른 주제를 검색해 먼저 알려 줌)"""
+    if msg.get("kind") == "event" and msg.get("text") in TASTE_EVENTS:
+        ask = (msg.get("ctx") or {}).get("ask", "")
+        return f"[먼저 건네는 말 — 평소 취향으로 고른 소식, 웹 검색으로 확인한 것만] {ask}"
+    return None
 
 
 def rules_for_search():
