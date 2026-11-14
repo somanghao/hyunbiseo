@@ -1418,6 +1418,7 @@ class HyunView(ctx: Context, val model: ScreenModel = ScreenModel()) : View(ctx)
 
     /** 목록 카드(차 오른쪽 칸) — 제목·출처 + 번호 목록 한 칸(최대 10줄), 1~3위 강조, "제목 — 작가"면 작가는 옅게 */
     internal fun listCard(c: Canvas, k: Card, x0: Float, y0: Float, x1: Float, y1: Float, u: Float) {
+        kit.skin = look   // 칼리 화이트 화면(StageUi)이 lightTheme만 바꿔 부르면 kit은 어두운 기본 스킨 색 그대로라 카드가 검게 나왔다(11-14)
         if (k.kind == "info") { infoCard(c, k, x0, y0, x1, y1, u); return }
         if (k.kind == "schedule") { scheduleCard(c, k, x0, y0, x1, y1, u); return }
         val r = RectF(x0, y0, x1, y1)

@@ -62,9 +62,22 @@ class HyunActivity : Activity() {
         if (savedInstanceState == null) splash(rootView)
         if (!hyun.isCar) { lightBars(); view.onKeyboard = ::showInput }   // 창(DecorView)이 생긴 뒤에 — setContentView 전이면 insetsController가 NPE(폰 실측)
         hyun.start(intent)
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {   // 디버그 빌드만 — release엔 없다
+            val f = android.content.IntentFilter(CMD)
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(cmdRx, f, RECEIVER_EXPORTED) else registerReceiver(cmdRx, f)
+            cmdOn = true
+        }
     }
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); applySide(intent); hyun.onIntent(intent, first = false) }
+
+    /** 시험·녹화 명령을 화면을 다시 띄우지 않고 받는다(`am broadcast -a …hyun.CMD -p <패키지> --es …`) — `am start`로 보내면 Pleos 홈이
+     *  띄운 앱을 반반 왼쪽 칸으로 옮겨 현비서가 [내비 | 현비서]를 되돌리느라 녹화에 좌우가 바뀌어 보였다(11-14) */
+    private var cmdOn = false
+    private val cmdRx = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context, i: Intent) { hyun.onIntent(i, first = false) }
+    }
+    companion object { const val CMD = "io.github.somanghao.makecar.hyun.CMD" }
 
     // ---------- 왼쪽 시스템 칸 흉내(ui/SysPanel) — 실차 Pleos 홈은 왼쪽 ~1/3이 시스템 화면으로 고정, 앱은 오른쪽 2/3.
     // 표준 AAOS 에뮬(Pleos 홈 없음)에서만 깔아 같은 비율로 보이게 한다 · `--ei sideL 643`(px) · `--ei sideL 0` 끄기 · -1 기본
@@ -91,7 +104,7 @@ class HyunActivity : Activity() {
     override fun onResume() { super.onResume(); hyun.onResume() }
     override fun onPause() { hyun.onPause(); super.onPause() }
     override fun onStop() { hyun.onStop(); super.onStop() }
-    override fun onDestroy() { hyun.stop(); super.onDestroy() }
+    override fun onDestroy() { if (cmdOn) runCatching { unregisterReceiver(cmdRx) }; hyun.stop(); super.onDestroy() }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

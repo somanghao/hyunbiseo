@@ -82,6 +82,11 @@ def sh(cmd, timeout=30):
 
 
 def am(extras=""):
+    """앱에 시험 명령 — HYUN_AM_BROADCAST=1이면 화면을 다시 띄우지 않고 방송으로(디버그 빌드 수신기 HyunActivity.CMD).
+    `am start`는 Pleos 홈이 띄운 앱을 반반 왼쪽 칸으로 옮겨, 현비서가 [내비 | 현비서]를 되돌리느라 녹화에 좌우가 바뀌어 보였다(11-14).
+    앱을 켜는 명령(빈 extras = 앞으로 · cancel = 다시 켜기 직후)은 그대로 start"""
+    if os.environ.get("HYUN_AM_BROADCAST") == "1" and extras.strip() and "--ez cancel" not in extras:
+        return sh(f"am broadcast --user 10 -a {PKG}.CMD -p {PKG} {extras}")
     return sh(f"am start --user 10 -n {ACT} {extras}")
 
 
