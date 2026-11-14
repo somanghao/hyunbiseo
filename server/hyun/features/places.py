@@ -139,14 +139,25 @@ def _is_food(dest, la, lo):
 def find_places(la, lo, likes, cafe=False, need=3):   # ⚠ search는 기능 훅 이름(검색 모드) — 다른 뜻으로 쓰지 않는다(11-08 두뇌 스레드가 죽음)
     """취향 음식 → 반경 500m → 1km → 음식점 전체 순으로 3곳 넘게 찾는다. 반환 (검색어, 이유, 장소들)"""
     cat = "CE7" if cafe else "FD6"
-    tries = [(q, r) for q in ([] if cafe else likes) for r in (RADIUS, 1000)]
-    for q, r in tries:
-        docs = kakao({"query": q, "x": lo, "y": la, "radius": r, "category_group_code": cat, "size": 15, "sort": "distance"}) or []
-        # 키워드 검색은 느슨하다(국밥 → 베트남음식·순대도, 11-08 실측) — 이름·분류에 검색어가 든 곳을 앞으로
-        hit = [d for d in docs if q in (d.get("place_name", "") + d.get("category_name", ""))]
-        docs = hit + [d for d in docs if d not in hit]
-        if len(hit) >= need:   # 운전자가 콕 집은 음식(need=1)이면 한 곳이라도 맞으면 그걸로 — 아무 음식점으로 넘어가지 않게
-            return q, (f"{q} 취향" if need >= 3 else ""), (docs if need >= 3 else hit)
+    # 콕 집은 음식(need=1)은 1.5km까지 넓혀 3곳을 채워 본다(11-14: 천안아산역 족발 1km 안엔 1곳 → 목록 카드에 하나만 떴다)
+    radii = (RADIUS, 1000) if need >= 3 else (RADIUS, 1000, 1500)
+    best = None
+    for q in ([] if cafe else likes):
+        for r in radii:
+            docs = kakao({"query": q, "x": lo, "y": la, "radius": r, "category_group_code": cat, "size": 15, "sort": "distance"}) or []
+            # 키워드 검색은 느슨하다(국밥 → 베트남음식·순대도, 11-08 실측) — 이름·분류에 검색어가 든 곳을 앞으로
+            hit = [d for d in docs if q in (d.get("place_name", "") + d.get("category_name", ""))]
+            docs = hit + [d for d in docs if d not in hit]
+            if need >= 3:
+                if len(hit) >= need:
+                    return q, f"{q} 취향", docs
+                continue
+            if hit and (best is None or len(hit) > len(best[2])):   # 콕 집은 음식 — 맞는 곳만(아무 음식점으로 넘어가지 않게)
+                best = (q, "", hit)
+            if len(hit) >= 3:
+                return best
+        if best:
+            return best
     docs = kakao({"category_group_code": cat, "x": lo, "y": la, "radius": RADIUS, "size": SIZE, "sort": "distance"}, "category")
     return ("카페" if cafe else "음식점"), "", docs or []
 

@@ -240,8 +240,11 @@ class Cards(private val a: Activity, private val onPlace: (JSONObject) -> Unit) 
         val parts = s.split(" — ", limit = 2)
         val row = LinearLayout(a).apply { orientation = LinearLayout.HORIZONTAL; setPadding(0, dp(7), 0, 0) }
         row.addView(t("${i + 1}", 14f, if (i < 3) Ui.ACCENT else Ui.CARD_SUB, bold = true).apply { layoutParams = LinearLayout.LayoutParams(dp(22), -2) })
-        row.addView(t(parts[0], 14.5f, Ui.CARD_FG, bold = i < 3).apply { layoutParams = LinearLayout.LayoutParams(0, -2, 1f) })
-        if (parts.size > 1) row.addView(t(parts[1], 12.5f, Ui.CARD_SUB).apply { setPadding(dp(6), dp(1), 0, 0) })
+        // 제목 아래 설명 — 가로로 두면 긴 설명이 폭을 다 먹어 제목 칸이 0에 가까워져 글자가 세로로 쪼개지고 빈 높이가 생겼다(11-14 교통 카드)
+        val col = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, -2, 1f) }
+        col.addView(t(parts[0], 14.5f, Ui.CARD_FG, bold = i < 3))
+        if (parts.size > 1) col.addView(t(parts[1], 12.5f, Ui.CARD_SUB).apply { setPadding(0, dp(2), 0, 0) })
+        row.addView(col)
         return row
     }
 }

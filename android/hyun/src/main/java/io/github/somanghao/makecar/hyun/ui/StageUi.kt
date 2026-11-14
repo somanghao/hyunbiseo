@@ -196,7 +196,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                 val pagerOn = !glance() && m.overlay == null && card == null && StageModel.pages(m.sit).size > 1
                 val bottom = h - 48 * U - 64 * U - 20 * U - (if (pagerOn) 64 * U else 0f)
                 var top = if (narrow) 16 * U + smH + 40 * U else 96 * U
-                if (m.navActive && !navMain) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }
+                if (m.navActive && !navMain && m.prompt == null) { navStrip(c, RectF(zoneL, top, zoneR, top + 84 * U)); top += 84 * U + 16 * U }   // 퀴즈 중엔 운전 안내 줄 숨김(사용자 11-14)
                 val full = RectF(zoneL, top, zoneR, bottom)
                 // 넘길 때 — 내용 칸만 옆에서 밀려 들어온다(캐릭터·내비 띠·독은 그대로)
                 val sx = ((now - m.pageAt) / 340f).coerceIn(0f, 1f); val se = 1f - (1f - sx) * (1f - sx) * (1f - sx)
@@ -209,7 +209,7 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
                         category(c, RectF(full.left, full.top + 68 * U, full.right, full.bottom), m.view!!)
                     }
                     m.sit == Sit.DRIVE || m.sit == Sit.STOP -> driveGlance(c, full)   // 주행·신호대기 — 한눈 정보(11-12)
-                    !driving -> stateScreen(c, full)
+                    !driving -> if (m.prompt != null) quizScreen(c, full) else stateScreen(c, full)
                 }
                 c.restore()
                 if (pagerOn) pagerBar(c, (zoneL + zoneR) / 2, h - 48 * U - 64 * U - 20 * U - 30 * U)
@@ -1146,6 +1146,21 @@ class StageUi(private val v: HyunView, private val m: StageModel, private val ac
     private fun updown(r: Float) = if (r > 0f) UP else if (r < 0f) DOWN else MUTED
     private fun pct(r: Float) = (if (r > 0f) "+" else "") + "%.2f%%".format(r)
     private fun box(c: Canvas, r: RectF, action: String? = null) { glassCard(c, r, 24 * U); action?.let { hits += r to it } }
+
+    /** 넌센스 퀴즈 중(정차) — 정보 칸 전체를 퀴즈 카드로. 운전 안내·평소 카드는 깔지 않는다(사용자 11-14: 반반이면 내비가 이미 보이고,
+     *  한 화면이면 퀴즈와 상관없는 정보라 필요 없다). 주행 중엔 이 화면 대신 한눈 정보 — 퀴즈는 말로만 */
+    private fun quizScreen(c: Canvas, r: RectF) {
+        val pr = m.prompt ?: return
+        box(c, r)
+        val x0 = r.left + 56 * U; val iw = r.width() - 112 * U
+        val num = pr.first.substringBefore("번.", "").trim()
+        val q = pr.first.substringAfter("번. ", pr.first)
+        text(c, "넌센스 퀴즈" + (if (num.isNotBlank()) "  ·  $num / 3" else ""), x0, r.top + 76 * U, 34 * U, ACC, bold, maxW = iw)
+        val qx = x0 + 120 * U
+        text(c, "Q.", x0, r.top + 214 * U, 92 * U, ACC, bold)
+        wrap(c, q, qx, r.top + 200 * U, fit(q, 56 * U, (iw - 120 * U) * 2.2f, bold).coerceAtLeast(40 * U), FG, iw - 120 * U, 3, bold, lh = 1.3f)
+        text(c, pr.second, x0, r.bottom - 56 * U, 30 * U, MUTED, medium, maxW = iw)
+    }
     private fun lab(c: Canvas, s: String, x: Float, y: Float, maxW: Float = Float.MAX_VALUE, col: Int = MUTED) = text(c, s, x, y, 20 * U, col, medium, maxW = maxW)
     private fun cols(r: RectF, vararg wts: Float): List<RectF> {
         val tot = wts.sum(); val avail = r.width() - G * (wts.size - 1); var x = r.left
