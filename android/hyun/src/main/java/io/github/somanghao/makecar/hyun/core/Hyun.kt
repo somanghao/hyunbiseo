@@ -434,7 +434,10 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         // 두뇌가 정한 단계(1~3)가 있으면 그걸로 — P0은 앱 규칙만. 주행 필수 이벤트(P1)는 두뇌가 낮춰도 P1(P2 쿨다운에 3분 밀린 11-07 실측)
         val prio = if (r.has("prio") && !r.isNull("prio")) r.optInt("prio", base).coerceIn(1, 3).let { if (!talk && base == 1) 1 else it } else base
         val s = r.optString("say")
-        if (s.isNotBlank()) say(s, r.optString("mood"), r.optBoolean("listen"), prio, reply = talk, tag = if (talk) "답" else text)
+        // 취향 소식(앱이 이 신호대기·이 제안 수락에 쓰려고 직접 청한 답)은 대답처럼 — 간격 대기 없이 지금. 다른 P2(출발·초보 팁)가
+        // 간격을 써 버리면 3분 줄 서다 다음 장면에 끼어들었다(11-14 녹화 S·T·V)
+        val asked = talk || text in ASKED_EVENTS
+        if (s.isNotBlank()) say(s, r.optString("mood"), r.optBoolean("listen"), prio, reply = asked, tag = if (talk) "답" else text)
         else render()
         refreshMemory()
     }
@@ -894,6 +897,7 @@ class Hyun(val act: Activity, val view: HyunView, all: List<Feature>) : Voice.Ev
         private const val TURN_GATE_M = 300.0
         private const val TURN_GATE_MAX_MS = 45_000L
         private val OPEN_TURNS = setOf("TURN_UNKNOWN", "TURN_STRAIGHT", "TURN_ARRIVE")
+        private val ASKED_EVENTS = setOf("taste_news", "taste_sports")   // 앱이 지금 쓰려고 청한 취향 소식 — 답처럼 바로 말한다
         private val LISTEN_EVENTS = setOf("no_dest", "long_drive", "hello")   // 규칙 문장이 질문인 이벤트 — 말한 뒤 듣기. hello = 시동 첫마디(뉴스·퀴즈 제안·엔진오일 알림) → 10초 안 '응'만으로(소개자료 3장)
         // 받아 적기가 첫 글자를 비슷한 소리로 적는다(실측: "변비서") — 비슷한 첫소리는 받되 그냥 "비서"는 받지 않는다
         private val WAKE = Regex("(헤이\\s*)?(현|형|혁|헌|변|편|연|견|션|선|련|헨|핸|행)\\s*(비|빈|피)\\s*(서|사|소|써)(야|아|씨|님|요)?[\\s,.!?~]*")
